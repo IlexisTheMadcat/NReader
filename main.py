@@ -47,7 +47,7 @@ DATA_DEFAULTS = {
         }
     },
     "Tokens": {
-        "BOT_TOKEN": "NzYyODI1NjcyMTgzMTE5ODky.X3uyxA.XpquYEGp2PvRMJHFC-8HzpFm4TM"
+        "BOT_TOKEN": "xxx"
     },
     "config": CONFIG_DEFAULTS
 }
