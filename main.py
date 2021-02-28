@@ -11,7 +11,8 @@ from utils.classes import Bot
 from utils.errorlog import ErrorLog
 from utils.FirebaseDB import FirebaseDB
 
-# NOTES
+# This bot is based on the NHentai-API module.
+# https://pypi.org/project/NHentai-API/
 
 CONFIG_DEFAULTS = {
     "debug_mode": False,        

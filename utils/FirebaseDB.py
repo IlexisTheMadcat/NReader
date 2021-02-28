@@ -2,6 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, db
 from os.path import exists
 from copy import deepcopy
+from typing import Union
 
 # Now create a class to perform CRUD operations on
 class FirebaseDB:
@@ -43,11 +44,11 @@ class FirebaseDB:
     """
     def __init__(self, 
         databaseURL:str, 
-        fp_accountkey_json:str="serviceAccountKeyJSON.json", 
+        fp_accountkey_json:Union[str,dict]="serviceAccountKeyJSON.json", 
         app_name:str="[DEFAULT]", 
         dbroot_path:str="/",
     ) -> dict:
-        if not exists(fp_accountkey_json):
+        if isinstance(fp_accountkey_json, str) and not exists(fp_accountkey_json):
             raise FileNotFoundError("The service account key could not be found. Make sure you entered the right location and try again.")
         
         try:

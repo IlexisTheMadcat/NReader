@@ -27,12 +27,10 @@ class MiscCommands(Cog):
             manage_channels=True)
 
         emb = Embed(
-            title=f'Invite {self.bot.user.name}',
             description=f'[Click Here]({oauth_url(app_info.id, permissions)}) '
                         f'to invite this bot to your server.\n'
         ).set_author(
-            name=self.bot.user.name,
-            url=None,
+            name=f"Invite {self.bot.user.name}",
             icon_url=self.bot.user.avatar_url
         ).set_footer(
             text="Provided by MechHub Bot Factory")
