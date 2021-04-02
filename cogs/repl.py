@@ -119,26 +119,16 @@ class REPL(Cog):
         code = code.strip('` ')
         emb = self.emb_dict(title='Eval on', desc=MD.format(code))
 
-        try:
-            result = eval(code, self._env(ctx))
-            if isawaitable(result):
-                result = await result
-            self.ret = result
-            self.emb_pag.set_headers(['Yielded result:'])
-            emb['colour'] = 0x00ff00
-            for h, v in self.emb_pag.paginate(result):
-                field = {
-                    'name': h,
-                    'value': MD.format(v),
-                    'inline': False
-                }
-                emb['fields'].append(field)
-
-        except Exception as e:
-            emb['colour'] = 0xff0000
+        result = eval(code, self._env(ctx))
+        if isawaitable(result):
+            result = await result
+        self.ret = result
+        self.emb_pag.set_headers(['Yielded result:'])
+        emb['colour'] = 0x00ff00
+        for h, v in self.emb_pag.paginate(result):
             field = {
-                'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
-                'value': '{0}'.format(e),
+                'name': h,
+                'value': MD.format(v),
                 'inline': False
             }
             emb['fields'].append(field)

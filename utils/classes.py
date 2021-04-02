@@ -9,28 +9,59 @@ from asyncio.exceptions import TimeoutError
 from contextlib import suppress
 
 from expiringdict import ExpiringDict
-from discord import Message, Embed, Forbidden, TextChannel
+from discord import Message, Embed as DiscordEmbed, Forbidden, TextChannel
 from discord.ext.commands.context import Context
 from discord.ext.commands.bot import Bot as DiscordBot
+from discord.utils import get
 from NHentai import NHentai
 
 from utils.errorlog import ErrorLog
-from utils.utils import language_to_flag
+from utils.utils import language_to_flag, is_int, is_float
 
-# Paginator created by SirThane @ GitHub
+
+# Override default color for bot fanciness
+class Embed(DiscordEmbed):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.color = 0xEC2854
+        self.colour = self.color
+
+
 class Paginator:
     def __init__(
             self,
             page_limit: int = 1000,
             trunc_limit: int = 2000,
+            headers: List[str] = None,
+            header_extender: str = u'\u200b'
     ):
         self.page_limit = page_limit
         self.trunc_limit = trunc_limit
         self._pages = None
+        self._headers = None
+        self._header_extender = header_extender
+        self.set_headers(headers)
 
     @property
     def pages(self):
-        return self._pages
+        if self._headers:
+            self._extend_headers(len(self._pages))
+            headers, self._headers = self._headers, None
+            return [
+                (headers[i], self._pages[i]) for i in range(len(self._pages))
+            ]
+        else:
+            return self._pages
+
+    def set_headers(self, headers: List[str] = None):
+        self._headers = headers
+
+    def set_header_extender(self, header_extender: str = u'\u200b'):
+        self._header_extender = header_extender
+
+    def _extend_headers(self, length: int):
+        while len(self._headers) < length:
+            self._headers.append(self._header_extender)
 
     def set_trunc_limit(self, limit: int = 2000):
         self.trunc_limit = limit
@@ -38,7 +69,7 @@ class Paginator:
     def set_page_limit(self, limit: int = 1000):
         self.page_limit = limit
 
-    def paginate(self, value: str) -> List[str]:
+    def paginate(self, value):
         """
         To paginate a string into a list of strings under
         `self.page_limit` characters. Total len of strings
@@ -47,41 +78,36 @@ class Paginator:
         :return list: list of strings under 'page_limit' chars
         """
         spl = str(value).split('\n')
-        ret = list()
+        ret = []
         page = ''
         total = 0
-
         for i in spl:
-            if total + len(page) >= self.trunc_limit:
+            if total + len(page) < self.trunc_limit:
+                if (len(page) + len(i)) < self.page_limit:
+                    page += '\n{}'.format(i)
+                else:
+                    if page:
+                        total += len(page)
+                        ret.append(page)
+                    if len(i) > (self.page_limit - 1):
+                        tmp = i
+                        while len(tmp) > (self.page_limit - 1):
+                            if total + len(tmp) < self.trunc_limit:
+                                total += len(tmp[:self.page_limit])
+                                ret.append(tmp[:self.page_limit])
+                                tmp = tmp[self.page_limit:]
+                            else:
+                                ret.append(tmp[:self.trunc_limit - total])
+                                break
+                        else:
+                            page = tmp
+                    else:
+                        page = i
+            else:
                 ret.append(page[:self.trunc_limit - total])
                 break
-
-            if (len(page) + len(i)) < self.page_limit:
-                page += f'\n{i}'
-                continue
-
-            else:
-                if page:
-                    total += len(page)
-                    ret.append(page)
-
-                if len(i) > (self.page_limit - 1):
-                    tmp = i
-                    while len(tmp) > (self.page_limit - 1):
-                        if total + len(tmp) < self.trunc_limit:
-                            total += len(tmp[:self.page_limit])
-                            ret.append(tmp[:self.page_limit])
-                            tmp = tmp[self.page_limit:]
-                        else:
-                            ret.append(tmp[:self.trunc_limit - total])
-                            break
-                    else:
-                        page = tmp
-                else:
-                    page = i
         else:
             ret.append(page)
-
         self._pages = ret
         return self.pages
 
@@ -92,7 +118,7 @@ class Bot(DiscordBot):
 
         # Namespace variables, not saved to files
         self.inactive = 0  # Timer to track minutes since responded to a command
-        self.waiting: List[int] = list()  # Users waiting for a response from developer
+        self.waiting: list = list()  # Users waiting for a response from developer
         self.cwd = getcwd()  # Global bot directory
         self.text_status = f"{kwargs.get('command_prefix')}help"  # Change first half of text status
 
@@ -148,20 +174,284 @@ class Bot(DiscordBot):
             await super().on_error(event_method=event_name, *args, **kwargs)
 
 
-# Override default color for bot fanciness
-class ModdedEmbed(Embed):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.color = 0xEC2854
-        self.colour = self.color
+class SelectionContext:
+    """Return a class with information on the current selection in the dictionary."""
+    def __init__(
+        self,
+        index_path,  # Path to current value
+        selected_key_value:tuple=(None, None),  # Currently selected key/value pair.
+        dir_index_max=float("inf"),
+        has_children=False,
+        has_parent=False
+    ):
+        self.path = index_path
+        self.selected_key_value = selected_key_value
+        self.dir_index_max = dir_index_max
+        self.has_children = has_children
+        self.has_parent = has_parent
+        pass
 
 
-def is_int(s):
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
+# NEW PEOJECT WORK IN PROGRESS
+class SettingsEditor:
+    """
+    Discord interface for editing values in a dictionary.
+    Only simple values such as strings, bools, and numbers are shown and editable.
+    New keys cannot be added while editing.
+
+    Parameters:
+    `bot` - The Discord Bot class associated with your bot.
+    `context` - A `discord.Context` object typically provided by a command or `Bot.get_context(message)`.
+    `settings_dict` - The dict that will be modified. Can be any dict in any location, it will be deepcopied.
+    `title` - The title of the settings configurator embed.
+    `base_color` - The base color of the embed. It can change depending on the value selected.
+
+    Returns the final dict after all changes have been made. 
+    Use this to update the dict that was being edited, or for your desire.
+    """
+    def __init__(self, 
+        bot: Bot, 
+        ctx:Context, 
+        settings_dict:dict, 
+        title:str="Settings Editor", 
+        base_color:int=0x000000
+    ):
+        if len(str(settings_dict)) > 2000:
+            raise ValueError("This dictionary is too large to show on Discord. "
+                             "Max string character limit is 2048 for embed descriptions, but is limited to 2000 in this constructor "
+                             "for markdown and GUI characters.")
+
+        self.bot = bot
+        self.ctx = ctx
+        self.title = title
+        self.base_color = base_color
+
+        self.active_message: Message = None
+        self.am_embed = None
+
+        # Copy the dict so it isn't updated live until the user clicks the "Save and Quit" button.
+        self.settings_dict = deepcopy(settings_dict)
+
+        # The path of indexes in which to iterate through a dict to find a nested value.
+        self.selected_path = [0]
+
+    # Create a user-friendly visual of the information in a dictionary.
+    def create_description(self, dictionary, depth=0, message_lines=list(), path=[0]):
+        for index, (k, v) in enumerate(dictionary.items()):
+            path[-1] = index
+            is_selected: bool = self.selected_path == path
+
+            print("CD", path)  # TRACK PATH
+
+            if isinstance(v, int) or isinstance(v, float):
+                message_lines.append(
+                    f"{'ー　'*depth}{k}: **`{v}`** {'🟦◀' if is_selected else ''}")
+            
+            elif isinstance(v, str):
+                message_lines.append(
+                    f"{'　ー'*depth}{k}: `{v}` {'🟦◀' if is_selected else ''}")
+            
+            elif isinstance(v, bool):
+                message_lines.append(
+                    f"{'　ー'*depth}{k}: `{'🟩 True' if v else '🟥 False'}` {'🟦◀' if is_selected else ''}")
+            
+            elif isinstance(v, dict):
+                message_lines.append(
+                    f"{'　ー'*depth}**{k} [** {'🟦🔽' if is_selected else ''}")
+                
+                path.append(index)
+                self.create_description(dictionary[k], depth+1, message_lines, path)
+            
+            else:
+                message_lines.append(
+                    f"{'　ー'*depth} ~~{k}~~; [❓] {'◀🟦' if is_selected else ''}")
+        
+        return "\n".join(message_lines)
+    
+    # Get a SelectionContext object for the selected item in a dictionary.
+    # Instead of following a path, iterate through the whole thing for better context.
+    def get_selection_context(self, dictionary, depth=0, path=[0]):
+        for index, (k, v) in enumerate(dictionary.items()):
+            path[-1] = index
+
+            print("GSC", path)  # TRACK PATH
+
+            if self.selected_path == path:
+                return SelectionContext(
+                    path, (k,v), 
+                    len(dictionary.items()), 
+                    len(path) > 0, 
+                    isinstance(v, dict))
+            
+            elif isinstance(v, dict):
+                path.append(index)
+                self.get_selection_context(dictionary[k], depth+1, path)
+
+    async def setup(self):
+        self.am_embed = Embed(
+            color=self.base_color, 
+            description=self.create_description(self.settings_dict)
+        ).set_footer(
+            text="🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+        
+        editor = await self.ctx.send(embed=self.am_embed)
+
+        self.active_message = editor
+        await self.active_message.add_reaction("🔼")
+        await self.active_message.add_reaction("🔽")
+        await self.active_message.add_reaction("◀")
+        await self.active_message.add_reaction("▶")
+        await self.active_message.add_reaction("🔢")
+        await self.active_message.add_reaction("💾")
+    
+    async def start(self):
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=300,
+                    check=lambda r, u: r.message.channel.id==self.ctx.channel.id and \
+                        u.id==self.ctx.author.id and str(r.emoji) in ["🔼", "🔽", "◀", "▶", "🔢", "💾"])
+            except TimeoutError:
+                self.selected_path = [-1]
+
+                self.am_embed = Embed(
+                    color=self.base_color, 
+                    description=self.create_description(self.settings_dict)
+                ).set_footer(text=Embed.Empty)
+                
+                await self.active_message.edit(embed=self.am_embed)
+                return
+            
+            else:
+                with suppress(Forbidden):
+                    await self.active_message.remove_reaction(str(reaction.emoji), user)
+
+                if str(reaction.emoji) == "🔼":
+                    context = self.get_selection_context(self.settings_dict)
+                    if self.selected_path[-1] == 0:
+                        self.selected_path[-1] = context.dir_index_max-1
+                    else:
+                        self.selected_path[-1] = self.selected_path[-1] - 1
+                    
+                    print("UP", self.selected_path)  # TRACK PATH
+                    
+                    self.am_embed.description = self.create_description(self.settings_dict)
+                    self.am_embed.set_footer(
+                        text="🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+
+                    await self.active_message.edit(embed=self.am_embed)
+                
+                elif str(reaction.emoji) == "🔽":
+                    context = self.get_selection_context(self.settings_dict)
+                    if self.selected_path[-1] == context.dir_index_max-1:
+                        self.selected_path[-1] = 0
+                    else:
+                        self.selected_path[-1] = self.selected_path[-1] + 1
+                    
+                    print("DOWN", self.selected_path)  # TRACK PATH
+                    
+                    self.am_embed.description = self.create_description(self.settings_dict)
+                    self.am_embed.set_footer(
+                        text="🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+                    
+                    await self.active_message.edit(embed=self.am_embed)
+                
+                elif str(reaction.emoji) == "◀":
+                    context = self.get_selection_context(self.settings_dict)
+                    if context.has_parent:
+                        self.selected_path.pop()
+
+                        self.am_embed.description = self.create_description(self.settings_dict)
+                        self.am_embed.set_footer(
+                        text="🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+
+                        await self.active_message.edit(embed=self.am_embed)
+
+                elif str(reaction.emoji) == "▶":
+                    context = self.get_selection_context(self.settings_dict)
+                    if context.has_children:
+                        self.selected_path.append(0)
+
+                        self.am_embed.description = self.create_description(self.settings_dict)
+                        self.am_embed.set_footer(
+                            text="🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+
+                        await self.active_message.edit(embed=self.am_embed)
+                
+                elif str(reaction.emoji) == "🔢":
+                    context = self.get_selection_context(self.settings_dict)
+                    def change_item(dictionary, depth=0, path=[0], new=0):
+                        for index, (k, v) in enumerate(dictionary.items()):
+                            if self.selected_path == path:
+                                if not isinstance(new, type(context.selected_key_value[1])):
+                                    return False
+                                else:
+                                    dictionary[k] = new
+                                    return
+                            
+                            elif isinstance(v, dict):
+                                self.get_item(dictionary, depth+1, path.append(index))
+                    
+                    def python_to_english():
+                        item_type = type(context.selected_key_value[1])
+                        if item_type == int:
+                            return 'a *whole* number.'
+                        if item_type == float:
+                            return 'a number. Can be a decimal.'
+                        elif item_type == bool:
+                            return '`True` or `False`.'
+                        elif item_type == str:
+                            return 'a string.'
+                        else:
+                            return None
+
+                    if type(context.selected_key_value[1]) not in [int, float, bool, str]:
+                        await self.ctx.send(f"⛔ This value of type `{type(context.selected_key_value[1])}` cannot be changed.", delete_after=3)
+                        continue
+                    
+                    self.am_embed.set_footer(text=f"❔ Type the new value for this setting. It must be {python_to_english()}")
+                    await self.active_message.edit(embed=self.am_embed)
+
+                    try:
+                        message = await self.bot.wait_for("message", timeout=10,
+                            check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.author.id)
+                    except TimeoutError:
+                        self.am_embed.set_footer(text=f"🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+                        await self.active_message.edit(embed=self.am_embed)
+                        continue
+                    else:
+                        if message.content == "True":
+                            new = True
+                        elif message.content == "False":
+                            new = False
+                        elif is_int(message.content):
+                            new = int(message.content)
+                        elif is_float(message.content):
+                            new = float(message.content)
+                        else:  # Assume it is a string as no other types are recognized.
+                            new = message.content
+                        
+                        change_item(self.settings_dict, new=new)
+                        if not change_item:
+                            await self.ctx.send("❌ Not a valid value. Try again.", delete_after=3)
+                            self.am_embed.set_footer(
+                                text=f"🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+                        else:
+                            await self.ctx.send("✔ Value Changed.", delete_after=3)
+                            self.am_embed.set_footer(
+                                text=f"🔼🔽◀▶🔢💾 |Up|Down|Parent|Children|Input|Save|")
+
+                        self.am_embed.description = self.create_description(self.settings_dict)
+                        await self.active_message.edit(embed=self.am_embed)
+
+                elif str(reaction.emoji) == "💾":
+                    self.am_embed.set_footer(
+                        text="✔ Settings confirmed.")
+
+                    self.am_embed.description = self.create_description(self.settings_dict)
+                    await self.active_message.edit(embed=self.am_embed)
+
+                    return self.settings_dict
+
 
 class ImagePageReader:
     def __init__(self, bot: Bot, ctx: Context, images:list, name:str, **kwargs):
@@ -175,13 +465,13 @@ class ImagePageReader:
         `**kwargs` - Further keyword arguments if need be
 
         This class in particular requires a certain format for `name`:
-        "{int()} || {str()}", where int would be an object id and str for title.
+        `f"{int()} || {str()}"`, where int would be an object id and str for title.
         """
         self.bot = bot
         self.current_page: int = 0
         self.images: list = images
         self.name: str = name
-        self.code: str = self.name.split('[-n-]')[0].strip(" ")
+        self.code: str = self.name.split('[*n*]')[0].strip(" ")
         self.ctx: Context = ctx
         self.active_message: Message = None
         self.am_embed: Embed = None
@@ -201,33 +491,38 @@ class ImagePageReader:
         self.am_embed: Embed = Embed(
             color=0xEC2854,
             description=f"Active emojis will appear here.\n" \
-                        "▶ Play"
-            )
+                        "▶ Play")
         self.am_embed.set_author(
             name=self.name,
             icon_url="https://cdn.discordapp.com/attachments/742481946030112779/759591081758949410/emote.png")
         self.am_embed.set_footer(
-            text=f"Page [0/{len(self.images)}]: Press PLAY to start reading.")
-        
-        channel = None
-        try:
-            channel = await self.ctx.guild.create_text_channel(name=f"📖nreader-{self.ctx.message.id}", nsfw=True)
-        except Forbidden:
-            return False
+            text=f"Page [0/{len(self.images)}]: Press ▶ Play to start reading.")
 
-        try:
-            await channel.set_permissions(self.ctx.guild.me, read_messages=True)
-            await channel.set_permissions(self.ctx.guild.default_role, read_messages=False)
-            await channel.set_permissions(self.ctx.author, read_messages=True)
-        except Forbidden:
-            if channel:
-                await channel.delete()
-                return False
-        else:
-            conf = await channel.send(content=self.ctx.author.mention, embed=self.am_embed)
-    
-        await edit.delete()
-        await self.ctx.send(embed=Embed(color=0x000000, description=f"[Click/tap here]({conf.jump_url}) to jump to your reader."), delete_after=10)
+        # Fetch existing category for readers, otherwise create new
+        cat = get(self.ctx.guild.categories, name="📖NReader")
+        if not cat:
+            cat = await self.ctx.guild.create_category_channel(name="📖NReader")
+
+        # Create reader channel under category
+        channel = await cat.create_text_channel(name=f"📖nreader-{self.ctx.message.id}", nsfw=True)
+
+        # Set channel permissions
+        await channel.set_permissions(self.ctx.guild.me, read_messages=True)
+        await channel.set_permissions(self.ctx.guild.default_role, read_messages=False)
+        await channel.set_permissions(self.ctx.author, read_messages=True)
+
+        # Reader message
+        conf = await channel.send(content=self.ctx.author.mention, embed=self.am_embed)
+
+        # Portal
+        await edit.edit(
+            content=conf.channel.mention, 
+            embed=Embed(
+                description="Click/Tap the mention above to jump to your reader."
+                ).set_author(
+                    name=self.bot.user.name,
+                    icon_url=self.bot.user.avatar_url), 
+                delete_after=10)
         
         await conf.add_reaction("▶")
         
@@ -277,6 +572,7 @@ class ImagePageReader:
             except TimeoutError:
                 await self.active_message.clear_reactions()
                 
+                self.am_embed.description = ""
                 self.am_embed.set_footer(text=f"You timed out on page [{self.current_page+1}/{len(self.images)}].\n")
 
                 self.am_embed.set_image(url=Embed.Empty)
@@ -657,7 +953,7 @@ class SearchResultsBrowser:
                 for ind, dj in enumerate(self.results):
                     message_part.append(
                         f"{'**' if ind == self.current_result else ''}__`{str(self.results[ind].id).ljust(7)}`__{'**' if ind == self.current_result else ''} | "
-                        f"{self.language_to_flag(self.results[ind].languages)} | "
+                        f"{language_to_flag(self.results[ind].languages)} | "
                         f"{shorten(self.results[ind].title, width=50, placeholder='...')}")
                 
                 self.am_embed = Embed(

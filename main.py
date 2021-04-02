@@ -1,4 +1,6 @@
 # IMPORTS
+from os.path import exists
+from json import load
 from sys import exc_info
 from copy import deepcopy
 
@@ -29,9 +31,13 @@ DATA_DEFAULTS = {
     "UserData": {
         "authorID": {  # User Settings
             "Settings": {
-                "Unrestricted Servers": ["serverID"]  
+                "Unrestricted Servers": ["serverID"],
                 # Listings that are normally blocked for legal reasons in servers show in these servers.
                 # Only the owner of the server can add its ID to this list.
+
+                "SearchAppendage": "appendage"
+                # Users may add a string to the end of searches. 
+                # This string will be appended to all their searches no matter the case.
             },
             "nFavorites": {  # User favorites including bookmarks
                 "Doujins": [
@@ -50,7 +56,7 @@ DATA_DEFAULTS = {
     "Tokens": {
         "BOT_TOKEN": "xxx"
     },
-    "config": CONFIG_DEFAULTS
+    "config": {}
 }
 
 INIT_EXTENSIONS = [
@@ -63,9 +69,18 @@ INIT_EXTENSIONS = [
     "web"
 ]
 
+if exists("Workspace/Files/ServiceAccountKey.json"):
+    key = load(open("Workspace/Files/ServiceAccountKey.json", "r"))
+else:  # If it doesn't exists assume running on replit
+    try:
+        from replit import db
+        key = dict(db)["SAK"]
+    except Exception:
+        raise FileNotFoundError("Could not find ServiceAccountKey.json.")
+
 db = FirebaseDB(
     "https://nreader-database-default-rtdb.firebaseio.com/", 
-    fp_accountkey_json="Workspace/Files/dumbshit.json")
+    fp_accountkey_json=key)
 
 user_data = db.copy()
 # Check the database
@@ -155,9 +170,6 @@ async def on_ready():
             error = exc_info()
             if error:
                 await bot.errorlog.send(error, event="Load Initial Cog")
-            
-            #print("[BOT FAILED] Check the ErrorLog for error details.")
-            #await bot.logout()
 
     print(f"#-------------------------------#\n"
           f"| Successfully logged in.\n"

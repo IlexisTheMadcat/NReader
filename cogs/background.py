@@ -48,8 +48,7 @@ class BackgroundTasks(Cog):
 
         self.bot.inactive = self.bot.inactive + 1
         print(f"[HRB: {time}] Running.")
-        
-
+    
     @status_change.before_loop
     async def sc_wait(self):
         await self.bot.wait_until_ready()
@@ -59,6 +58,10 @@ class BackgroundTasks(Cog):
     async def sd_wait(self):
         await self.bot.wait_until_ready()
         await sleep(15)
+    
+    def cog_unload(self):
+        self.status_change.cancel()
+        self.save_data.cancel()
 
 
 def setup(bot):

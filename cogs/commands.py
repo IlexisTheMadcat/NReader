@@ -11,12 +11,25 @@ from discord.ext.commands.cog import Cog
 from discord.ext.commands.core import bot_has_permissions, command
 from NHentai import NHentai, Doujin
 
-from utils.classes import ImagePageReader, SearchResultsBrowser, ModdedEmbed as Embed
+from utils.classes import ImagePageReader, SearchResultsBrowser, Embed
 from utils.utils import language_to_flag
 
 class Commands(Cog):
     def __init__(self, bot):
         self.bot = bot
+    
+    @command(name="test")
+    @bot_has_permissions(send_messages=True, embed_links=True)
+    async def test(self, ctx):
+        try:
+            await ctx.send("Done (1/2).")
+        except Exception:
+            await ctx.author.send("(1/2) I can't send messages there.")
+        
+        try:
+            await ctx.send(embed=Embed(color=0x000000, description="Done (2/2)."))
+        except Exception:
+            await ctx.send("(2/2) I can't send embeds in here.")
     
     @command(aliases=["code"])
     @bot_has_permissions(
@@ -69,7 +82,7 @@ class Commands(Cog):
                                           "own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
                                           "This will allow all users in your server to open lolicon/shotacon doujins.\n"
                                           "This command is not in the help menu.\n"
-                                          "Lolicon/shotacon doujins are __only reflected__ on your history, favorites, or bookmarks __**in whitelisted servers**__.")
+                                          "Lolicon/shotacon doujins are __only__ reflected on your history, favorites, or bookmarks __**in whitelisted servers**__.")
                 
                 print(f"[] ⚠ {ctx.author} ({ctx.author.id}) attempted to read `{doujin.id}` containing underage characters in a restricted server.")
                 return
@@ -148,15 +161,16 @@ class Commands(Cog):
                         url=Embed.Empty)
                     await edit.edit(embed=emb)
 
-                    session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [-n-] {doujin.title}")
+                    session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}")
                     response = await session.setup()
                     if response:
                         await session.start()
                     else:
-                        emb.set_footer(text="You timed out.")
+                        emb.set_footer(text=Embed.Empty)
                         await edit.edit(embed=emb)
                     
                     return
+                
                 elif str(reaction.emoji) == "🔍":
                     if not emb.image:
                         emb.set_image(url=emb.thumbnail.url)
@@ -167,6 +181,8 @@ class Commands(Cog):
                     
                     await edit.remove_reaction("🔍", ctx.author)
                     await edit.edit(embed=emb)
+
+                    continue
                     
     @command(aliases=["search"])
     @bot_has_permissions(
@@ -175,7 +191,7 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    async def search_doujins(self, ctx, *, query: str):
+    async def search_doujins(self, ctx, *, query: str = ""):
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["Unrestricted Servers"]:
@@ -190,7 +206,19 @@ class Commands(Cog):
         conf = await ctx.send("<a:nreader_loading:810936543401213953>")
     
         nhentai_api = NHentai()
-        results: dict = nhentai_api.search(query=query+f"{' -lolicon -shotacon' if ctx.guild and not lolicon_allowed else ''}", sort='popular', page=1)
+
+        if self.bot.user_data["UserData"] and \
+            self.bot.user_data["UserData"][str(ctx.author.id)] and \
+            "Settings" in self.bot.user_data["UserData"][str(ctx.author.id)] and \
+            "SearchAppendage" in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]:
+            appendage = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]
+        else:
+            appendage = ""
+
+        if not query and not appendage:
+            await conf.edit(content="You're kidding? You need to tell me what to search, or update your search appendage (See \"search_appendage\" in `n!help`).")
+        
+        results: dict = nhentai_api.search(query=query+f"{' -lolicon -shotacon' if ctx.guild and not lolicon_allowed else ''} {appendage}", sort='popular', page=1)
 
         if isinstance(results, Doujin):
             if results.id not in self.bot.doujin_cache:
@@ -224,7 +252,122 @@ class Commands(Cog):
         await conf.edit(content='', embed=emb)
         await conf.add_reaction("<a:nreader_loading:810936543401213953>")
 
-        print(f"[] {ctx.author} ({ctx.author.id}) searched for query.")
+        print(f"[] {ctx.author} ({ctx.author.id}) searched for [{query}].")
+    
+        # Request each doujin to simplify results
+        message_part = []
+        for ind, dj in enumerate(results.doujins):
+            if dj.id not in self.bot.doujin_cache:
+                doujin = nhentai_api._get_doujin(dj.id)
+                self.bot.doujin_cache[dj.id] = doujin
+            else:
+                doujin = self.bot.doujin_cache[dj.id]
+            
+            # Overwrite result with 'true' result attributes
+            results.doujins[ind] = doujin
+
+            message_part.append(
+                f"__`{str(doujin.id).ljust(7)}`__ | "
+                f"{language_to_flag(doujin.languages)} | "
+                f"{shorten(doujin.title, width=50, placeholder='...')}")
+        emb = Embed(
+            description=f"First page only displayed"
+                        f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
+                        f"\n"+('\n'.join(message_part)))
+        emb.set_author(
+            name="NHentai Search Results",
+            url="https://nhentai.net/",
+            icon_url="https://cdn.discordapp.com/attachments/742481946030112779/759591081758949410/emote.png")
+        emb.set_footer(
+            text="Enter INTERACTIVE mode?")
+        await conf.remove_reaction("<a:nreader_loading:810936543401213953>", self.bot.user)
+        await conf.edit(content='', embed=emb)
+        await conf.add_reaction("⌨")
+        
+        try:
+            await self.bot.wait_for('reaction_add', timeout=20, 
+                check=lambda r, u: r.message.id==conf.id and u.id==ctx.author.id and str(r.emoji)=="⌨")
+        except TimeoutError:
+            with suppress(Forbidden):
+                await conf.clear_reactions()
+                
+            emb.set_footer(text="Provided by NHentai-API")
+            await conf.edit(content='', embed=emb)
+        else:
+            await conf.clear_reactions()
+                
+            interactive = SearchResultsBrowser(self.bot, ctx, results, conf, lolicon_allowed=lolicon_allowed)
+            await interactive.start(ctx)
+    
+    @command(aliases=["crand"])
+    @bot_has_permissions(
+        send_messages=True, 
+        embed_links=True, 
+        manage_messages=True, 
+        manage_channels=True, 
+        manage_roles=True)
+    async def custom_random(self, ctx, *, query: str = ""):
+        lolicon_allowed = False
+        try:
+            if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["Unrestricted Servers"]:
+                lolicon_allowed = True
+        except KeyError:
+            pass
+        
+        if ctx.guild and not ctx.channel.is_nsfw():
+            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
+            return
+        
+        conf = await ctx.send("<a:nreader_loading:810936543401213953>")
+    
+        nhentai_api = NHentai()
+
+        if self.bot.user_data["UserData"] and \
+            self.bot.user_data["UserData"][str(ctx.author.id)] and \
+            "Settings" in self.bot.user_data["UserData"][str(ctx.author.id)] and \
+            "SearchAppendage" in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]:
+            appendage = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]
+        else:
+            appendage = ""
+        
+        if not query and not appendage:
+            await conf.edit(content="You're kidding? You need to tell me what to search, or update your search appendage (See \"search_appendage\" in `n!help`).")
+        
+        results: dict = nhentai_api.search(query=query+f"{' -lolicon -shotacon' if ctx.guild and not lolicon_allowed else ''} {appendage}", sort='popular', page=1)
+
+        if isinstance(results, Doujin):
+            if results.id not in self.bot.doujin_cache:
+                self.bot.doujin_cache[results.id] = results
+            
+            await conf.delete()
+            ctx.message.content = f"n!code {results.id}"
+            await self.bot.process_commands(ctx.message)
+            return
+        
+        if not results.doujins:
+            await conf.edit(content='I did not find anything. Check your keywords!\nThis may also be the cause of your search_appendage. See \"search_appendage\" in `n!help`.')
+            return
+        
+        message_part = []
+        for ind, dj in enumerate(results.doujins):
+            message_part.append(
+                f"__`{str(results.doujins[ind].id).ljust(7)}`__ | "
+                f"🏳❔ | "
+                f"{shorten(results.doujins[ind].title, width=50, placeholder='...')}")
+        emb = Embed(
+            description=f"First page only displayed"
+                        f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
+                        f"\n"+('\n'.join(message_part)))
+        emb.set_author(
+            name="NHentai Search Results",
+            url="https://nhentai.net/",
+            icon_url="https://cdn.discordapp.com/attachments/742481946030112779/759591081758949410/emote.png")
+        emb.set_footer(
+            text="Loading more details...")
+        await conf.edit(content='', embed=emb)
+        await conf.add_reaction("<a:nreader_loading:810936543401213953>")
+
+        print(f"[] {ctx.author} ({ctx.author.id}) searched for [{query}].")
     
         # Request each doujin to simplify results
         message_part = []
@@ -329,7 +472,7 @@ class Commands(Cog):
             url=doujin.images[0]
         )
         
-        conf = await ctx.send(content='', embed=emb)
+        conf = await ctx.edit(content='', embed=emb)
         await conf.add_reaction("⬇")
 
         try:
@@ -682,7 +825,7 @@ class Commands(Cog):
                 color=0xEC2854)
             emb.set_author(
                 name="NHentai History (BOT)",
-                url=f"https://nhentai.net/",
+                url="https://nhentai.net/",
                 icon_url="https://cdn.discordapp.com/attachments/742481946030112779/759591081758949410/emote.png")
 
             nhentai_api = NHentai()
@@ -739,7 +882,88 @@ class Commands(Cog):
             emb.description = f"{'✅' if self.bot.user_data['UserData'][str(ctx.author.id)]['History'][0] else '❎'} History toggled"
 
             await ctx.send(embed=emb)
+    
+    @command(aliases=["appendage"])
+    @bot_has_permissions(
+        send_messages=True,
+        embed_links=True)
+    async def search_appendage(self, ctx, *, appendage=""):
+        if str(ctx.author.id) not in self.bot.user_data["UserData"]:
+            self.bot.user_data["UserData"][str(ctx.author.id)] = {}
+        if "Settings" not in self.bot.user_data["UserData"][str(ctx.author.id)]:
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"] = {}
+        if "SearchAppendage" not in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]:
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = ""
+        
+        if appendage and appendage != "clear_appendage":
+            conf = await ctx.send(embed=Embed(
+                title = "Confirm Search Appendage Update",
+                description = f"🔄 You are attempting to update your search appendage;\n"
+                              f"```diff\n"
+                              f"- [{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}]\n"
+                              f"=====\n"
+                              f"+ [{appendage}]"
+                              f"```\n"
+                              f"Brackets not included. Press ✔ to confirm."
+            ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+            
+            await conf.add_reaction("✔")
 
+            try:
+                await self.bot.wait_for("reaction_add", timeout=10,
+                    check=lambda r, u: r.message.id==conf.id and u.id==ctx.author.id)
+            except TimeoutError:
+                await conf.edit(content="⌛❌ If you want to update your search appendage, please confirm within 10 seconds next time.", embed=None)
+                await conf.remove_reaction("✔", self.bot.user)
+            
+            else:
+                self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = appendage
+                
+                await conf.edit(embed=Embed(
+                    title = "Search Appendage Updated",
+                    description = f"✅ The following string will now be appended to all of your searches:\n"
+                                  f"```{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}```\n"
+                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+        
+        elif appendage == "clear_appendage":
+            conf = await ctx.send(embed=Embed(
+                title = "Confirm Search Appendage Erase",
+                description = f"⚠ You are attempting to erase your search appendage;\n"
+                              f"```diff\n"
+                              f"- [{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}]\n"
+                              f"```\n"
+                              f"Brackets not included. Press ✔ to confirm."
+            ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+            
+            await conf.add_reaction("✔")
+
+            try:
+                await self.bot.wait_for("reaction_add", timeout=10,
+                    check=lambda r, u: r.message.id==conf.id and u.id==ctx.author.id)
+            except TimeoutError:
+                await conf.edit(content="⌛❌ If you want to erase your search appendage, please confirm within 10 seconds next time.", embed=None)
+                await conf.remove_reaction("✔", self.bot.user)
+            
+            else:
+                self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = ""
+                
+                await conf.edit(embed=Embed(
+                    title = "Search Appendage Erase",
+                    description = "✅ Nothing will be added to your searches."
+                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+        else:
+            if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]:
+                await ctx.send(embed=Embed(
+                    title = "Current Search Appendage",
+                    description = f"📝 The following string is what you told me to append to all of your searches:\n"
+                                  f"```{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}```\n"
+                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+            
+            else:
+                await ctx.send(embed=Embed(
+                    title = "Current Search Appendage",
+                    description = "ℹ Nothing is being added to your searches."
+                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
 
 def setup(bot):
     bot.add_cog(Commands(bot))

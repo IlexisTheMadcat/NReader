@@ -1,4 +1,3 @@
-# Lib
 import os
 import jinja2
 from aiohttp import web
@@ -7,12 +6,9 @@ from aiohttp_jinja2 import (
     render_template as html
 )
 
-# Site
 from multidict import MultiDict
 from discord.ext import tasks
 from discord.ext.commands import Cog
-
-# Local
 
 
 app = web.Application()

@@ -93,7 +93,7 @@ class Admin(Cog):
                 )
 
                 error = exc_info()
-                await self.bot.errolog.send(ctx, error, "Load Module")
+                await self.bot.errorlog.send(error, event="Load Module")
 
         except Exception as error:
             em = Embed(
@@ -106,7 +106,7 @@ class Admin(Cog):
             )
 
             error = exc_info()
-            await self.bot.errolog.send(ctx, error, "Load Module")
+            await self.bot.errorlog.send(error, event="Load Module")
 
         else:
             em = Embed(
@@ -216,7 +216,7 @@ class Admin(Cog):
                 )
 
                 error = exc_info()
-                self.bot.errorlog.send(ctx, error, "Load Module")
+                await self.bot.errorlog.send(error, "Load Module")
 
         except Exception as error:
             em = Embed(
@@ -229,7 +229,7 @@ class Admin(Cog):
             )
 
             error = exc_info()
-            await self.bot.errolog.send(ctx, error, "Load Module")
+            await self.bot.errorlog.send(error, "Load Module")
 
         else:
             em = Embed(

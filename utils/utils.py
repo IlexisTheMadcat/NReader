@@ -1,3 +1,17 @@
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+def is_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 def language_to_flag(languages: list):
     """Given a list of languages, convert it into a 2-emoji string of respective flags. Bound to have KeyError exceptions."""
     
