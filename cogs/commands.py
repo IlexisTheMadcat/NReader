@@ -302,7 +302,6 @@ class Commands(Cog):
             interactive = SearchResultsBrowser(self.bot, ctx, results, conf, lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
     
-    # IN CONSTRUCTION, UNFINISHED
     @command(aliases=["crand"])
     @bot_has_permissions(
         send_messages=True, 
