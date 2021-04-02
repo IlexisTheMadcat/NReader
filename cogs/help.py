@@ -55,8 +55,10 @@ __`doujin_info/code [code]`__
 __`download_doujin/dl <code>`__
 *Download all pages of a certain doujin.*
 
-__`search_doujins/search <query>`__ 
+__`search_doujins/search [query]`__ 
 *Search doujins. Only the first result page is shown.*
+ー While `query` is optional, it is required if you do not have an appendage set up.
+ーー See the `search_appendage` command in this message.
 
 __`favorites/fav [add|remove] <code>`__
 *Add/Remove a doujin to/from your favorites list. Run with no arguments to view your list.*
@@ -70,6 +72,10 @@ __`bookmarks/bm`__
 ー *`text` can be anything (spaces allowed), not just a list of tags. It is fed into nHentai's search bar like normal.*
 ー *To clear your appendage, replace `text` with "clear_appendage". Both operations will ask to confirm your change.*
 ー *If you get unexpected search results, check back over this command.*
+
+🆕__`custom_random/crand [query]`__
+ー Similar to `search_doujins`, except it pulls a random one instead of having to dig through the search.
+ー Again, while `query` is optional, it is required if you do not have an appendage set up.
 
 __`history [toggle|clear]`__
 *Toggle the recording of or clear your viewing history.*
