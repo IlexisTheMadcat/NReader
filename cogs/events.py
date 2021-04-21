@@ -1,5 +1,6 @@
 # IMPORTS
 from sys import exc_info
+from copy import deepcopy
 from contextlib import suppress
 
 from discord.message import Message
@@ -55,8 +56,43 @@ class Events(Cog):
 
         # Check if the message is a command. 
         # Terminates the event if so, so the command can run.
+        # Excutes notification message.
         verify_command = await self.bot.get_context(msg)
         if verify_command.valid:
+            if str(msg.author.id) not in self.bot.user_data["UserData"]:
+                self.bot.user_data["UserData"][str(msg.author.id)] = self.bot.user_defaults
+
+            # Check data structure without changing values.
+            def convert(data, reference, copy=None):
+                if not copy: copy = deepcopy(data)
+                for key in data:  # Delete unnecessary keys
+                    if key not in reference.keys():
+                        copy.pop(key)
+                    elif isinstance(key, dict):
+                        convert(data[key], reference[key], copy[key])
+                
+                for key, value in reference:  # Add missing keys
+                    if key not in data.keys():
+                        copy.update({key:value})
+                    elif isinstance(key, dict):
+                        convert(data[key], reference[key], copy[key])
+                    
+                data = deepcopy(copy)
+                return data
+            
+            self.bot.user_data["UserData"][str(msg.author.id)] = \
+                convert(self.bot.user_data["UserData"][str(msg.author.id)], self.bot.user_defaults)
+
+
+            if self.bot.user_data["UserData"][str(msg.author.id)]["NotificationDue"]:
+                await msg.author.send(embed=Embed(
+                    title="Notification",
+                    description="👋 It appears to be your first time using this bot!\n" \
+                                "⚠️ This bot is to be used by mature users only and in NSFW channels.\n" \
+                                "ℹ️ For more information and help, please use the `n!help` command. For brief legal information, please use the `n!legal` command."))
+
+                self.bot.user_data["UserData"][str(msg.author.id)]["NotificationDue"] = False
+            
             self.bot.inactive = 0
             return
 

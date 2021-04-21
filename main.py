@@ -1,5 +1,6 @@
 # IMPORTS
-from os.path import exists
+from os import walk, remove
+from os.path import exists, join
 from json import load
 from sys import exc_info
 from copy import deepcopy
@@ -16,47 +17,50 @@ from utils.FirebaseDB import FirebaseDB
 # This bot is based on the NHentai-API module.
 # https://pypi.org/project/NHentai-API/
 
-CONFIG_DEFAULTS = {
-    "debug_mode": False,        
-    # Print exceptions to stdout.
-
-    "muted_dms": [],  # List of UIDs.
-    # Block support DMs from members who abuse the system.
-
-    "error_log_channel": 734499801697091654
-    # The channel that errors are sent to. 
-}
-
 DATA_DEFAULTS = {
     "UserData": {
-        "authorID": {  # User Settings
-            "Settings": {
-                "Unrestricted Servers": ["serverID"],
+        "authorID": {  
+            "Settings": {  # User Settings dict
+                "UnrestrictedServers": [],  # [int(serverID)]
                 # Listings that are normally blocked for legal reasons in servers show in these servers.
                 # Only the owner of the server can add its ID to this list.
 
-                "SearchAppendage": "appendage"
+                "SearchAppendage": "",  # str(appendage)
                 # Users may add a string to the end of searches. 
                 # This string will be appended to all their searches no matter the case.
+
+                "NotificationDue": True,  # bool
+                # A notification sent to users when they use a command for the first time.
+                # This is set to false after executed. Resets by command.
+
             },
             "nFavorites": {  # User favorites including bookmarks
-                "Doujins": [
-                    "code"
-                ],
-                "Bookmarks": {
-                    "code": "Page"
-                }
+                "Doujins": [],   # [int(code)]
+                "Bookmarks": {}  # {str(code):int(page)}
             },
-            "History": ("Bool", ["code"])
+            
+            "History": (
+                True,  # bool
+                []     # [int(code)]
+            )
             # Keep a history of the user's reading.
             # "Bool"; Control whether or not the bot should record the user's history.
-            # ー Toggleable via command.
         }
     },
-    "Tokens": {
-        "BOT_TOKEN": "xxx"
+    "Tokens": {  # Replace ONLY for initialization
+        "BOT_TOKEN": "xxx"  # str(token)
     },
-    "config": {}
+    
+    "config": {
+        "debug_mode": False,        
+        # Print exceptions to stdout.
+
+        "muted_dms": [0],  # List of UIDs.
+        # Block support DMs from members who abuse the system.
+
+        "error_log_channel": 734499801697091654,
+        # The channel that errors are sent to.
+    }
 }
 
 INIT_EXTENSIONS = [
@@ -96,16 +100,17 @@ for key in found_data:
         print(f"[REDUNDANCY] Invalid data \'{key}\' found. "
               f"Removed key from file.")
 del found_data  # Remove variable from namespace
+
 config_data = user_data["config"]
 # Check the bot config
-for key in CONFIG_DEFAULTS:
+for key in DATA_DEFAULTS['config']:
     if key not in config_data:
-        config_data[key] = CONFIG_DEFAULTS[key]
+        config_data[key] = DATA_DEFAULTS['config'][key]
         print(f"[MISSING VALUE] Config '{key}' missing. "
-              f"Inserted default '{CONFIG_DEFAULTS[key]}'")
+              f"Inserted default '{DATA_DEFAULTS['config'][key]}'")
 found_data = deepcopy(config_data)  # Duplicate to avoid RuntimeError exception
 for key in found_data:
-    if key not in CONFIG_DEFAULTS:
+    if key not in DATA_DEFAULTS['config']:
         config_data.pop(key)  # Remove redundant data
         print(f"[REDUNDANCY] Invalid config \'{key}\' found. "
               f"Removed key from file.")
@@ -123,13 +128,14 @@ bot = Bot(
     description="Search, overview, and read doujins in Discord.",
     owner_ids=[331551368789622784],  # Ilexis
     status=Status.idle,
-    activity=Activity(type=ActivityType.watching, name=""),
+    activity=Activity(type=ActivityType.watching, name="hentai before work"),
     command_prefix="n!",
-    config=config_data,
 
+    config=config_data,
     database=db,
-    user_data=user_data,
-    auth=db["Tokens"]
+    user_data=user_data,   
+    user_defaults=DATA_DEFAULTS["UserData"]["authorID"],
+    auth=db["Tokens"],
 )
 
 # If a custom help command is created:
@@ -137,6 +143,11 @@ bot.remove_command("help")
 
 print(f"[BOT INIT] Running in: {bot.cwd}\n"
       f"[BOT INIT] Discord API version: {__version__}")
+
+mypath = "Storage"
+for root, dirs, files in walk(mypath):
+    for file in files:
+        remove(join(root, file))
 
 @bot.event
 async def on_ready():

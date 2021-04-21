@@ -236,7 +236,10 @@ class SettingsEditor:
         self.selected_path = [0]
 
     # Create a user-friendly visual of the information in a dictionary.
-    def create_description(self, dictionary, depth=0, message_lines=list(), path=[0]):
+    def create_description(self, dictionary, depth=0, message_lines=list(), path=[0], reset=True):
+        if reset:
+            message_lines = list()
+        
         for index, (k, v) in enumerate(dictionary.items()):
             path[-1] = index
             is_selected: bool = self.selected_path == path
@@ -260,7 +263,7 @@ class SettingsEditor:
                     f"{'　ー'*depth}**{k} [** {'🟦🔽' if is_selected else ''}")
                 
                 path.append(index)
-                self.create_description(dictionary[k], depth+1, message_lines, path)
+                self.create_description(dictionary[k], depth+1, message_lines, path, reset=False)
             
             else:
                 message_lines.append(
@@ -278,10 +281,12 @@ class SettingsEditor:
 
             if self.selected_path == path:
                 return SelectionContext(
-                    path, (k,v), 
+                    path, 
+                    (k,v), 
                     len(dictionary.items()), 
                     len(path) > 0, 
-                    isinstance(v, dict))
+                    isinstance(v, dict)
+                )
             
             elif isinstance(v, dict):
                 path.append(index)
@@ -561,6 +566,22 @@ class ImagePageReader:
             return True
 
     async def start(self):
+        if str(self.ctx.author.id) not in self.bot.user_data["UserData"]:
+            self.bot.user_data["UserData"][str(self.ctx.author.id)] = {}
+        if "History" not in self.bot.user_data["UserData"][str(self.ctx.author.id)]:
+            self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"] = [True, []]
+        
+        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][0]:
+            self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].insert(0, 
+            self.bot.doujin_cache[self.code].id)
+            if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) >= 2 and \
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1][1] == \
+                self.bot.doujin_cache[self.code].id:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop(0)
+            
+            while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) > 25:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop()
+        
         while True:
             def check(reaction, user):
                 return reaction.message.id == self.active_message.id and \
@@ -737,7 +758,7 @@ class ImagePageReader:
                             await warning.delete()
                             pass
 
-                    finally:
+                    else:
                         edit = await self.am_channel.send("<a:nreader_loading:810936543401213953>")
                         await self.active_message.clear_reactions()
 
@@ -824,7 +845,7 @@ class ImagePageReader:
         return
 
 class SearchResultsBrowser:
-    def __init__(self, bot: Bot, ctx: Context, results: list, msg:Message=None, msg2:Message=None, lolicon_allowed=False):
+    def __init__(self, bot: Bot, ctx: Context, results: list, page: int, msg:Message=None, msg2:Message=None, lolicon_allowed=False):
         """Class to create and run a browser from NHentai-API
 
         `results` - obtained from nhentai_api.search(query); Modified `SearchPage` to contain real Doujins, not DoujinThumbnails.
@@ -833,7 +854,9 @@ class SearchResultsBrowser:
         """
         self.bot = bot
         self.ctx = ctx
-        self.results = results.doujins
+        self.page = page
+        self.results = results
+        self.doujins = results.doujins
         self.lolicon_allowed = lolicon_allowed
         self.current_result = 0
         self.active_message: Message = msg
@@ -852,7 +875,7 @@ class SearchResultsBrowser:
     
     async def update_browser(self, ctx):
         message_part = []
-        for ind, dj in enumerate(self.results):
+        for ind, dj in enumerate(self.doujins):
             try: 
                 if ind == self.current_result and int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Doujins']: symbol = "*️⃣"
                 elif ind == self.current_result: symbol='🟥'
@@ -863,13 +886,13 @@ class SearchResultsBrowser:
             
             message_part.append(
                 f"`{symbol} {str(ind+1).ljust(2)}` | "
-                f"{'**' if ind == self.current_result else ''}__`{str(self.results[ind].id).ljust(7)}`__ | "
-                f"{language_to_flag(self.results[ind].languages)} | "
-                f"{shorten(self.results[ind].title, width=40, placeholder='...')}{'**' if ind == self.current_result else ''}")
+                f"{'**' if ind == self.current_result else ''}__`{str(self.doujins[ind].id).ljust(7)}`__ | "
+                f"{language_to_flag(self.doujins[ind].languages)} | "
+                f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.current_result else ''}")
 
         self.am_embed = Embed(
             color=0xEC2854,
-            description=f"First page only displayed"
+            description=f"Showing page {self.page}/{self.results.total_pages}"
                         f"{'; illegal results are hidden:' if ctx.guild and not self.lolicon_allowed else ':'}"
                         f"\n"+('\n'.join(message_part)))
         self.am_embed.set_author(
@@ -879,12 +902,12 @@ class SearchResultsBrowser:
         self.am_embed.set_footer(
             text="Provided by NHentai-API")
 
-        if self.results[self.current_result].id not in self.bot.doujin_cache:
+        if self.doujins[self.current_result].id not in self.bot.doujin_cache:
             nhentai_api = NHentai()
-            doujin = nhentai_api._get_doujin(self.results[self.current_result].id)
-            self.bot.doujin_cache[self.results[self.current_result].id] = doujin
+            doujin = nhentai_api._get_doujin(self.doujins[self.current_result].id)
+            self.bot.doujin_cache[self.doujins[self.current_result].id] = doujin
         else:
-            doujin = self.bot.doujin_cache[self.results[self.current_result].id]
+            doujin = self.bot.doujin_cache[self.doujins[self.current_result].id]
         
         emb = Embed(
             color=0xEC2854,
@@ -950,11 +973,11 @@ class SearchResultsBrowser:
                 await self.active_message.clear_reactions()
 
                 message_part = []
-                for ind, dj in enumerate(self.results):
+                for ind, dj in enumerate(self.doujins):
                     message_part.append(
-                        f"{'**' if ind == self.current_result else ''}__`{str(self.results[ind].id).ljust(7)}`__{'**' if ind == self.current_result else ''} | "
-                        f"{language_to_flag(self.results[ind].languages)} | "
-                        f"{shorten(self.results[ind].title, width=50, placeholder='...')}")
+                        f"{'**' if ind == self.current_result else ''}__`{str(self.doujins[ind].id).ljust(7)}`__{'**' if ind == self.current_result else ''} | "
+                        f"{language_to_flag(self.doujins[ind].languages)} | "
+                        f"{shorten(self.doujins[ind].title, width=50, placeholder='...')}")
                 
                 self.am_embed = Embed(
                     color=0xEC2854,
@@ -982,14 +1005,14 @@ class SearchResultsBrowser:
                         self.current_result -= 1
                         await self.update_browser(self.ctx)
                     elif self.current_result == 0:
-                        self.current_result = len(self.results)-1
+                        self.current_result = len(self.doujins)-1
                         await self.update_browser(self.ctx)
 
                 elif str(reaction.emoji) == "🔽":
-                    if self.current_result < len(self.results)-1:
+                    if self.current_result < len(self.doujins)-1:
                         self.current_result += 1
                         await self.update_browser(self.ctx)
-                    elif self.current_result == len(self.results)-1:
+                    elif self.current_result == len(self.doujins)-1:
                         self.current_result = 0
                         await self.update_browser(self.ctx)
                 
@@ -1007,7 +1030,7 @@ class SearchResultsBrowser:
                         else:
                             await m.delete()
                             
-                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.results)):
+                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.doujins)):
                                 self.current_result = int(m.content)-1
                                 await self.update_browser(self.ctx)
                                 break
@@ -1017,11 +1040,11 @@ class SearchResultsBrowser:
                 
                 elif str(reaction.emoji) == "⏹":
                     message_part = []
-                    for ind, dj in enumerate(self.results):
+                    for ind, dj in enumerate(self.doujins):
                         message_part.append(
-                            f"__`{str(self.results[ind].id).ljust(7)}`__ | "
-                            f"{language_to_flag(self.results[ind].languages)} | "
-                            f"{shorten(self.results[ind].title, width=40, placeholder='...')}")
+                            f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
+                            f"{language_to_flag(self.doujins[ind].languages)} | "
+                            f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}")
                     self.am_embed = Embed(
                         color=0xEC2854,
                         description=f"First page only displayed"
@@ -1045,30 +1068,14 @@ class SearchResultsBrowser:
                 
                 elif str(reaction.emoji) == "📖":
                     await self.active_message.clear_reactions()
-                    
-                    if str(self.ctx.author.id) not in self.bot.user_data["UserData"]:
-                        self.bot.user_data["UserData"][str(self.ctx.author.id)] = {}
-                    if "History" not in self.bot.user_data["UserData"][str(self.ctx.author.id)]:
-                        self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"] = [True, []]
-                    
-                    if self.bot.user_data["UserData"][str(ctx.author.id)]["History"][0]:
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["History"][1].insert(0, 
-                        self.bot.doujin_cache[self.results[self.current_result].id].id)
-                        if len(self.bot.user_data["UserData"][str(ctx.author.id)]["History"][1]) >= 2 and \
-                            self.bot.user_data["UserData"][str(ctx.author.id)]["History"][1][1] == \
-                            self.bot.doujin_cache[self.results[self.current_result].id].id:
-                            self.bot.user_data["UserData"][str(ctx.author.id)]["History"][1].pop(0)
-                        
-                        if len(self.bot.user_data["UserData"][str(ctx.author.id)]["History"][1]) >= 25:
-                            self.bot.user_data["UserData"][str(ctx.author.id)]["History"][1].pop()
 
                     message_part = []
-                    for ind, dj in enumerate(self.results):
+                    for ind, dj in enumerate(self.doujins):
                         message_part.append(
                             f"{'**' if ind == self.current_result else ''}"
-                            f"__`{str(self.results[ind].id).ljust(7)}`__ | "
-                            f"{language_to_flag(self.results[ind].languages)} | "
-                            f"{shorten(self.results[ind].title, width=40, placeholder='...')}{'**' if ind == self.current_result else ''}")
+                            f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
+                            f"{language_to_flag(self.doujins[ind].languages)} | "
+                            f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.current_result else ''}")
                     self.am_embed = Embed(
                         color=0xEC2854,
                         description=f"First page only displayed"
@@ -1079,7 +1086,7 @@ class SearchResultsBrowser:
                         url=f"https://nhentai.net/",
                         icon_url="https://cdn.discordapp.com/attachments/742481946030112779/759591081758949410/emote.png")
                     self.am_embed.set_footer(
-                        text=f"Provided by NHentai-API; Opened doujin {self.results[self.current_result].id}")
+                        text=f"Provided by NHentai-API; Opened doujin {self.doujins[self.current_result].id}")
                     self.am_embed.set_thumbnail(
                         url=Embed.Empty)
                     self.am_embed.set_image(
@@ -1088,8 +1095,8 @@ class SearchResultsBrowser:
                     await self.active_message.edit(content='', embed=self.am_embed)
                     await self.active_message2.delete()
 
-                    session = ImagePageReader(self.bot, ctx, self.bot.doujin_cache[self.results[self.current_result].id].images, 
-                        f"{self.bot.doujin_cache[self.results[self.current_result].id].id} || {self.bot.doujin_cache[self.results[self.current_result].id].title}")
+                    session = ImagePageReader(self.bot, ctx, self.bot.doujin_cache[self.doujins[self.current_result].id].images, 
+                        f"{self.bot.doujin_cache[self.doujins[self.current_result].id].id} [*n*] {self.bot.doujin_cache[self.doujins[self.current_result].id].title}")
                     response = await session.setup()
                     if response:
                         await session.start()

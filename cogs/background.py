@@ -63,6 +63,5 @@ class BackgroundTasks(Cog):
         self.status_change.cancel()
         self.save_data.cancel()
 
-
 def setup(bot):
     bot.add_cog(BackgroundTasks(bot))

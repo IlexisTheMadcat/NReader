@@ -47,7 +47,11 @@ class MiscCommands(Cog):
 **Support server: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**
 These commands can only be used in NSFW-marked channels!
 Aliases are separated by slashes [/].
-
+"""
+        ).add_field(
+            inline=False,
+            name="Doujin Lookup/Read",
+            value="""
 __`doujin_info/code [code]`__
 *Open the details of a doujin. Leave blank for a random one. Discover!*
 ー *ProTip: You can use a doujin ID as a command to run this. Ex: "n!177013"*
@@ -57,23 +61,27 @@ __`download_doujin/dl <code>`__
 
 __`search_doujins/search [query]`__ 
 *Search doujins. Only the first result page is shown.*
+ー Add `#<number>` to specify a page of the search. Omit to use the first page.
 ー While `query` is optional, it is required if you do not have an appendage set up.
-ーー See the `search_appendage` command in this message.
+ー See the `search_appendage` command in this message.
 
+__`search_appendage/append [text|"clear_appendage"]`__
+*Add a string of text to all of your searches. Use this as a way to blacklist tags.*
+ー *`text` can be anything (spaces allowed), not just a list of tags. It is fed into nHentai's search bar like normal.*
+ー *To clear your appendage, replace `text` with "clear_appendage". Both operations will ask to confirm your change.*
+ー *If you get unexpected search results, check back over this command.*
+"""
+        ).add_field(
+            inline=False,
+            name="Local Data",
+            value="""
 __`favorites/fav [add|remove] <code>`__
 *Add/Remove a doujin to/from your favorites list. Run with no arguments to view your list.*
 
 __`bookmarks/bm`__
 *Review your bookmarks and the doujins they belong to.*
 ー *This list is updated when you click the 🔖/❌ icon while reading a doujin.*
-
-🆕__`search_appendage/appendage [text|"clear_appendage"]`__
-*Add a string of text to all of your searches. Use this as a way to blacklist tags.*
-ー *`text` can be anything (spaces allowed), not just a list of tags. It is fed into nHentai's search bar like normal.*
-ー *To clear your appendage, replace `text` with "clear_appendage". Both operations will ask to confirm your change.*
-ー *If you get unexpected search results, check back over this command.*
-
-🆕__`custom_random/crand [query]`__
+__`custom_random/crand [query]`__
 ー Similar to `search_doujins`, except it pulls a random one instead of having to dig through the search.
 ー Again, while `query` is optional, it is required if you do not have an appendage set up.
 
@@ -146,15 +154,18 @@ __`invite`__
             description="""
 **Interface**
 <a:nreader_loading:810936543401213953> = The bot is loading results.
+🔎 Bring the thumbnail image to the main image window, and back again.
 ⬛ A result in a search interactive or favorites list.
 🟥 The currently selected result of a search interactive.
-*️⃣ A result in a search interactive is a favorite to the caller.
+`*️⃣` A result in a search interactive is a favorite to the caller.
 
-**Warnings/Errors**
+**Warnings/Errors/Confirmations**
+✔ Something succeeded in execution.
 ❌ Something caused an error and caused the process to stop. Often used as a reaction.
 🔎❌ A certain doujin could not be found.
 ⚠️🚫 A doujin you tried to pull up contains lolicon/shotacon content and cannot be shown in that server.
 🟨 An entry in your favorites that contains lolicon/shotacon content and is only shown in DMs or whitelisted servers.
+⌛ A command or action timed out waiting for user input.
 
 **Languages**
 **Note**: There is a small chance that a result displays the wrong language.
@@ -165,8 +176,10 @@ __`invite`__
 🔄 The doujin was translated from its original language.
 💬❌ The doujin has no words or "speechless".
 🏳️❔ The language wasn't found yet or not provided.
+💬🧹 The doujin has all its "text cleaned".
 
 **Controls**
+⌨ Start interacting with a search.
 🔼 Move up in a search interactive.
 🔽 Move down in a search interactive.
 ⏭️ Go to the next page of a doujin.

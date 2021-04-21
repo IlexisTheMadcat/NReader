@@ -44,7 +44,9 @@ class Webserver(Cog):
                 with open(f"Storage/{filename}", "rb") as f:
                     data = f.read()
                     return web.Response(
-                        headers=MultiDict({'Content-Desposition': f'attachment; filename="{filename}.zip"'}),
+                        headers={
+                            'content-type': 'application/zip',
+                            'content-disposition': f'attachment; filename="{filename}.zip"'},
                         body=data
                     )
             else:

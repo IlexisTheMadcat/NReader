@@ -150,7 +150,7 @@ class Admin(Cog):
             )
 
             error = exc_info()
-            await self.bot.errolog.send(ctx, error, "Load Module")
+            await self.bot.errolog.send(error, event="Unload Module")
 
         else:
             em = Embed(
@@ -216,7 +216,7 @@ class Admin(Cog):
                 )
 
                 error = exc_info()
-                await self.bot.errorlog.send(error, "Load Module")
+                await self.bot.errorlog.send(error, event="Reload Module")
 
         except Exception as error:
             em = Embed(
