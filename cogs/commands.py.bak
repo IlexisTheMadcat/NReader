@@ -9,9 +9,8 @@ from urllib.request import urlretrieve as udownload
 
 from discord import Forbidden
 from discord.ext.commands import (
-    Cog, bot_has_permissions, is_owner, 
-    bot_has_guild_permissions, command)
-from discord_components import Button
+    Cog, bot_has_permissions, 
+    command, is_owner)
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import (
@@ -43,16 +42,11 @@ class Commands(Cog):
     @command(aliases=["code"])
     @bot_has_permissions(
         send_messages=True, 
-        embed_links=True)
-    @bot_has_guild_permissions(
+        embed_links=True, 
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    async def doujin_info(self, ctx, code="random", interface="new"):
-        if ctx.author.id != self.bot.owner.id:
-            await ctx.send("This command is currently under construction! It will look better when finished.")
-            return
-        
+    async def doujin_info(self, ctx, code="random"):
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -82,7 +76,7 @@ class Commands(Cog):
 
         if code.lower() not in ["random", "r"]:
             if code not in self.bot.doujin_cache:
-                doujin = await nhentai_api.get_doujin(code)
+                doujin = nhentai_api.get_doujin(code)
             else:
                 doujin = self.bot.doujin_cache[code]
 
@@ -109,7 +103,7 @@ class Commands(Cog):
 
         else:
             while True:
-                doujin = await nhentai_api.get_random()
+                doujin = nhentai_api.get_random()
                 self.bot.doujin_cache[doujin.id] = doujin
                 if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and ctx.guild and not lolicon_allowed:
                     await edit.edit(embed=Embed(
@@ -121,85 +115,46 @@ class Commands(Cog):
                 else:
                     break
         
-        if interface == "old":
-            emb = Embed(
-                description=f"Doujin ID: __`{doujin.id}`__\n"
-                            f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
-                            f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
-                            f"Pages: `{len(doujin.images)}`\n"
-                            f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
-                            f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
-                            f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
-                            f"Tags: ```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```\n")
-        else:
-            emb = Embed()
-            emb.add_field(
-                inline=False,
-                name="Secondary Title",
-                value=f"`{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Doujin ID ー Pages",
-                value=f"`{doujin.id} ー {len(doujin.images)} pages`"
-            ).add_field(
-                inline=False,
-                name="Language(s)",
-                value=f"{language_to_flag(doujin.languages)} `{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Artist(s)",
-                value=f"`{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Character(s)",
-                value=f"`{', '.join(doujin.characters) if doujin.characters else 'Original'}`"
-            ).add_field(
-                inline=False,
-                name="Parody Of",
-                value=f"`{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`"
-            ).add_field(
-                inline=False,
-                name="Tags",
-                value=f"```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```"
-            )
-
+        emb = Embed(
+            description=f"{'**[Random]**' if code.lower() in ['random', 'r'] else ''}[{'{'}Tap to open{'}'}](https://nhentai.net/g/{doujin.id}/)\n"
+                        f"Doujin ID: `{doujin.id}`\n"
+                        f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title != '' else 'Not provided'}`\n"
+                        f"Pages: `{len(doujin.images)}`\n"
+                        f"Artist(s): `{', '.join(doujin.artists) if doujin.artists != [] else 'Not provided'}`\n"
+                        f"Language(s): `{', '.join(doujin.languages) if doujin.languages != [] else 'Not provided'}`\n"
+                        f"Character(s): `{', '.join(doujin.characters) if doujin.characters != [] else 'Original'}`\n"
+                        f"Tags: ```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```\n")
         emb.set_author(
-            name=f"{shorten(doujin.title, width=120, placeholder='...')}",
+            name=f"[{language_to_flag(doujin.languages)}] {doujin.title}",
             url=f"https://nhentai.net/g/{doujin.id}/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        emb.set_thumbnail(
-            url=doujin.images[0])
         emb.set_footer(
             text="Would you like to read this doujin on Discord?")
+        emb.set_thumbnail(
+            url=doujin.images[0])
         
         print(f"[] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
-        await edit.edit(content="", embed=emb,
-            components=[
-                Button(style=1, emoji="📖", label="Read", id="1"),
-                Button(style=2, emoji="🔍", label="Show Thumbnail", id="2"),
-            ])
-        
-        # await edit.add_reaction("📖")
-        # await edit.add_reaction("🔍")
+        await edit.edit(content="", embed=emb)
+        await edit.add_reaction("📖")
+        await edit.add_reaction("🔍")
 
         while True:
             try:
-                interaction = await self.bot.wait_for("button_click", timeout=60, 
-                    check=lambda i: i.message.id==edit.id and \
-                        i.user.id==ctx.author.id and \
-                        i.component.id in ["1", "2"])
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=60, 
+                    check=lambda r,u: r.message.id==edit.id and \
+                        u.id==ctx.author.id and \
+                        str(r.emoji) in ["📖", "🔍"])
             
             except TimeoutError:
-                emb.set_footer(text="Provided by NHentai-API")
+                emb.set_footer(text=Embed.Empty)
                 emb.set_thumbnail(
                     url=doujin.images[0])
                 emb.set_image(
                     url=Embed.Empty)
-                await edit.edit(embed=emb, components=[])
-                
-                # with suppress(Forbidden):
-                #     await edit.clear_reactions()
+                await edit.edit(embed=emb)
+                with suppress(Forbidden):
+                    await edit.clear_reactions()
                 
                 return
             
@@ -207,16 +162,16 @@ class Commands(Cog):
                 continue
             
             else:
-                if interaction.component.id == "1":
-                    # with suppress(Forbidden):
-                    #     await edit.clear_reactions()
+                if str(reaction.emoji) == "📖":
+                    with suppress(Forbidden):
+                        await edit.clear_reactions()
                     
-                    emb.set_footer(text="Provided by NHentai-API")
+                    emb.set_footer(text="A reader was created for you.")
                     emb.set_thumbnail(
                         url=doujin.images[0])
                     emb.set_image(
                         url=Embed.Empty)
-                    await edit.edit(embed=emb, components=[])
+                    await edit.edit(embed=emb)
 
                     session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}")
                     response = await session.setup()
@@ -229,32 +184,23 @@ class Commands(Cog):
                     
                     return
                 
-                elif interaction.component.id == "2": # str(reaction.emoji) == "🔍":
+                elif str(reaction.emoji) == "🔍":
                     if not emb.image:
                         emb.set_image(url=emb.thumbnail.url)
                         emb.set_thumbnail(url=Embed.Empty)
-                        word = "Hide"
-
                     elif not emb.thumbnail:
                         emb.set_thumbnail(url=emb.image.url)
                         emb.set_image(url=Embed.Empty)
-                        word = "Show"
                     
-                    # await edit.remove_reaction("🔍", ctx.author)
-                    await edit.edit(content="", embed=emb,
-                        components=[
-                            Button(style=1, emoji="📖", label="Read", id="1"),
-                            Button(style=2, emoji="🔍", label=f"{word} Thumbnail", id="2"),
-                        ])
+                    await edit.remove_reaction("🔍", ctx.author)
+                    await edit.edit(embed=emb)
 
-                    await interaction.respond(type=6)
                     continue
     
     @command(aliases=["search"])
     @bot_has_permissions(
         send_messages=True, 
-        embed_links=True)
-    @bot_has_guild_permissions(
+        embed_links=True, 
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
@@ -296,7 +242,7 @@ class Commands(Cog):
             
             return
 
-        results = await nhentai_api.search(query=query+f"{' -lolicon -shotacon' if ctx.guild and not lolicon_allowed else ''} {appendage}", sort='popular', page=page)
+        results: dict = nhentai_api.search(query=query+f"{' -lolicon -shotacon' if ctx.guild and not lolicon_allowed else ''} {appendage}", sort='popular', page=page)
 
         if isinstance(results, Doujin):
             if results.id not in self.bot.doujin_cache:
@@ -319,7 +265,7 @@ class Commands(Cog):
         for ind, dj in enumerate(results.doujins):
             message_part.append(
                 f"__`{str(results.doujins[ind].id).ljust(7)}`__ | "
-                f"{language_to_flag(results.doujins[ind].lang)} | "
+                f"🏳❔ | "
                 f"{shorten(results.doujins[ind].title, width=50, placeholder='...')}")
 
         emb = Embed(
@@ -347,7 +293,7 @@ class Commands(Cog):
             with suppress(Forbidden):
                 await conf.clear_reactions()
 
-            emb.set_footer(text="Provided by NHentai-API")
+            emb.set_footer(text=f"Provided by NHentai-API")
             await conf.edit(content='', embed=emb)
             return
         
@@ -368,7 +314,7 @@ class Commands(Cog):
         message_part = []
         for ind, dj in enumerate(results.doujins):
             if dj.id not in self.bot.doujin_cache:
-                doujin = await nhentai_api.get_doujin(dj.id)
+                doujin = nhentai_api.get_doujin(dj.id)
                 self.bot.doujin_cache[dj.id] = doujin
             else:
                 doujin = self.bot.doujin_cache[dj.id]
@@ -380,7 +326,7 @@ class Commands(Cog):
                 for ind2, dj2 in enumerate(results.doujins):
                     message_part2.append(
                         f"__`{str(dj2.id).ljust(7)}`__ | "
-                        f"{language_to_flag(dj2.languages) if isinstance(dj2, Doujin) else language_to_flag(dj2.lang)} | "
+                        f"{language_to_flag(dj2.languages) if isinstance(dj2, Doujin) else '🏳❔'} | "
                         f"{shorten(dj2.title, width=50, placeholder='...')}")
                     
                 emb2 = Embed(
@@ -435,84 +381,6 @@ class Commands(Cog):
                 
             interactive = SearchResultsBrowser(self.bot, ctx, results, page, msg=conf, lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
-    
-    @command(aliases=["pop"])
-    @bot_has_permissions(
-        send_messages=True, 
-        embed_links=True)
-    @bot_has_guild_permissions(
-        manage_messages=True, 
-        manage_channels=True, 
-        manage_roles=True)
-    async def popular(self, ctx):
-        lolicon_allowed = False
-        try:
-            if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
-                lolicon_allowed = True
-        except KeyError:
-            pass
-        
-        if not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description=":x: This command cannot be used in a non-NSFW channel."))
-
-            return
-        
-        conf = await ctx.send(embed=Embed(
-            description="<a:nreader_loading:810936543401213953> Loading popular results..."))
-
-        nhentai_api = NHentai()
-        results = await nhentai_api.get_popular_now()
-
-        message_part = []
-        for ind, dj in enumerate(results.doujins):
-            if dj.id not in self.bot.doujin_cache:
-                doujin = await nhentai_api.get_doujin(dj.id)
-                self.bot.doujin_cache[dj.id] = doujin
-            else:
-                doujin = self.bot.doujin_cache[dj.id]
-            
-            results.doujins[ind] = doujin
-            
-            if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and ctx.guild and not lolicon_allowed:
-                message_part.append("__`       `__ | ⚠🚫 | Not available in this server.")
-            else:
-                message_part.append(
-                    f"__`{str(results.doujins[ind].id).ljust(7)}`__ | "
-                    f"{language_to_flag(results.doujins[ind].languages)} | "
-                    f"{shorten(results.doujins[ind].title, width=50, placeholder='...')}")
-
-        emb = Embed(
-            description=f"🔥 Popular Now 🔥"
-                        f"\n"+('\n'.join(message_part)))
-        emb.set_author(
-            name="NHentai Search Results",
-            url="https://nhentai.net/",
-            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        emb.set_footer(
-            text=f"Enter INTERACTIVE mode? [{'|'*len(results.doujins)}]")
-        await conf.edit(content='', embed=emb)
-        await conf.add_reaction("⌨")
-        
-        try:
-            await self.bot.wait_for('reaction_add', timeout=20, bypass_cooldown=True,
-                check=lambda r,u: r.message.id==conf.id and \
-                    u.id==ctx.author.id and \
-                    str(r.emoji)=="⌨")
-        except TimeoutError:
-            with suppress(Forbidden):
-                await conf.clear_reactions()
-                
-            emb.set_footer(text=f"Provided by NHentai-API [{'|'*len(results.doujins)}]")
-            await conf.edit(content='', embed=emb)
-            return
-
-        else:
-            await conf.clear_reactions()
-                
-            interactive = SearchResultsBrowser(self.bot, ctx, results, page=0, msg=conf, lolicon_allowed=lolicon_allowed)
-            await interactive.start(ctx)
-    
 
     @command(aliases=["dl"])
     @bot_has_permissions(
@@ -540,7 +408,7 @@ class Commands(Cog):
         conf = await ctx.send("<a:nreader_loading:810936543401213953>")
 
         if code not in self.bot.doujin_cache:
-            doujin = await nhentai_api.get_doujin(code)
+            doujin = nhentai_api.get_doujin(code)
         else:
             doujin = self.bot.doujin_cache[code]
 
@@ -685,7 +553,7 @@ class Commands(Cog):
             
             for ind, code in enumerate(self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']):
                 if code not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
+                    doujin = nhentai_api.get_doujin(code)
                 else:
                     doujin = self.bot.doujin_cache[code]
                 
@@ -745,7 +613,7 @@ class Commands(Cog):
                 edit = await ctx.send("<a:nreader_loading:810936543401213953>")
 
                 if code not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
+                    doujin = nhentai_api.get_doujin(code)
                 else:
                     doujin = self.bot.doujin_cache[code]
 
@@ -855,7 +723,7 @@ class Commands(Cog):
         
         for code, page in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'].items():
             if code not in self.bot.doujin_cache:
-                doujin = await nhentai_api.get_doujin(code)
+                doujin = nhentai_api.get_doujin(code)
             else:
                 doujin = self.bot.doujin_cache[code]
 
@@ -956,7 +824,7 @@ class Commands(Cog):
             history = list()
             for number, code in enumerate(self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]):
                 if code not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
+                    doujin = nhentai_api.get_doujin(code)
                 else:
                     doujin = self.bot.doujin_cache[code]
 

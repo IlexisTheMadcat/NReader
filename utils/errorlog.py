@@ -200,16 +200,11 @@ class ErrorLog:
             return await self.channel.send(embed=em)
 
     @staticmethod
-    async def em_tb(error: Union[Exception, DiscordException], ctx: Context = None, event: str = None) -> Embed:
+    async def em_tb(error: Tuple, ctx: Context = None, event: str = None) -> Embed:
         """Creates an embed from the given traceback."""
 
-        if ctx:
-            prefix = await ctx.bot.get_prefix(ctx.message)
-            title = f"In {prefix}{ctx.command.qualified_name}"
-            description = f"**{error.__class__.__name__}**: {error}"
-        else:
-            title = f"Exception ignored in event `{event}`" if event else None
-            description = f"**{type(error[1]).__name__}**: {str(error[1])}"
+        title = f"Exception ignored in event `{event}`" if event else None
+        description = f"**{type(error[1]).__name__}**: {str(error[1])}"
 
         stack = extract_tb(error[2])  # stack = extract_tb(error.__traceback__)
         tb_fields = [
@@ -221,6 +216,11 @@ class ErrorLog:
         ]
 
         em = Embed(color=Colour.red(), title=title, description=f"{description}")
+
+        try:
+            em.set_footer(text=f"This event was caused by user {ctx.author} ({ctx.author.id})")
+        except AttributeError:
+            em.set_footer(text=f"This event was caused by an element in the source code.")
 
         for field in tb_fields:
             em.add_field(**field)

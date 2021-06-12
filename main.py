@@ -9,6 +9,8 @@ from discord import __version__, Activity, ActivityType, Intents
 from discord.enums import Status
 from discord.permissions import Permissions
 from discord.utils import oauth_url
+from discord.ext.commands import ExtensionAlreadyLoaded
+from discord_components import DiscordComponents
 
 from utils.classes import Bot
 from utils.errorlog import ErrorLog
@@ -19,29 +21,31 @@ from utils.FirebaseDB import FirebaseDB
 
 DATA_DEFAULTS = {
     "UserData": {
-        "authorID": {  
+        "UID": {  
             "Settings": {  # User Settings dict
-                "UnrestrictedServers": [],  # [int(serverID)]
+                "UnrestrictedServers": [0],  # [int(serverID)]
                 # Listings that are normally blocked for legal reasons in servers show in these servers.
                 # Only the owner of the server can add its ID to this list.
 
-                "SearchAppendage": "",  # str(appendage)
+                "SearchAppendage": " ",  # str(appendage)
                 # Users may add a string to the end of searches. 
                 # This string will be appended to all their searches no matter the case.
 
-                "NotificationDue": True,  # bool
+                "NotificationsDue": {
+                    "FirstTime": False,
+                    "LoliconViewingTip": False
+                }  # dict of str:bool
                 # A notification sent to users when they use a command for the first time.
-                # This is set to false after executed. Resets by command.
+                # These are set to true after being executed. Resets by command.
 
             },
             "nFavorites": {  # User favorites including bookmarks
-                "Doujins": [],   # [int(code)]
-                "Bookmarks": {}  # {str(code):int(page)}
+                "Doujins": [0],  # [int(code)]
+                "Bookmarks": {"placeholder": 1}  # {str(code):int(page)}
             },
-            
             "History": (
                 True,  # bool
-                []     # [int(code)]
+                [0]  # [int(code)]
             )
             # Keep a history of the user's reading.
             # "Bool"; Control whether or not the bot should record the user's history.
@@ -50,16 +54,24 @@ DATA_DEFAULTS = {
     "Tokens": {  # Replace ONLY for initialization
         "BOT_TOKEN": "xxx"  # str(token)
     },
-    
     "config": {
         "debug_mode": False,        
         # Print exceptions to stdout.
 
-        "muted_dms": [0],  # List of UIDs.
-        # Block support DMs from members who abuse the system.
-
         "error_log_channel": 734499801697091654,
         # The channel that errors are sent to.
+
+        "first_time_tip": "👋 It appears to be your first time using this bot!\n"
+                          "⚠️ This bot is to be used by mature users only and in NSFW channels.\n"
+                          "ℹ️ For more information and help, please use the `n!help` command.\n"
+                          "ℹ️ For brief legal information, please use the `n!legal` command.\n"
+                          "||(If you are recieving this notification again, your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||", 
+        
+        "lolicon_viewing_tip": "Tip: To view lolicon/shotacon doujins on Discord, you need to invite me to a server that you "
+                               "own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
+                               "This will allow all users in your server to open lolicon/shotacon doujins.\n"
+                               "This command is not in the help menu.\n"
+                               "Lolicon/shotacon doujins are __only__ reflected on your history, favorites, bookmarks, or searches __**in whitelisted servers**__."
     }
 }
 
@@ -78,7 +90,7 @@ if exists("Workspace/Files/ServiceAccountKey.json"):
 else:  # If it doesn't exists assume running on replit
     try:
         from replit import db
-        key = dict(db)["SAK"]
+        key = dict(db["SAK"])
     except Exception:
         raise FileNotFoundError("Could not find ServiceAccountKey.json.")
 
@@ -118,11 +130,7 @@ del found_data  # Remove variable from namespace
 
 db.update(user_data)
 
-print("[] Configurations loaded.")
-
-
 intents = Intents.default()
-intents.presences = True
 
 bot = Bot(
     description="Search, overview, and read doujins in Discord.",
@@ -134,7 +142,7 @@ bot = Bot(
     config=config_data,
     database=db,
     user_data=user_data,   
-    user_defaults=DATA_DEFAULTS["UserData"]["authorID"],
+    defaults=DATA_DEFAULTS,
     auth=db["Tokens"],
 )
 
@@ -151,8 +159,12 @@ for root, dirs, files in walk(mypath):
 
 @bot.event
 async def on_ready():
+    # Early access to buttons (components).
+    # If removed, code deriving from it will cause errors.
+    DiscordComponents(bot)
+
     app_info = await bot.application_info()
-    bot.owner = bot.get_user(app_info.owner.id)
+    bot.owner = app_info.owner
 
     permissions = Permissions()
     permissions.update(
@@ -164,8 +176,9 @@ async def on_ready():
         manage_messages=True)
 
     # Add the ErrorLog object if the channel is specified
-    if bot.user_data["config"]["error_log_channel"]:
-        bot.errorlog = ErrorLog(bot, bot.user_data["config"]["error_log_channel"])
+    if bot.config["error_log_channel"]:
+        error_channel = await bot.fetch_channel(bot.config["error_log_channel"])
+        bot.errorlog = ErrorLog(bot, error_channel)
 
     print("\n"
           "#-------------------------------#\n"
@@ -176,8 +189,14 @@ async def on_ready():
         try:
             bot.load_extension(f"cogs.{cog}")
             print(f"| Loaded initial cog {cog}")
+        except ExtensionAlreadyLoaded:
+            continue
+        
         except Exception as e:
-            print(f"| Failed to load extension {cog}\n|   {type(e.original).__name__}: {e.original}")
+            try:
+                print(f"| Failed to load extension {cog}\n|   {type(e.original).__name__}: {e.original}")
+            except AttributeError:
+                print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
             error = exc_info()
             if error:
                 await bot.errorlog.send(error, event="Load Initial Cog")

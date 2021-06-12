@@ -1,10 +1,10 @@
 # IMPORTS
-from sys import exc_info
 from copy import deepcopy
+from sys import exc_info
 from contextlib import suppress
 
 from discord.message import Message
-from discord.errors import Forbidden, HTTPException
+from discord.errors import Forbidden, NotFound, HTTPException
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands.errors import (
@@ -27,73 +27,50 @@ class Events(Cog):
     # --------------------------------------------------------------------------------------------------------------------------
     @Cog.listener()
     async def on_message(self, msg: Message):
-        # MechHub Bot Status response
-        if msg.author.id == 805162807942709268 and \
-            msg.content.startswith(f"[{self.bot.user.id}] [MechHub Message Ping]"):
-            await msg.channel.send("Pong!")
-            return
-        
-        if msg.author.id == self.bot.user.id:
-            return  # Don't respond to bots.
+        # Cooldown
+        if msg.author.id in self.bot.global_cooldown: return
+        else: self.bot.global_cooldown.update({msg.author.id:"placeholder"})
 
-        if msg.author.id == 726313554717835284:  
-            # If bot listing supports webhooks
+        # If bot listing supports webhooks
+        if msg.author.id == 726313554717835284:
             ids = msg.content.split(";")
             voter = int(ids[0])
             voted_for = int(ids[1])
 
             if voted_for == self.bot.user.id:
-                user = await self.bot.fetch_user(voter)
+                user = await self.bot.get_user(voter)
+                if not user: return
+
                 try:
                     await user.send("Voting message")
 
                 except HTTPException or Forbidden:
-                    print(f"[❌] User \"{user}\" voted for \"{self.bot.user}\". DM Failed.")
+                    print(f"[❌] {user} ({user.id}) voted for \"{self.bot.user}\". DM Failed.")
                 else:
-                    print(f"[✅] User \"{user}\" voted for \"{self.bot.user}\".")
+                    print(f"[✅] {user} ({user.id} voted for \"{self.bot.user}\".")
 
                 return
+        
+        # Don't respond to bots.
+        if msg.author.bot:
+            return 
 
-        # Check if the message is a command. 
-        # Terminates the event if so, so the command can run.
-        # Excutes notification message.
-        verify_command = await self.bot.get_context(msg)
-        if verify_command.valid:
+        # Checks if the message is any attempted command.
+        if msg.content.startswith(self.bot.command_prefix) and not msg.content.startswith(self.bot.command_prefix+" "):
             if str(msg.author.id) not in self.bot.user_data["UserData"]:
-                self.bot.user_data["UserData"][str(msg.author.id)] = self.bot.user_defaults
-
-            # Check data structure without changing values.
-            def convert(data, reference, copy=None):
-                if not copy: copy = deepcopy(data)
-                for key in data:  # Delete unnecessary keys
-                    if key not in reference.keys():
-                        copy.pop(key)
-                    elif isinstance(key, dict):
-                        convert(data[key], reference[key], copy[key])
+                self.bot.user_data["UserData"][str(msg.author.id)] = deepcopy(self.bot.defaults["UserData"]["UID"])
+            
+            if not self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"]:
+                with suppress(Forbidden):
+                    await msg.author.send(embed=Embed(
+                        title="First Time Interaction Notification",
+                        description=self.bot.config["first_time_tip"]))
                 
-                for key, value in reference:  # Add missing keys
-                    if key not in data.keys():
-                        copy.update({key:value})
-                    elif isinstance(key, dict):
-                        convert(data[key], reference[key], copy[key])
-                    
-                data = deepcopy(copy)
-                return data
-            
-            self.bot.user_data["UserData"][str(msg.author.id)] = \
-                convert(self.bot.user_data["UserData"][str(msg.author.id)], self.bot.user_defaults)
+                self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"] = True
 
-
-            if self.bot.user_data["UserData"][str(msg.author.id)]["NotificationDue"]:
-                await msg.author.send(embed=Embed(
-                    title="Notification",
-                    description="👋 It appears to be your first time using this bot!\n" \
-                                "⚠️ This bot is to be used by mature users only and in NSFW channels.\n" \
-                                "ℹ️ For more information and help, please use the `n!help` command. For brief legal information, please use the `n!legal` command."))
-
-                self.bot.user_data["UserData"][str(msg.author.id)]["NotificationDue"] = False
-            
             self.bot.inactive = 0
+        
+            await self.bot.process_commands(msg)
             return
 
     # Errors
@@ -101,14 +78,17 @@ class Events(Cog):
     @Cog.listener()
     async def on_command_error(self, ctx: Context, error: Exception):
         if not isinstance(error, CommandNotFound):
-            with suppress(Forbidden):
+            with suppress(Forbidden, NotFound):
                 await ctx.message.add_reaction("❌")
             
         if not isinstance(error, CommandOnCooldown) and ctx.command:
             ctx.command.reset_cooldown(ctx)
             
         if self.bot.config['debug_mode']:
-            raise error.original
+            try:
+                raise error.original
+            except AttributeError:
+                raise error
             
         if not self.bot.config['debug_mode']:
             msg = ctx.message
@@ -152,24 +132,33 @@ class Events(Cog):
                 return
 
             else:
-                em.description = f"**{type(error.original).__name__}**: {error.original}\n" \
-                                 f"\n" \
-                                 f"If you keep getting this error, please join the support server located in the help message."
-
+                try:
+                    em.description = f"**{type(error.original).__name__}**: {error.original}\n" \
+                                    f"\n" \
+                                    f"If you keep getting this error, please join the support server."
+                except AttributeError:
+                    em.description = f"**{type(error).__name__}**: {error}\n" \
+                                    f"\n" \
+                                    f"If you keep getting this error, please join the support server."
+                
                 # Raising the exception causes the progam 
                 # to think about the exception in the wrong way, so we must 
                 # target the exception indirectly.
                 if not self.bot.config["debug_mode"]:
                     try:
-                        raise error.original
+                        if hasattr(error, "original"):
+                            raise error.original
+                        else:
+                            raise error
                     except Exception:
                         error = exc_info()
 
                     await self.bot.errorlog.send(error, event=f"Command: {ctx.command.name}")
+                
                 else:
-                    try:
+                    if hasattr(error, "original"):
                         raise error.original
-                    except AttributeError:
+                    else:
                         raise error
             
             try:

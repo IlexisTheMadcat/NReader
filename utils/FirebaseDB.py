@@ -36,7 +36,7 @@ class FirebaseDB:
         If `json` is omitted, alias for `FirebaseDB.clear()`.
         Functionally identical to `FirebaseDB.clear().update(json)`.\n
     
-    **Note**:\n
+    **Notes**:\n
     While a dictionary can have nested values, editing values in nested levels will **NOT** 
         send updates to the database and you may lose your data. To counter this, `.copy()` the database and 
         make any pythonic change to the returned dictionary. Then, call `.overwrite(json)`, where `json` is your

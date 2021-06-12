@@ -1,7 +1,10 @@
 from sys import exc_info
-from copy import deepcopy
+from asyncio import sleep
+from asyncio.exceptions import TimeoutError
 
-from discord.embeds import Embed
+from discord import TextChannel, Embed, DMChannel
+from discord.errors import NotFound
+from discord.ext.commands import command
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands.core import group, is_owner
@@ -10,7 +13,7 @@ from discord.ext.commands.errors import (
     ExtensionFailed,
     ExtensionNotFound,
     ExtensionNotLoaded,
-    NoEntryPointError
+    NoEntryPointError,
 )
 
 
@@ -19,6 +22,8 @@ class Admin(Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.say_dest = None
+        self.say_wpm = 120
 
     @is_owner()
     @group(name="module", aliases=["cog", "mod"], invoke_without_command=True)
@@ -92,8 +97,15 @@ class Admin(Cog):
                     color=0xff0000
                 )
 
-                error = exc_info()
-                await self.bot.errorlog.send(error, event="Load Module")
+                try:
+                    try:
+                        raise error.original
+                    except AttributeError:
+                        raise error
+                except Exception:
+                    error = exc_info()
+                
+                await self.bot.errorlog.send(error, ctx=ctx, event="Load Module")
 
         except Exception as error:
             em = Embed(
@@ -104,9 +116,9 @@ class Admin(Cog):
                             f"```",
                 color=0xff0000
             )
-
+            
             error = exc_info()
-            await self.bot.errorlog.send(error, event="Load Module")
+            await self.bot.errorlog.send(error, ctx=ctx, event="Load Module")
 
         else:
             em = Embed(
@@ -149,8 +161,15 @@ class Admin(Cog):
                 color=0xff0000
             )
 
-            error = exc_info()
-            await self.bot.errolog.send(error, event="Unload Module")
+            try:
+                try:
+                    raise error.original
+                except AttributeError:
+                    raise error
+            except Exception:
+                error = exc_info()
+            
+            await self.bot.errorlog.send(error, ctx=ctx, event="Unload Module")
 
         else:
             em = Embed(
@@ -215,8 +234,15 @@ class Admin(Cog):
                     color=0xff0000
                 )
 
+            try:
+                try:
+                    raise error.original
+                except AttributeError:
+                    raise error
+            except Exception:
                 error = exc_info()
-                await self.bot.errorlog.send(error, event="Reload Module")
+            
+            await self.bot.errorlog.send(error, ctx=ctx, event="Reload Module")
 
         except Exception as error:
             em = Embed(
@@ -229,7 +255,7 @@ class Admin(Cog):
             )
 
             error = exc_info()
-            await self.bot.errorlog.send(error, "Load Module")
+            await self.bot.errorlog.send(error, ctx=ctx, event="Reload Module")
 
         else:
             em = Embed(
@@ -242,153 +268,182 @@ class Admin(Cog):
         await ctx.send(embed=em)
 
     @is_owner()
-    @group(name="config", aliases=["bot", "settings"], invoke_without_command=True)
-    async def config(self, ctx: Context):
-        """View Bot settings"""
-        em = Embed(
-            title="Administration: Config",
-            description=f"The options and values are listed below:\n"
-                        f"```"
-                        f"debug_mode: {self.bot.config['debug_mode']}\n"
-                        f"text_status: \"{self.bot.text_status}\" (namespace only)\n"
-                        f"prefix: {self.bot.command_prefix} (namespace only)\n"
-                        f"error_log_channel: {self.bot.config['error_log_channel']}"
-                        f"```",
-            color=0x0000ff
-        )
-        return await ctx.send(embed=em)
+    @command()
+    async def config(self, ctx: Context, mode="view", setting=None, new_value=None):
+        """View and change bot settings"""
+        if mode == "view":
+            message_lines = list()
 
-    @is_owner()
-    @config.command(name="prefix", aliases=["command_prefix"])
-    async def prefix(self, ctx: Context, *, val: str = None):
-        """View or set bot prefix"""
-
-        if val:
-            orig = deepcopy(self.bot.command_prefix)
-            self.bot.command_prefix = val
-
+            for setting, value in self.bot.config.items():
+                message_lines.append(f"{setting}:\n{type(value).__name__}({value})")
+            
+            message_lines.insert(0, "```")
+            message_lines.append("```")
+            
+            newline = "\n"
             em = Embed(
-                title="Administration: Bot Prefix Config",
-                description=f"New prefix: `{val}`\n"
-                            f"Original prefix: `{orig}`",
-                color=0x00ff00
-            )
-            print(f"[] Updated bot prefix to \"{val}\".")
+                title="Administration: Config",
+                description=f"The options and values are listed below:\n"
+                            f"{str(newline+newline).join(message_lines)}",
+                color=0x0000ff)
+            
+            return await ctx.send(embed=em)
+        
+        elif mode == "change":
+            if not setting or not new_value:
+                return await ctx.send("Specify the setting and value to change.")
+            
+            if setting not in self.bot.config:
+                return await ctx.send("That setting option doesn't exist.")
 
-        else:
-            em = Embed(
-                title="Administration: Bot Prefix Config",
-                description=f"Bot prefix: `{self.bot.command_prefix}`",
-                color=0x0000ff
-            )
-
-        return await ctx.send(embed=em)
-
-    @is_owner()
-    @config.command(name="debug", aliases=["debug_mode"])
-    async def debug(self, ctx: Context, *, val: str = None):
-        """View or set debug mode"""
-
-        if val:
-            if val in ["True", "False"]:
-                val = True if val == "True" else False
-                orig = deepcopy(self.bot.config['debug_mode'])
-                self.bot.config['debug_mode'] = val
-
-                em = Embed(
-                    title="Administration: Bot Debug Mode Config",
-                    description=f"New value: `{val}`\n"
-                                f"Original value: `{orig}`",
-                    color=0x00ff00
-                )
-                print(f"[] Updated debug_mode to \"{val}\".")
-
+            if type(self.bot.config[setting]).__name__ == "int":
+                try: self.bot.config[setting] = int(new_value)
+                except ValueError: 
+                    return await ctx.send("Invalid value type. Setting value should be of type `int`.")
+            
+            elif type(self.bot.config[setting]).__name__ == "float":
+                try: self.bot.config[setting] = float(new_value)
+                except ValueError: 
+                    return await ctx.send("Invalid value type. Setting value should be of type `float`.")
+            
+            elif type(self.bot.config[setting]).__name__ == "bool":
+                if new_value == "True":
+                    self.bot.config[setting] = True
+                elif new_value == "False":
+                    self.bot.config[setting] = False
+                else: 
+                    return await ctx.send("Invalid value type. Setting value should be of type `bool`.")
+            
+            elif type(self.bot.config[setting]).__name__ == "str":
+                self.bot.config[setting] = new_value
+            
             else:
-                em = Embed(
-                    title="Administration: Bot Debug Mode Config",
-                    description=f"Invalid value given: `{val}`\n"
-                                f"Valid values: `True` `False`",
-                    color=0xff0000
-                )
-
+                return await ctx.send(f"Unknown config value type ({type(self.bot.config[setting]).__name__}).")
+            
+            await ctx.send(f"Changed `{setting}` to `{new_value}`")
+    
+    @is_owner()
+    @group(name="say", invoke_without_command=True)
+    async def say(self, ctx: Context, *, msg: str = ""):
+        """Makes the bot send a message
+        If self.say_dest is set, it will send the message there
+        If it is not, it will send to ctx.channel"""
+        dest = self.say_dest
+        
+        if dest:
+            await ctx.send("I will await your words. Type `-stop` to cancel.")
         else:
-            em = Embed(
-                title="Administration: Bot Debug Mode Config",
-                description=f"Debug Mode: `{self.bot.config['debug_mode']}`",
-                color=0x0000ff
-            )
+            await ctx.send("I don't know where to send your message to!")
+            return
+        
+        if isinstance(self.say_dest, TextChannel):
+            while True:
+                try:
+                    m = await self.bot.wait_for("message", timeout=500, 
+                        check=lambda m: m.channel.id==ctx.channel.id and m.author.id==ctx.author.id)
+                except TimeoutError:
+                    await ctx.send("Timed out.")
+                    break
+                else:
+                    if m.content == "-stop" or m.content.startswith(self.bot.command_prefix):
+                        await m.add_reaction("✅")
+                        break
+                    
+                    await m.add_reaction("🕗")
+                    await sleep(2)
+                    if (len(m.content) / 5) * (60/self.say_wpm)-2 > 2:
+                        async with dest.typing():
+                            await sleep((len(m.content) / 5) * (60/self.say_wpm)-2)
+                    await m.remove_reaction("🕗", self.bot.user)
+                    
+                    files = [await i.to_file() for i in m.attachments if m.attachments]
+                    await dest.send(m.content, files=files)
 
-        return await ctx.send(embed=em)
+        elif isinstance(dest, DMChannel):
+            while True:
+                try:
+                    m = await self.bot.wait_for("message", timeout=500, 
+                        check=lambda m: m.channel.id in [ctx.channel.id, dest.id] and m.author.id in [ctx.author.id, dest.recipient.id])
+                except TimeoutError:
+                    await ctx.send("Timed out.")
+                    break
+                else:
+                    if m.author.id == ctx.author.id:
+                        if m.content == "-stop" or m.content.startswith(self.bot.command_prefix):
+                            await m.add_reaction("✅")
+                            break
+                        
+                        await m.add_reaction("🕗")
+                        await sleep(2)
+                        if (len(m.content) / 5) * (60/self.say_wpm)-2 > 2:
+                            async with dest.typing():
+                                await sleep((len(m.content) / 5) * (60/self.say_wpm)-2)
+                        
+                        files = [await i.to_file() for i in m.attachments if m.attachments]
+                        await dest.send(m.content, files=files)
+                        await m.remove_reaction("🕗", self.bot.user)
+                    
+                    elif m.author.id == dest.recipient.id:
+                        files = [await i.to_file() for i in m.attachments if m.attachments]
+                        await ctx.author.send(f"**{dest.recipient.name}:** {m.content if m.content else '[No Content]'}", files=files)
 
     @is_owner()
-    @config.command(name="text_status", aliases=["status"])
-    async def text_status(self, ctx, *, val: str = None):
-        """View or set bot status"""
-
-        if val:
-            orig = deepcopy(self.bot.text_status)
-            self.bot.text_status = val
-
-            em = Embed(
-                title="Administration: Text Status Config",
-                description=f"New status: `{val}`\n"
-                            f"Original status: `{orig}`",
-                color=0x00ff00
-            )
-            print(f"[] Updated status to \"{val}\".")
-
-        else:
-            em = Embed(
-                title="Administration: Text Status Config",
-                description=f"Current status: `{self.bot.text_status}`",
-                color=0x0000ff
-            )
-
-        return await ctx.send(embed=em)
-
-    @is_owner()
-    @config.command(name="error_log_channel")
-    async def error_channel(self, ctx, val=None):
-        if val:
+    @say.command(name="_in")
+    async def say_in(self, ctx: Context, dest:int = None):
+        """Sets the destination for messages from `[p]say`"""
+        if dest:
             try:
-                val = int(val)
-            except ValueError:
+                self.say_dest = await self.bot.fetch_channel(dest)
+            except NotFound:
+                user = await self.bot.fetch_user(dest)
+                self.say_dest = await user.create_dm()
+            except Exception:
                 em = Embed(
-                    title="Administration: ErrorLog Channel Config",
-                    description="`ValueError`: `val` must be an integer.",
-                    color=0xff0000
-                )
-                return await ctx.send(embed=em)
-
-            orig = deepcopy(self.bot.config['error_log_channel'])
-            self.bot.config['error_log_channel'] = val
-
-            em = Embed(
-                title="Administration: ErrorLog Channel Config",
-                description=f"New error channel id: `{val}`\n"
-                            f"Original error original channel id: `{orig}`",
-                color=0x00ff00
-            )
+                    title="Administration: Set `say` Destination",
+                    description=f"Error: `say` destination not found.",
+                    color=0xFF0000)
+                await ctx.send(embed=em)
+                return
+            
+            if not self.say_dest or self.say_dest.id == ctx.author.id:
+                em = Embed(
+                    title="Administration: Set `say` Destination",
+                    description=f"Error: `say` destination not found.",
+                    color=0xFF0000)
+                await ctx.send(embed=em)
+                return
+            
+            if isinstance(self.say_dest, TextChannel):
+                em = Embed(
+                    title="Administration: Set `say` Destination",
+                    description=f"__Say destination set__\n"
+                                f"Guild: {self.say_dest.guild.name}\n"
+                                f"Channel: {self.say_dest.mention}\n"
+                                f"ID: {self.say_dest.id}",
+                    color=0x00FF00)
+                await ctx.send(embed=em)
+                return
+            
+            elif isinstance(self.say_dest, DMChannel):
+                em = Embed(
+                    title="Administration: Set `say` Destination",
+                    description=f"__Say destination set__\n"
+                                f"User: {self.say_dest.recipient.mention}\n"
+                                f"DMChannel ID: {self.say_dest.id}",
+                    color=0x00FF00)
+                await ctx.send(embed=em)
+                return
 
         else:
-            err_channel = self.bot.get_channel(self.bot.config['error_log_channel'])
-            if err_channel:
-                em = Embed(
-                    title="Administration: ErrorLog Channel Config",
-                    description=f"Current error channel id: `{err_channel.id}`\n"
-                                f"Located in guild: `{err_channel.guild.name}`\n"
-                                f"Channel name: {err_channel.mention}",
-                    color=0x0000ff
-                )
-            else:
-                em = Embed(
-                    title="Administration: ErrorLog Channel Config",
-                    description=f"Current error channel id: `{err_channel.id}`\n"
-                                f":warning: Channel does not exist!",
-                    color=0xff0000
-                )
+            self.say_dest = None
+            em = Embed(
+                title="Administration: Set `say` Destination",
+                description="Say destination has been unset",
+                color=0x00FF00
+            )
+            await ctx.send(embed=em)
+            return
 
-        return await ctx.send(embed=em)
 
 def setup(bot):
     bot.add_cog(Admin(bot))

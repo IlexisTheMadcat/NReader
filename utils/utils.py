@@ -12,17 +12,46 @@ def is_float(s):
     except ValueError:
         return False
 
-def language_to_flag(languages: list):
-    """Given a list of languages, convert it into a 2-emoji string of respective flags. Bound to have KeyError exceptions."""
+def language_to_flag(language):
+    """Given a language, convert it into a 1-emoji string of a respective flag."""
     
-    language_to_flag = {"japanese": "🇯🇵", "english": "🇺🇸", "chinese": "🇨🇳"}
-    if "translated" in languages:
-        return f"{language_to_flag[languages[1]]}🔄"
-    elif "text cleaned" in languages:
-        return "💬🧹"
-    elif "speechless" in languages:
-        return "💬❌"
-    elif "translated" not in languages:
-        return f"{language_to_flag[languages[0]]}💬"
-    elif not languages:
+    if isinstance(language, list):
+        language_to_flag = {"japanese": "🇯🇵", "english": "🇬🇧", "chinese": "🇨🇳"}
+        try:
+            if "translated" in language:
+                return f"{language_to_flag[language[1]]}🔄"
+
+            elif "text cleaned" in language:
+                return "💬🧹"
+
+            elif "speechless" in language:
+                return "💬❌"
+
+            elif "translated" not in language:
+                return f"{language_to_flag[language[0]]}💬"
+
+            elif not language:
+                return "🏳❔"
+                
+        except Exception:
+            return "🏳❔"
+
+    elif isinstance(language, str):     
+        try:
+            if language == "japanese":
+                return "🇯🇵🔹"
+
+            elif language == "english":
+                return "🇬🇧🔹"
+
+            elif language == "chinese": 
+                return "🇨🇳🔹"
+
+            else:
+                return "🏳❔"
+                
+        except Exception:
+            return "🏳❔"
+    
+    else:
         return "🏳❔"

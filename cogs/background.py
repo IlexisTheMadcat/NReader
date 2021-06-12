@@ -1,4 +1,6 @@
+import json
 from asyncio import sleep
+from aiohttp import ClientSession
 from datetime import datetime
 
 from discord.activity import Activity
@@ -14,6 +16,7 @@ class BackgroundTasks(Cog):
         self.bot = bot
         self.save_data.start()
         self.status_change.start()
+        self.del_update_stats.start()
 
     @loop(seconds=60)
     async def status_change(self):
@@ -32,7 +35,7 @@ class BackgroundTasks(Cog):
         else:
             activity = Activity(
                 type=ActivityType.watching,
-                name=f"{self.bot.text_status} | UTC: {time}")
+                name=f"{time}/UTC | {self.bot.command_prefix} | {len(self.bot.guilds)}")
 
         await self.bot.change_presence(status=status, activity=activity)
 
@@ -49,6 +52,20 @@ class BackgroundTasks(Cog):
         self.bot.inactive = self.bot.inactive + 1
         print(f"[HRB: {time}] Running.")
     
+    @loop(minutes=30)
+    async def del_update_stats(self):
+        """ This automatically updates your server count to Discord Extreme List every 30 minutes. """
+        await self.bot.wait_until_ready()
+        async with ClientSession() as session:
+            async with session.post(f'https://api.discordextremelist.xyz/v2/bot/{self.bot.user.id}/stats',
+                headers={'Authorization': self.bot.auth['DEL_TOKEN'],
+                "Content-Type": 'application/json'},
+                data=json.dumps({'guildCount': len(self.bot.guilds)})
+            ) as r:
+                js = await r.json()
+                if js['error'] == True:
+                    print(f'Failed to post to discordextremelist.xyz\n{js}')
+
     @status_change.before_loop
     async def sc_wait(self):
         await self.bot.wait_until_ready()
@@ -62,6 +79,7 @@ class BackgroundTasks(Cog):
     def cog_unload(self):
         self.status_change.cancel()
         self.save_data.cancel()
+        self.del_update_stats.cancel()
 
 def setup(bot):
     bot.add_cog(BackgroundTasks(bot))
