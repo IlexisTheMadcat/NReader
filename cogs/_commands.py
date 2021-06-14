@@ -294,7 +294,8 @@ class Commands(Cog):
 
         if str(ctx.author.id) in self.bot.user_data["UserData"] and \
             "Settings" in self.bot.user_data["UserData"][str(ctx.author.id)] and \
-            "SearchAppendage" in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]:
+            "SearchAppendage" in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"] and \
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] != " ":
             appendage = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]
         else:
             appendage = ""
