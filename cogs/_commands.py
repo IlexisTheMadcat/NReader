@@ -409,7 +409,7 @@ class Commands(Cog):
                 
                 if (ind%5 == 0) and (ind != 0):
                     await sleep(1)
-                    
+
                     message_part2 = []
                     for ind2, dj2 in enumerate(results.doujins):
                         message_part2.append(
