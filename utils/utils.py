@@ -1,3 +1,5 @@
+restricted_tags = ["lolicon", "shotacon"]
+
 def is_int(s):
     try:
         int(s)

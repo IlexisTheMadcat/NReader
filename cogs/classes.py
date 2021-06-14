@@ -441,7 +441,7 @@ class ImagePageReader:
             
             while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) > 25:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop()
-        
+
         def payload_check(payload):  # Use raw payload to compensate for the longer wait
             return \
                 payload.message_id==self.active_message.id and \

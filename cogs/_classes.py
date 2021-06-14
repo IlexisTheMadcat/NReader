@@ -480,6 +480,9 @@ class ImagePageReader:
             
             else:
                 try:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
                     self.bot.inactive = 0
                     if interaction.component.id == "next":  # Next page
                         self.current_page = self.current_page + 1
@@ -489,9 +492,6 @@ class ImagePageReader:
                             self.am_embed.description = Embed.Empty
                             self.am_embed.set_footer(text="You finished this doujin.")
                             await self.active_message.edit(embed=self.am_embed)
-                            
-                            try: await interaction.respond(type=6)
-                            except NotFound: continue
                             
                             await sleep(2)
                             await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
@@ -528,17 +528,10 @@ class ImagePageReader:
                                 Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
                                 Button(label="Provided by MechHub", style=2, disabled=True)]])
                         
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
-                        
                         continue
 
                     elif interaction.component.id == "prev":  # Previous page
                         if self.current_page == 0:  # Not allowed to go behind zero
-
-                            try: await interaction.respond(type=6)
-                            except NotFound: continue
-                            
                             continue
                         
                         else:
@@ -569,9 +562,6 @@ class ImagePageReader:
                                 Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
                                 Button(label="Provided by MechHub", style=2, disabled=True)]])
                         
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
-
                         continue
                     
                     elif interaction.component.id == "sele":  # Select page
@@ -579,9 +569,6 @@ class ImagePageReader:
                             description=f"Enter the page number you would like to go to."
                                         f"{newline+'Bookmarked page: '+str(int(self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code])+1) if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'] else ''}"))
                         
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
-
                         while True:
                             try:
                                 resp = await self.bot.wait_for("message", timeout=10, bypass_cooldown=True,
@@ -642,9 +629,6 @@ class ImagePageReader:
                         self.am_embed.description = Embed.Empty
                         self.am_embed.set_footer(text=f"You've paused this doujin on page [{self.current_page+1}/{len(self.images)}].")
                         await self.active_message.edit(embed=self.am_embed)
-
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
                         
                         await sleep(2)
                         await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
@@ -666,9 +650,6 @@ class ImagePageReader:
                         self.am_embed.description = Embed.Empty
                         self.am_embed.set_footer(text=f"You stopped this doujin on page [{self.current_page+1}/{len(self.images)}].")
                         await self.active_message.edit(embed=self.am_embed)
-
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
                         
                         await sleep(2)
                         await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
@@ -705,9 +686,6 @@ class ImagePageReader:
                         self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]{' Bookmarked' if self.on_bookmarked_page else ''}")
                         
                         await self.active_message.edit(embed=self.am_embed)
-
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
 
                         continue
             
@@ -925,15 +903,18 @@ class SearchResultsBrowser:
                                 continue
 
                             else:
-                                await conf.delete()
                                 await m.delete()
                                 
                                 if is_int(m.content) and (int(m.content)-1) in range(0, len(self.doujins)):
                                     self.index = int(m.content)-1
+                                    await conf.delete()
                                     await self.update_browser(self.ctx)
                                     break
                                 else:
-                                    await self.ctx.send("Not a valid number!", delete_after=2)
+                                    await self.ctx.send(embed=Embed(
+                                        color=0xFF0000,
+                                        description="Not a valid number!"), 
+                                        delete_after=2)
                                     continue
                     
                     elif interaction.component.id == "stop":
@@ -1019,11 +1000,11 @@ class SearchResultsBrowser:
             
                 except Exception:
                     error = exc_info()
-                    temp = await self.am_channel.send(embed=Embed(
+                    temp = await self.ctx.send(embed=Embed(
                         color=0xFF0000,
                         description="An unhandled error occured; Please try again.\n"
                                     "If the issue persists, please try searching again.\n"
-                                    "If reopening doesn't work, click the `Support Server` button."
+                                    "If searching again doesn't work, click the `Support Server` button."
                         ).set_footer(text="This message will disappear in 10 seconds."),
                         delete_after=10)
                     

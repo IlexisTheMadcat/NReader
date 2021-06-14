@@ -134,12 +134,12 @@ class Events(Cog):
             else:
                 try:
                     em.description = f"**{type(error.original).__name__}**: {error.original}\n" \
-                                    f"\n" \
-                                    f"If you keep getting this error, please join the support server."
+                                     f"\n" \
+                                     f"If you keep getting this error, please join the support server."
                 except AttributeError:
                     em.description = f"**{type(error).__name__}**: {error}\n" \
-                                    f"\n" \
-                                    f"If you keep getting this error, please join the support server."
+                                     f"\n" \
+                                     f"If you keep getting this error, please join the support server."
                 
                 # Raising the exception causes the progam 
                 # to think about the exception in the wrong way, so we must 
@@ -153,7 +153,7 @@ class Events(Cog):
                     except Exception:
                         error = exc_info()
 
-                    await self.bot.errorlog.send(error, event=f"Command: {ctx.command.name}")
+                    await self.bot.errorlog.send(error, ctx=ctx, event=f"Command: {ctx.command.name}")
                 
                 else:
                     if hasattr(error, "original"):
