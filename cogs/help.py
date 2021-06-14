@@ -45,81 +45,9 @@ class MiscCommands(Cog):
             description="""
 **Search, overview, and read doujins in Discord.**
 **Support server: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**
-These commands can only be used in NSFW-marked channels!
-Aliases are separated by slashes [/].
-"""
-        ).add_field(
-            inline=False,
-            name="Doujin Lookup/Read",
-            value="""
-__`doujin_info/code [code]`__
-Open the details of a doujin. Leave blank for a random one. Discover!
-ー ProTip: You can use a doujin ID as a command to run this. Ex: "n!177013"
 
-__`download_doujin/dl <code>`__
-Download all pages of a certain doujin.
-ー ⚠This command will be removed soon.
-
-__`search_doujins/search [query]`__ 
-Search doujins. Only the first result page is shown.
-ー Add `#<number>` to specify a page of the search. Omit to use the first page.
-ー While `query` is optional, it is required if you do not have an appendage set up.
-ー See the `search_appendage` command in this message.
-
-__`popular/pop`__
-Return the top 5 doujins on NHentai.net's home site.
-ー The popular listings can change frequently. 
-ー If you want to discover good doujins, this if a great alternative to `n!code`.
-"""
-        ).add_field(
-            inline=False,
-            name="Local Data",
-            value="""
-__`favorites/fav [add|remove] <code>`__
-Add/Remove a doujin to/from your favorites list. Run with no arguments to view your list.
-
-__`bookmarks/bm`__
-Review your bookmarks and the doujins they belong to.
-ー This list is updated when you click the 🔖/❌ icon while reading a doujin.
-
-__`history [toggle|clear]`__
-Toggle the recording of or clear your viewing history.
-ー Your history can only be seen when **you** run the command.
-ー No one can see your history, you can't see theirs unless in a public channel.
-ー Your history is updated when you run `doujin_info` or `📖Read` a result from `search_doujins`.
-
-__`search_appendage/append [text|"clear_appendage"]`__
-Add a string of text to all of your searches. Use this as a way to blacklist tags.
-ー `text` can be anything (spaces allowed), not just a list of tags.
-ー To clear your appendage, replace `text` with "clear_appendage". Both operations will ask to confirm your change.
-ー If you get unexpected search results, check back over this command.
-"""
-        ).add_field(
-            inline=False,
-            name="Misc Commands",
-            value="""
-__`help`__
-Shows this message.
-
-__`icons`__
-Show a list of the icons that **this** bot uses and what they mean.
-
-__`privacy/pcpl/terms/tos/legal`__
-Shows the Privacy Policy and Terms of Service for Mechhub Bot Factory.
-
-__`invite`__
-Sends this bot's invite url with all permissions listed under Required Permissions.
-"""
-        ).add_field(
-            inline=False,
-            name="Required Permissions",
-            value="""
-- Send Messages 
-- Embed Lings
-- Add Reactions
-- Manage Reactions
-- Manage Roles 
-- Manage Channels
+For the full information sheet, visit [this Google Docs page](https://docs.google.com/document/d/e/2PACX-1vQAJRI5B8x0CP3ZCHjK9iZ8KQq3AGHEMwiBQL72Mwf1Zu6N2THedbAi1ThuB9iiuzcBv8ipt5_XfQf4/pub).
+Don't worry, it supports dark-mode enforcements :)
 """
         ).add_field(
             inline=False,

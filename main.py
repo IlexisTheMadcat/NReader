@@ -11,6 +11,7 @@ from discord.permissions import Permissions
 from discord.utils import oauth_url
 from discord.ext.commands import ExtensionAlreadyLoaded
 from discord_components import DiscordComponents
+from discord_components.interaction import InteractionEventType
 
 from utils.classes import Bot
 from utils.errorlog import ErrorLog
@@ -46,9 +47,11 @@ DATA_DEFAULTS = {
             "History": (
                 True,  # bool
                 [0]  # [int(code)]
-            )
+            ),
             # Keep a history of the user's reading.
             # "Bool"; Control whether or not the bot should record the user's history.
+
+            "Recall": 0x000001
         }
     },
     "Tokens": {  # Replace ONLY for initialization
@@ -65,7 +68,8 @@ DATA_DEFAULTS = {
                           "⚠️ This bot is to be used by mature users only and in NSFW channels.\n"
                           "ℹ️ For more information and help, please use the `n!help` command.\n"
                           "ℹ️ For brief legal information, please use the `n!legal` command.\n"
-                          "||(If you are recieving this notification again, your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||", 
+                          "ℹ️ MechHub highly recommends you join the support server: **[MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n"
+                          "||(If you are receiving this notification again, a portion of your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||", 
         
         "lolicon_viewing_tip": "Tip: To view lolicon/shotacon doujins on Discord, you need to invite me to a server that you "
                                "own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
@@ -79,6 +83,9 @@ INIT_EXTENSIONS = [
     "admin",
     "background",
     "commands",
+    "_commands",
+    "classes",
+    "_classes",
     "events",
     "help",
     "repl",
@@ -159,9 +166,20 @@ for root, dirs, files in walk(mypath):
 
 @bot.event
 async def on_ready():
-    # Early access to buttons (components).
-    # If removed, code deriving from it will cause errors.
-    DiscordComponents(bot)
+    bot.comp_ext = DiscordComponents(bot, change_discord_methods=False)
+
+    async def on_socket_response(res):
+        if (res["t"] != "INTERACTION_CREATE") or (res["d"]["type"] != 3):
+            return
+
+        ctx = bot.comp_ext._get_interaction(res)
+        for key, value in InteractionEventType.items():
+            if value == res["d"]["data"]["component_type"]:
+                bot.dispatch(key, ctx)
+                break
+
+    bot.add_listener(on_socket_response, name="on_socket_response")
+
 
     app_info = await bot.application_info()
     bot.owner = app_info.owner

@@ -119,16 +119,26 @@ class REPL(Cog):
         code = code.strip('` ')
         emb = self.emb_dict(title='Eval on', desc=MD.format(code))
 
-        result = eval(code, self._env(ctx))
-        if isawaitable(result):
-            result = await result
-        self.ret = result
-        self.emb_pag.set_headers(['Yielded result:'])
-        emb['colour'] = 0x00ff00
-        for h, v in self.emb_pag.paginate(result):
+        try:
+            result = eval(code, self._env(ctx))
+            if isawaitable(result):
+                result = await result
+            self.ret = result
+            self.emb_pag.set_headers(['Yielded result:'])
+            emb['colour'] = 0x00ff00
+            for h, v in self.emb_pag.paginate(result):
+                field = {
+                    'name': h,
+                    'value': MD.format(v),
+                    'inline': False
+                }
+                emb['fields'].append(field)
+
+        except Exception as e:
+            emb['colour'] = 0xff0000
             field = {
-                'name': h,
-                'value': MD.format(v),
+                'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
+                'value': '{0}'.format(e),
                 'inline': False
             }
             emb['fields'].append(field)
@@ -155,11 +165,7 @@ class REPL(Cog):
                 with suppress(Forbidden):
                     await eval_message.remove_reaction("❌", ctx.author)
                 await eval_message.edit(embed=Embed(description=":eye_in_speech_bubble: Caller has hidden eval output.", color=0xff0000))
-                await sleep(0.2)
-                await eval_message.edit(embed=Embed(description=":eye_in_speech_bubble: Caller has hidden eval output.", color=0x000000))
-                await sleep(0.2)
-                await eval_message.edit(embed=Embed(description=":eye_in_speech_bubble: Caller has hidden eval output.", color=0xff0000))
-                await sleep(0.2)
+                await sleep(2)
                 await eval_message.edit(embed=Embed(description=":eye_in_speech_bubble: Caller has hidden eval output.", color=0x000000))
 
 

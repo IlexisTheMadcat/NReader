@@ -9,15 +9,15 @@ from urllib.request import urlretrieve as udownload
 
 from discord import Forbidden
 from discord.ext.commands import (
-    Cog, bot_has_permissions, is_owner, 
+    Cog, bot_has_permissions, 
     bot_has_guild_permissions, command)
-from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import (
-    ImagePageReader, 
-    SearchResultsBrowser, Embed,
-    BotInteractionCooldown)
+    Embed, BotInteractionCooldown)
+from cogs.classes import (
+    ImagePageReader,
+    SearchResultsBrowser)
 from utils.utils import language_to_flag
 
 
@@ -49,10 +49,6 @@ class Commands(Cog):
         manage_channels=True, 
         manage_roles=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
-        if ctx.author.id != self.bot.owner.id:
-            await ctx.send("This command is currently under construction! It will look better when finished.")
-            return
-        
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -174,21 +170,17 @@ class Commands(Cog):
         
         print(f"[] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
-        await edit.edit(content="", embed=emb,
-            components=[
-                Button(style=1, emoji="📖", label="Read", id="1"),
-                Button(style=2, emoji="🔍", label="Show Thumbnail", id="2"),
-            ])
+        await edit.edit(content="", embed=emb)
         
-        # await edit.add_reaction("📖")
-        # await edit.add_reaction("🔍")
+        await edit.add_reaction("📖")
+        await edit.add_reaction("🔍")
 
         while True:
             try:
-                interaction = await self.bot.wait_for("button_click", timeout=60, 
-                    check=lambda i: i.message.id==edit.id and \
-                        i.user.id==ctx.author.id and \
-                        i.component.id in ["1", "2"])
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=60, 
+                    check=lambda r,u: r.message.id==edit.id and \
+                        u.id==ctx.author.id and \
+                        str(r.emoji) in ["📖", "🔍"])
             
             except TimeoutError:
                 emb.set_footer(text="Provided by NHentai-API")
@@ -196,10 +188,10 @@ class Commands(Cog):
                     url=doujin.images[0])
                 emb.set_image(
                     url=Embed.Empty)
-                await edit.edit(embed=emb, components=[])
+                await edit.edit(embed=emb)
                 
-                # with suppress(Forbidden):
-                #     await edit.clear_reactions()
+                with suppress(Forbidden):
+                    await edit.clear_reactions()
                 
                 return
             
@@ -207,9 +199,9 @@ class Commands(Cog):
                 continue
             
             else:
-                if interaction.component.id == "1":
-                    # with suppress(Forbidden):
-                    #     await edit.clear_reactions()
+                if str(reaction.emoji) == "📖":
+                    with suppress(Forbidden):
+                        await edit.clear_reactions()
                     
                     emb.set_footer(text="Provided by NHentai-API")
                     emb.set_thumbnail(
@@ -223,31 +215,27 @@ class Commands(Cog):
                     if response:
                         print(f"[] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
                         await session.start()
+                    
                     else:
                         emb.set_footer(text=Embed.Empty)
                         await edit.edit(embed=emb)
                     
                     return
                 
-                elif interaction.component.id == "2": # str(reaction.emoji) == "🔍":
+                elif str(reaction.emoji) == "🔍":
                     if not emb.image:
                         emb.set_image(url=emb.thumbnail.url)
                         emb.set_thumbnail(url=Embed.Empty)
-                        word = "Hide"
+                        # word = "Hide"
 
                     elif not emb.thumbnail:
                         emb.set_thumbnail(url=emb.image.url)
                         emb.set_image(url=Embed.Empty)
-                        word = "Show"
+                        # word = "Minimize"
                     
-                    # await edit.remove_reaction("🔍", ctx.author)
-                    await edit.edit(content="", embed=emb,
-                        components=[
-                            Button(style=1, emoji="📖", label="Read", id="1"),
-                            Button(style=2, emoji="🔍", label=f"{word} Thumbnail", id="2"),
-                        ])
+                    await edit.remove_reaction("🔍", ctx.author)
+                    await edit.edit(content="", embed=emb)
 
-                    await interaction.respond(type=6)
                     continue
     
     @command(aliases=["search"])
@@ -513,12 +501,13 @@ class Commands(Cog):
             interactive = SearchResultsBrowser(self.bot, ctx, results, page=0, msg=conf, lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
     
-
     @command(aliases=["dl"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
     async def download_doujin(self, ctx, code):
+        return await ctx.send("Due to recent shutdowns, this command has been disabled prematurely. It will be removed in the future.")
+        
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
