@@ -1101,7 +1101,7 @@ class Commands(Cog):
         embed_links=True)
     async def Tsearch_appendage(self, ctx, *, appendage=""):
         if appendage and appendage != "clear_appendage":
-            conf = await ctx.send(embed=Embed(
+            emb = embed=Embed(
                 title = "Confirm Search Appendage Update",
                 description = f"🔄 You are attempting to update your search appendage;\n"
                               f"```diff\n"
@@ -1109,58 +1109,95 @@ class Commands(Cog):
                               f"=====\n"
                               f"+ [{appendage}]"
                               f"```\n"
-                              f"Brackets not included. Press ✔ to confirm."
-            ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
-            
-            await conf.add_reaction("✔")
+                              f"Brackets not included. Press `Update` to confirm.")
+            emb.set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command.")
 
+            conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                components=[Button(label="Update", style=1, emoji="💾", id="button1")])
+                
             try:
-                await self.bot.wait_for("reaction_add", timeout=10, bypass_cooldown=True,
-                    check=lambda r,u: r.message.id==conf.id and \
-                        u.id==ctx.author.id)
-            except TimeoutError:
-                await conf.edit(embed=Embed(
-                    title="⌛❌ Timed out.",
-                    description="If you want to update your search appendage, please confirm within 10 seconds next time."))
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: i.message.id==conf.id and \
+                        i.user.id==ctx.author.id and \
+                        i.component.id=="button1")
 
-                await conf.remove_reaction("✔", self.bot.user)
-            
+            except TimeoutError:
+                await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
+                    title="⌛❌ Timed out.",
+                    description="If you want to update your search appendage, please confirm within 10 seconds next time."), 
+                    components=[Button(label="Timeout", style=2, emoji="💾", id="button1", disabled=True)])
+                    
+                return
+
             else:
+                await interaction.respond(type=6)
+
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = appendage
                 
-                await conf.edit(embed=Embed(
+                await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
                     title = "Search Appendage Updated",
                     description = f"✅ The following string will now be appended to all of your searches:\n"
                                   f"```{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}```\n"
-                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."),
+                components=[Button(label="Updated", style=3, emoji="💾", id="button1", disabled=True)])
         
+
+                return
+
+                
         elif appendage == "clear_appendage":
-            conf = await ctx.send(embed=Embed(
+            if not self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]:
+                await ctx.send(embed=Embed(
+                    title="Confirm Search Appendage Erase",
+                    description="You don't have a search appendage set."))
+                
+                return
+
+            emb = embed=Embed(
                 title = "Confirm Search Appendage Erase",
                 description = f"⚠ You are attempting to erase your search appendage;\n"
                               f"```diff\n"
                               f"- [{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}]\n"
                               f"```\n"
-                              f"Brackets not included. Press ✔ to confirm."
-            ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+                              f"Brackets not included. Press `Update` to confirm.")
             
-            await conf.add_reaction("✔")
-
+            emb.set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command.")
+            
+            conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                components=[Button(label="Erase", style=4, emoji="💾", id="button1")])
+                
             try:
-                await self.bot.wait_for("reaction_add", timeout=10, bypass_cooldown=True,
-                    check=lambda r,u: r.message.id==conf.id and \
-                        u.id==ctx.author.id)
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: i.message.id==conf.id and \
+                        i.user.id==ctx.author.id and \
+                        i.component.id=="button1")
+
             except TimeoutError:
-                await conf.edit(content="⌛❌ If you want to erase your search appendage, please confirm within 10 seconds next time.", embed=None)
-                await conf.remove_reaction("✔", self.bot.user)
-            
+                await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
+                    title="⌛❌ Timed out.",
+                    description="If you want to erase your search appendage, please confirm within 10 seconds next time."), 
+                    components=[Button(label="Timeout", style=2, emoji="💾", id="button1", disabled=True)])
+                    
+                return
+
             else:
+                await interaction.respond(type=6)
+
+                old = deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"])
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = ""
                 
-                await conf.edit(embed=Embed(
-                    title = "Search Appendage Erase",
-                    description = "✅ Nothing will be added to your searches."
-                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
+                await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
+                    title = "Search Appendage Erased",
+                    description = f"✅ Nothing will be added to your searches.\n"
+                                  f"```diff\n"
+                                  f"- [{old}]\n"
+                                  f"```\n"
+                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."),
+                components=[Button(label="Erased", style=3, emoji="💾", id="button1", disabled=True)])
+        
+
+                return
+
         else:
             if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]:
                 await ctx.send(embed=Embed(
@@ -1249,8 +1286,8 @@ class Commands(Cog):
                 return
         
         if ctx.command.name == "Tsearch_appendage":
-            if self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage'] == " ":
-                self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']
+            if len(self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']) == 1:
+                self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage'] = ""
                 return
         
     @Tfavorites.after_invoke
