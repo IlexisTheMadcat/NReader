@@ -860,7 +860,10 @@ class Commands(Cog):
         embed_links=True)
     async def Twhitelist(self, ctx, mode=None):
         if ctx.guild and ctx.author.id != ctx.guild.owner_id:
-            await ctx.send("❌ You must be the owner of the server to use this command.")
+            await ctx.send(embed=Embed(
+                color=0xFF0000,
+                description="❌ You must be the owner of the server to use this command."))
+            
             return
         
         if not mode:
@@ -877,21 +880,74 @@ class Commands(Cog):
                     description="```"+"\n".join(message_part)+"```"))
 
             else:
-                await ctx.send("❌ You have no whitelisted servers.")
+                await ctx.send(embed=Embed(
+                    description="❌ You have no whitelisted servers."))
+
                 return
                     
         elif mode.lower() in ["add", "a", "+"]:
-            if ctx.guild.id not in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
-                self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].append(ctx.guild.id)
-            await ctx.send("✔ This server can now access doujins that contain underage characters.")
+            emb = Embed(
+                title="Server whitelisting",
+                description="⚠ You're about to enable restricted features for this entire server. "
+                            "Using these features around others may have an impact on their judgements on you.\n"
+                            "The bot developer is not responsible for loss of friendships in this case, nor shall the developer be accused of distributing this content under their behalf. It is solely on **you**.\n"
+                            "Remember, admins can see what you read in your server. "
+                            "If you want to read in private, remove admins or create a new server.")
+            
+            emb.set_footer(text="If you still want to continue, press the 'I accept' button.")
+            
+            conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                components=[
+                    [Button(label="I accept", style=3, id="button1"),
+                     Button(label="I decline", style=4, id="button2")]])
+            
+            try:
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: \
+                        i.message.id==conf.id and \
+                        i.user.id==ctx.author.id)
+            
+            except TimeoutError:
+                await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                    components=[
+                        [Button(label="Timeout", style=3, id="button1", disabled=True),
+                         Button(label="Timeout", style=4, id="button2", disabled=True)]])
+                
+                return
+
+            else:
+                await interaction.respond(type=6)
+                
+                if interaction.component.id == "button1":
+                    if ctx.guild.id not in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].append(ctx.guild.id)
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
+                        title="Server whitelisting",
+                        description="✔ This server can now access doujins that contain underage characters."),
+                        components=[
+                            [Button(label="Accepted", style=3, id="button1", disabled=True),
+                             Button(label="I decline", style=2, id="button2", disabled=True)]])
+                
+                if interaction.component.id == "button2":
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
+                        color=0xFF0000,
+                        title="Server whitelisting",
+                        description="Operation cancelled."),
+                        components=[
+                            [Button(label="I accept", style=2, id="button1", disabled=True),
+                             Button(label="Declined", style=4, id="button2", disabled=True)]])
     
         elif mode.lower() in ["remove", "r", "-"]:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].remove(ctx.guild.id)
-            await ctx.send("✔ This server can no longer access doujins that contain underage characters.")
+            await ctx.send(embed=Embed(
+                title="Server whitelisting",
+                description="✔ This server can no longer access doujins that contain underage characters."))
         
         else:
-            await ctx.send("You didn't specify a mode. Valid modes are `add/a/+` and `remove/r/-`.")
+            await ctx.send(embed=Embed(
+                color=0xFF0000,
+                description="You didn't specify a mode. Valid modes are `add/a/+` and `remove/r/-`."))
 
     @command()
     @bot_has_permissions(
