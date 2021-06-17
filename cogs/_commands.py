@@ -337,14 +337,16 @@ class Commands(Cog):
         for ind, dj in enumerate(results.doujins):
             if dj.id in self.bot.doujin_cache:
                 dj = self.bot.doujin_cache[dj.id]
+                results.doujins[ind] = dj
+
                 dj.lang = dj.languages
             
             doujins.append(dj)
             
             message_part.append(
-                f"__`{str(dj.id).ljust(7)}`__ | "
-                f"{language_to_flag(dj.lang)} | "
-                f"{shorten(dj.title, width=50, placeholder='...')}")
+                f"__`{str(results.doujins[ind].id).ljust(7)}`__ | "
+                f"{language_to_flag(results.doujins[ind].lang)} | "
+                f"{shorten(results.doujins[ind].title, width=50, placeholder='...')}")
 
         emb = Embed(
             description=f"Showing page {page}/{results.total_pages}"
@@ -395,17 +397,15 @@ class Commands(Cog):
             message_part = []
             doujins2 = []
             for ind, dj in enumerate(doujins):
-                if dj.id in self.bot.doujin_cache:
-                    dj = self.bot.doujin_cache[dj.id]
-                    dj.lang = dj.languages
-                else:
+                if dj.id not in self.bot.doujin_cache:
                     dj = await nhentai_api.get_doujin(dj.id)
                     self.bot.doujin_cache[dj.id] = dj
-
-                    dj.lang = dj.languages
-                    results.doujins[ind] = dj
+                else:
+                    dj = self.bot.doujin_cache[dj.id]
                 
+                results.doujins[ind] = dj
                 doujins2.append(dj)
+                dj.lang = dj.languages
                 
                 if (ind%5 == 0) and (ind != 0):
                     await sleep(1)
