@@ -720,7 +720,6 @@ class SearchResultsBrowser:
         self.doujins = results
         self.index = 0
         self.active_message: Message = kwargs.pop("msg", None)
-        self.active_message2: Message = kwargs.pop("msg2", None)
         self.lolicon_allowed = kwargs.pop("lolicon_allowed", None)
         self.name = kwargs.pop("name", "Search Results")
 
@@ -765,54 +764,58 @@ class SearchResultsBrowser:
             doujin = self.bot.doujin_cache[self.doujins[self.index].id]
         
         if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and self.ctx.guild and not self.lolicon_allowed:
-            emb = Embed(
-                description="No information available.")
-            emb.set_author(
-                name=f"Not available in this server.",
-                url=f"https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+            self.am_embed.add_field(
+                name="Selected Doujin",
+                inline=False,
+                value="No information available.\n"
+                      "This doujin cannot be viewed here.")
             
             doujin.images[0] = str(self.bot.user.avatar_url)
         
         else:
-            emb = Embed(
-                description=f"Doujin ID: __`{doujin.id}`__\n"
-                            f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
-                            f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
-                            f"Pages: `{len(doujin.images)}`\n"
-                            f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
-                            f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
-                            f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
-                            f"Tags: ```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```\n")
-            emb.set_author(
-                name=f"{doujin.title}",
-                url=f"https://nhentai.net/g/{doujin.id}/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+            self.am_embed.add_field(
+                name=f"Selected Doujin: {shorten(doujin.title, width=240, placeholder='...')}",
+                inline=False,
+                value=f"Doujin ID: __`{doujin.id}`__\n"
+                      f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
+                      f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
+                      f"Pages: `{len(doujin.images)}`\n"
+                      f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
+                      f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
+                      f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
+                      f"Tags: ```{', '.join(doujin.tags) if doujin.tags else 'None provided'}```\n")
             
-        previous_emb = deepcopy(self.active_message2.embeds[0])
+        previous_emb = deepcopy(self.active_message.embeds[0])
         if previous_emb.image:
-            emb.set_image(url=doujin.images[0])
-            emb.set_thumbnail(url=Embed.Empty)
+            self.am_embed.set_image(url=doujin.images[0])
+            self.am_embed.set_thumbnail(url=Embed.Empty)
         elif previous_emb.thumbnail:
-            emb.set_thumbnail(url=doujin.images[0])
-            emb.set_image(url=Embed.Empty)
+            self.am_embed.set_thumbnail(url=doujin.images[0])
+            self.am_embed.set_image(url=Embed.Empty)
         else:  # Image wasn't set yet
-            emb.set_thumbnail(url=doujin.images[0])
+            self.am_embed.set_thumbnail(url=doujin.images[0])
 
         await self.active_message.edit(content='', embed=self.am_embed)
-        await self.active_message2.edit(content='', embed=emb)
     
     async def start(self, ctx):
         """Initial start of the result browser."""
 
-        if not self.active_message:
-            self.active_message = await ctx.send(embed=Embed(
-                description="<a:nreader_loading:810936543401213953> Getting things ready..."))
+        if self.active_message:
+            await self.bot.comp_ext.edit_component_msg(self.active_message, embed=Embed(
+                description="<a:nreader_loading:810936543401213953> Getting things ready..."),
+                components=[
+                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
+                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
+                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
+                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
+                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
+                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
+                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
+                    Button(label="Provided by MechHub", style=2, disabled=True)]])
             
             await sleep(0.5)
-        
-        if not self.active_message2:
-            self.active_message2 = await self.bot.comp_ext.send_component_msg(self.ctx, embed=Embed(
+        else:
+            self.active_message = await self.bot.comp_ext.send_component_msg(self.ctx, embed=Embed(
                 description="<a:nreader_loading:810936543401213953> Getting things ready..."),
                 components=[
                     [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
@@ -832,7 +835,7 @@ class SearchResultsBrowser:
             try:
                 interaction = await self.bot.wait_for("button_click", timeout=300, 
                     check=lambda i: \
-                        i.message.id == self.active_message2.id and \
+                        i.message.id == self.active_message.id and \
                         i.user.id == self.ctx.author.id)
             except TimeoutError:
                 message_part = []
@@ -855,7 +858,6 @@ class SearchResultsBrowser:
                 self.am_embed.set_image(url=Embed.Empty)
 
                 await self.active_message.edit(content='', embed=self.am_embed)
-                await self.active_message2.delete()
                 return
 
             except BotInteractionCooldown:
@@ -942,7 +944,6 @@ class SearchResultsBrowser:
 
                         await self.active_message.clear_reactions()
                         await self.active_message.edit(content='', embed=self.am_embed)
-                        await self.active_message2.delete()
                         return
                     
                     elif interaction.component.id == "read":
@@ -974,7 +975,6 @@ class SearchResultsBrowser:
                         self.am_embed.set_image(url=Embed.Empty)
 
                         await self.active_message.edit(content='', embed=self.am_embed)
-                        await self.active_message2.delete()
 
                         doujin = self.doujins[self.index]
                         session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}", str(doujin.id))
@@ -988,7 +988,7 @@ class SearchResultsBrowser:
                         return
                     
                     elif interaction.component.id == "zoom":
-                        emb = deepcopy(self.active_message2.embeds[0])
+                        emb = deepcopy(self.active_message.embeds[0])
                         if not emb.image:
                             emb.set_image(url=emb.thumbnail.url)
                             emb.set_thumbnail(url=Embed.Empty)
@@ -996,7 +996,7 @@ class SearchResultsBrowser:
                             emb.set_thumbnail(url=emb.image.url)
                             emb.set_image(url=Embed.Empty)
                         
-                        await self.active_message2.edit(embed=emb)
+                        await self.active_message.edit(embed=emb)
             
                 except Exception:
                     error = exc_info()
