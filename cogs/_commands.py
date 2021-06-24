@@ -368,7 +368,7 @@ class Commands(Cog):
         emb.set_footer(text="Provided by NHentai-API")
         
         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-            components=[Button(label="Load", style=1, emoji="🔄", id="button1")])
+            components=[Button(label="Load", style=1, emoji=self.bot.get_emoji(853684136433942560), id="button1")])
         
         print(f"[] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
 
@@ -457,7 +457,7 @@ class Commands(Cog):
         emb.set_footer(text="Provided by NHentai-API")
         
         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-            components=[Button(label="Start Interactive", style=1, emoji="⌨", id="button1")])
+            components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
         
         try:
             interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
@@ -535,7 +535,7 @@ class Commands(Cog):
         emb.set_footer(text="Provided by NHentai-API")
         
         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-            components=[Button(label="Start Interactive", style=1, emoji="⌨", id="button1")])
+            components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
         
         try:
             interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
@@ -647,7 +647,7 @@ class Commands(Cog):
             
             if self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']:
                 await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Start Interactive", style=1, emoji="⌨", id="button1")])
+                    components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
                 
                 try:
                     interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
@@ -836,7 +836,7 @@ class Commands(Cog):
             emb.description = "\n".join(message_part)
             
             await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                components=[Button(label="Start Interactive", style=1, emoji="⌨", id="button1")])
+                components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
             
             try:
                 interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
@@ -1048,7 +1048,7 @@ class Commands(Cog):
                 emb.description = "\n".join(message_part)
 
                 await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Start Interactive", style=1, emoji="⌨", id="button1")])
+                    components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
                 
                 try:
                     interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
