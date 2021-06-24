@@ -466,7 +466,7 @@ class Commands(Cog):
                     i.component.id=="button1")
         except TimeoutError:
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Timeout", style=2, emoji="⌨", id="button1", disabled=True)])
+                components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
             
             return
 
@@ -544,7 +544,7 @@ class Commands(Cog):
                     i.component.id=="button1")
         except TimeoutError:
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Timeout", style=2, emoji="⌨", id="button1", disabled=True)])
+                components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
             
             return
 
@@ -656,7 +656,7 @@ class Commands(Cog):
                             i.component.id=="button1")
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                        components=[Button(label="Timeout", style=2, emoji="⌨", id="button1", disabled=True)])
+                        components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
                     
                     return
 
@@ -845,7 +845,7 @@ class Commands(Cog):
                         i.component.id=="button1")
             except TimeoutError:
                 await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Timeout", style=2, emoji="⌨", id="button1", disabled=True)])
+                    components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
                 
                 return
 
@@ -979,14 +979,14 @@ class Commands(Cog):
                     url=f"https://nhentai.net/",
                     icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
                 ).set_footer(
-                    text=f"[{' '*len(self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'])}]"
+                    text=f"[{' '*len(self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1])}]"
             ))
             
             message_part = list()
             remove_queue = list()
 
             is_loading = False
-            for code in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['History']:
+            for code in self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]:
                 if str(code) not in self.bot.doujin_cache:
                     is_loading = True
                     break
@@ -1012,8 +1012,6 @@ class Commands(Cog):
                     if is_lolicon and not lolicon_allowed:
                         pass
                     else:
-                        doujin.title = f"{str(ind+1).ljust(2)} | {doujin.title}"
-
                         message_part.append(
                             f"__`{str(code).ljust(7)}`__ | " \
                             f"{language_to_flag(doujin.languages)} | " \
@@ -1029,7 +1027,7 @@ class Commands(Cog):
                             url=f"https://nhentai.net/",
                             icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
                         ).set_footer(
-                            text=f"[{'|'*ind}{' '*(len(self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'])-ind)}]"
+                            text=f"[{'|'*ind}{' '*(len(self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1])-ind)}]"
                         ))
 
                         await sleep(0.5)
@@ -1037,7 +1035,7 @@ class Commands(Cog):
             [self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1].pop(code) for code in remove_queue]
             
             emb = Embed(
-                title=f"🕖 History (Top=Latest)")
+                title=f"🕖 History (Top = Latest)")
             emb.set_author(
                 name="NHentai Search Results",
                 url="https://nhentai.net/",
@@ -1057,7 +1055,7 @@ class Commands(Cog):
                             i.component.id=="button1")
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                        components=[Button(label="Timeout", style=2, emoji="⌨", id="button1", disabled=True)])
+                        components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
                     
                     return
 
@@ -1066,7 +1064,7 @@ class Commands(Cog):
 
                     await self.bot.comp_ext.edit_component_msg(edit, embed=emb, components=[])
 
-                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"🕖 History (Top=Latest)", lolicon_allowed=lolicon_allowed)
+                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"🕖 History (Top = Latest)", lolicon_allowed=lolicon_allowed)
                     await interactive.start(ctx)
 
                     return
