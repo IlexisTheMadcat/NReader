@@ -984,15 +984,15 @@ class SearchResultsBrowser:
                         return
                     
                     elif interaction.component.id == "zoom":
-                        emb = deepcopy(self.active_message.embeds[0])
+                        emb = deepcopy(self.am_embed)
                         if not emb.image:
-                            emb.set_image(url=emb.thumbnail.url)
-                            emb.set_thumbnail(url=Embed.Empty)
+                            self.am_embed.set_image(url=emb.thumbnail.url)
+                            self.am_embed.set_thumbnail(url=Embed.Empty)
                         elif not emb.thumbnail:
-                            emb.set_thumbnail(url=emb.image.url)
-                            emb.set_image(url=Embed.Empty)
+                            self.am_embed.set_thumbnail(url=emb.image.url)
+                            self.am_embed.set_image(url=Embed.Empty)
                         
-                        await self.active_message.edit(embed=emb)
+                        await self.active_message.edit(embed=self.am_embed)
             
                 except Exception:
                     error = exc_info()
