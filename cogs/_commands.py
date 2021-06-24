@@ -291,7 +291,10 @@ class Commands(Cog):
     
         nhentai_api = NHentai()
 
-        if str(ctx.author.id) in self.bot.user_data["UserData"] and \
+        if "--noappend" in query:
+            query = query.replace("--noappend", "")
+            appendage = ""
+        elif str(ctx.author.id) in self.bot.user_data["UserData"] and \
             "Settings" in self.bot.user_data["UserData"][str(ctx.author.id)] and \
             "SearchAppendage" in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"] and \
             self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] != " ":
@@ -299,10 +302,16 @@ class Commands(Cog):
         else:
             appendage = ""
         
-        page_raw = search(r"#[0-9]+", query)
+        page_raw = search(r"\-\-page[0-9]+", query)
         if page_raw: 
-            page = int(page_raw.group().strip("#"))
-            query = query.replace(page_raw.group(), '').strip(' ')
+            page = int(page_raw.group().strip("--page"))
+            if page:
+                query = query.replace(page_raw.group(), '').strip(' ')
+            else:
+                await conf.edit(content="", embed=Embed(
+                    title="❌ Invalid page number.",
+                    description="`0` (zero) is not a valid page number. Page number must be greater than zero."))
+                return
         else: 
             page = 1
 
@@ -328,8 +337,8 @@ class Commands(Cog):
             newline = "\n"
             await conf.edit(content='', embed=Embed(
                 title = "🔎❌ I did not find anything. Check your keywords!",
-                description = f"{newline+'`*️⃣` This may be the cause of your search appendage. See `search_appendage` in `n!help`.' if appendage else ''}"
-                              f'{newline+"`*️⃣` You have added a page number to your search. Please check that your page is within the total page count (check by searching without a page)." if page_raw else ""}'))
+                description = f"{newline+'`*️⃣` This may be the cause of your search appendage. See `search_appendage` in `n!help`, or add `--noappend` to bypass it.' if appendage else ''}"
+                              f'{newline+"`*️⃣` You have added a page number to your search (`--page#`). Please check that your page is within the total page count (check by searching without a page)." if page_raw else ""}'))
             return
         
         message_part = []
@@ -349,7 +358,7 @@ class Commands(Cog):
                 f"{shorten(results.doujins[ind].title, width=50, placeholder='...')}")
 
         emb = Embed(
-            description=f"Showing page {page}/{results.total_pages}"
+            description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'}"
                         f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
                         f"\n"+('\n'.join(message_part)))
         emb.set_author(
