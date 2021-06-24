@@ -328,19 +328,21 @@ class ImagePageReader:
         `ctx` - Context used
         `images` The list of image urls to use
         `name` - Title of the reader
-        `**kwargs` - Further keyword arguments if need be
+        `code` - Book/Item ID
 
-        This class in particular requires a certain format for `name`:
-        `f"{int()} || {str()}"`, where int would be an object id and str for title.
+        `**kwargs` - Further keyword arguments if need be
+        -- `current_page` - The starting page as an integer. Defaults to `0`
+
         """
         self.bot = bot
         self.ctx: Context = ctx
         self.images: list = images
         self.name: str = name
         self.code: str = code
+
         self.current_page: int = kwargs.pop("starting_page", 0)
-        
         self.active_message: Message = None
+
         self.am_embed: Embed = None
         self.am_channel: TextChannel = None
         self.is_paused: bool = False
@@ -795,39 +797,33 @@ class SearchResultsBrowser:
         else:  # Image wasn't set yet
             self.am_embed.set_thumbnail(url=doujin.images[0])
 
-        await self.active_message.edit(content='', embed=self.am_embed)
+        if self.active_message:
+            await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
+                components=[
+                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
+                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
+                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
+                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
+                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
+                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
+                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
+                    Button(label="Provided by MechHub", style=2, disabled=True)]])
+        else:
+            self.active_message = await self.bot.comp_ext.send_component_msg(self.ctx, embed=self.am_embed,
+                components=[
+                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
+                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
+                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
+                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
+                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
+                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
+                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
+                    Button(label="Provided by MechHub", style=2, disabled=True)]])
+            
+            await sleep(0.5)
     
     async def start(self, ctx):
         """Initial start of the result browser."""
-
-        if self.active_message:
-            await self.bot.comp_ext.edit_component_msg(self.active_message, embed=Embed(
-                description="<a:nreader_loading:810936543401213953> Getting things ready..."),
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
-                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                    Button(label="Provided by MechHub", style=2, disabled=True)]])
-            
-            await sleep(0.5)
-        else:
-            self.active_message = await self.bot.comp_ext.send_component_msg(self.ctx, embed=Embed(
-                description="<a:nreader_loading:810936543401213953> Getting things ready..."),
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
-                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                    Button(label="Provided by MechHub", style=2, disabled=True)]])
-            
-            await sleep(0.5)
 
         await self.update_browser(self.ctx)
 
@@ -857,7 +853,8 @@ class SearchResultsBrowser:
                 self.am_embed.set_thumbnail(url=Embed.Empty)
                 self.am_embed.set_image(url=Embed.Empty)
 
-                await self.active_message.edit(content='', embed=self.am_embed)
+                await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed, components=[])
+                
                 return
 
             except BotInteractionCooldown:
@@ -941,9 +938,8 @@ class SearchResultsBrowser:
                         self.am_embed.set_footer(text=f"Provided by NHentai-API")
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.set_image(url=Embed.Empty)
-
-                        await self.active_message.clear_reactions()
-                        await self.active_message.edit(content='', embed=self.am_embed)
+                        await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed, components=[])
+                        
                         return
                     
                     elif interaction.component.id == "read":
