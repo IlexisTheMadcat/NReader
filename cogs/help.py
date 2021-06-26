@@ -37,7 +37,7 @@ class MiscCommands(Cog):
         
         await ctx.send(embed=emb)
 
-    @command(name="help", aliases=["h"])
+    @command(name="help")
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def bhelp(self, ctx):
         emb = Embed(
