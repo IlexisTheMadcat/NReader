@@ -19,6 +19,7 @@ from utils.FirebaseDB import FirebaseDB
 
 # This bot is based on the NHentai-API module.
 # https://pypi.org/project/NHentai-API/
+# Using discord_components==0.5.3
 
 DATA_DEFAULTS = {
     "UserData": {
