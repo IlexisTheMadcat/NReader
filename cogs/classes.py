@@ -439,13 +439,15 @@ class ImagePageReader:
     async def start(self):
         if self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][0]:
             self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].insert(0, 
-            self.bot.doujin_cache[self.code].id)
+                self.bot.doujin_cache[self.code].id)
+            
             if "placeholer" in self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].remove("placeholder")
             
             if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) >= 2 and \
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1][1] == \
-                self.bot.doujin_cache[self.code].id:
+                    self.bot.doujin_cache[self.code].id:
+                
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop(0)
             
             while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) > 25:
