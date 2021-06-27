@@ -45,10 +45,10 @@ DATA_DEFAULTS = {
                 "Doujins": [0],  # [int(code)]
                 "Bookmarks": {"placeholder": 1}  # {str(code):int(page)}
             },
-            "History": (
+            "History": [
                 True,  # bool
                 [0]  # [int(code)]
-            ),
+            ],
             # Keep a history of the user's reading.
             # "Bool"; Control whether or not the bot should record the user's history.
 
