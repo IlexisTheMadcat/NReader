@@ -13,7 +13,7 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs._classes import (
+from cogs.classes import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.utils import language_to_flag, restricted_tags
