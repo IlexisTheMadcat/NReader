@@ -1247,7 +1247,18 @@ class Commands(Cog):
         edit = await ctx.send(embed=Embed(description="<a:nreader_loading:810936543401213953> Recalling..."))
 
         nhentai_api = NHentai()
-        doujin = await nhentai_api.get_doujin(code)
+        if code not in self.bot.doujin_cache:
+            doujin = await nhentai_api.get_doujin(code)
+        else:
+            doujin = self.bot.doujin_cache[code]
+        
+        if not doujin:
+            await ctx.send(embed=Embed(
+                description=":mag_right::x: Unfortunately, the doujin you were reading is no longer available."))
+            
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
+            return
+
         
         if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
             await edit.edit(embed=Embed(
