@@ -759,10 +759,10 @@ class SearchResultsBrowser:
                     f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
                     f"{language_to_flag(self.doujins[ind].languages)} | "
                     f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.index else ''}")
-        
+
         self.am_embed = Embed(
             title=self.name,
-            description=f"\n"+('\n'.join(message_part)))
+            description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
             
         self.am_embed.set_author(
             name="NHentai Search Results [INTERACTIVE]",
@@ -779,7 +779,7 @@ class SearchResultsBrowser:
         
         if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and self.ctx.guild and not self.lolicon_allowed:
             self.am_embed.add_field(
-                name="Selected Doujin",
+                name="Main Title",
                 inline=False,
                 value="No information available.\n"
                       "This doujin cannot be viewed here.")
@@ -788,16 +788,38 @@ class SearchResultsBrowser:
         
         else:
             self.am_embed.add_field(
-                name=f"Selected Doujin: {shorten(doujin.title, width=240, placeholder='...')}",
+                name=f"Main Title",
                 inline=False,
-                value=f"Doujin ID: __`{doujin.id}`__\n"
-                      f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
-                      f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
-                      f"Pages: `{len(doujin.images)}`\n"
-                      f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
-                      f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
-                      f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
-                      f"Tags: ```{', '.join(doujin.tags) if doujin.tags else 'None provided'}```\n")
+                value=f"{doujin.title}"
+            ).add_field(
+                inline=False,
+                name="Secondary Title",
+                value=f"`{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`"
+            ).add_field(
+                inline=False,
+                name="Doujin ID ー Pages",
+                value=f"`{doujin.id} ー {len(doujin.images)} pages`"
+            ).add_field(
+                inline=False,
+                name="Language(s)",
+                value=f"{language_to_flag(doujin.languages)} `{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`"
+            ).add_field(
+                inline=False,
+                name="Artist(s)",
+                value=f"`{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`"
+            ).add_field(
+                inline=False,
+                name="Character(s)",
+                value=f"`{', '.join(doujin.characters) if doujin.characters else 'Original'}`"
+            ).add_field(
+                inline=False,
+                name="Parody Of",
+                value=f"`{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`"
+            ).add_field(
+                inline=False,
+                name="Tags",
+                value=f"```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```"
+            )
             
         previous_emb = deepcopy(self.active_message.embeds[0])
         if previous_emb.image:
