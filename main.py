@@ -212,10 +212,11 @@ async def on_ready():
             continue
         
         except Exception as e:
-            try:
+            if hasattr(error, "original"):
                 print(f"| Failed to load extension {cog}\n|   {type(e.original).__name__}: {e.original}")
-            except AttributeError:
+            else:
                 print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
+            
             error = exc_info()
             if error:
                 await bot.errorlog.send(error, event="Load Initial Cog")
