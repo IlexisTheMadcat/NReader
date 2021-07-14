@@ -703,7 +703,8 @@ class Commands(Cog):
                     
                     if len(self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]) >= 25:
                         emb = Embed(
-                            description=f":x: Your favorites list is full. You can only hold 25."
+                            description=f":x: Your favorites list is full. You can only hold 25.\n"
+                                        f"This is not the developer being mean, any more would make the favorites list message too large to send."
                         ).set_author(
                             name="NHentai Favorites",
                             url=f"https://nhentai.net/",
@@ -739,8 +740,6 @@ class Commands(Cog):
                 except ValueError:
                     await ctx.send(":x: You didn't type a proper ID. Hint: It has to be a number!")
                     return
-                
-                self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'].remove(0)  # Remove placeholder value
 
                 if code in self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]:
                     self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"].remove(code)
