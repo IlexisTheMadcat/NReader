@@ -87,7 +87,7 @@ class Commands(Cog):
                 code = str(code)
         except ValueError:
             await ctx.send(embed=Embed(
-                description=":x: You didn't type a proper ID. Hint: It has to be a number!"))
+                description=":x: You didn't type a proper ID. Come on, numbers!"))
 
             return
         
@@ -125,7 +125,7 @@ class Commands(Cog):
         else:
             while True:
                 doujin = await nhentai_api.get_random()
-                self.bot.doujin_cache[doujin.id] = doujin
+                self.bot.doujin_cache[str(doujin.id)] = doujin
                 if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
                     await edit.edit(embed=Embed(
                         description="<a:nreader_loading:810936543401213953> Retrying..."))
@@ -677,10 +677,20 @@ class Commands(Cog):
         
         elif mode:
             if mode.lower() in ["add", "a", "+"]:
+                if not code:
+                    await ctx.send(embed=Embed(
+                        description=":x: What are you adding to your favorites list?\n"
+                                    "`n!favorites add <doujin_id>`"))
+                    
+                    return
+
                 try:
                     code = int(code)
+                    code = str(code)
                 except ValueError:
-                    await ctx.send(":x: You didn't type a proper ID. Hint: It has to be a number!")
+                    await ctx.send(embed=Embed(
+                        description=":x: You didn't type a proper ID. Come on, numbers!"))
+                    
                     return
 
                 nhentai_api = NHentai()
@@ -692,8 +702,11 @@ class Commands(Cog):
                     doujin = self.bot.doujin_cache[code]
 
                 if not doujin:
-                    await edit.edit(content=":mag_right::x: I did not find a doujin with that ID.")
+                    await edit.edit(embed=Embed(
+                        description=":mag_right::x: I did not find a doujin with that ID."))
+
                     return
+
                 else:
                     self.bot.doujin_cache[code] = doujin
 
@@ -735,10 +748,20 @@ class Commands(Cog):
                         await edit.edit(content="", embed=emb)
             
             elif mode.lower() in ["remove", "r", "-"]:
+                if not code:
+                    await ctx.send(embed=Embed(
+                        description=":x: What are you removing from your favorites list?\n"
+                                    "`n!favorites remove <doujin_id>`"))
+                    
+                    return
+
                 try:
                     code = int(code)
+                    code = str(code)
                 except ValueError:
-                    await ctx.send(":x: You didn't type a proper ID. Hint: It has to be a number!")
+                    await ctx.send(embed=Embed(
+                        description=":x: You didn't type a proper ID. Come on, numbers!"))
+
                     return
 
                 if code in self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]:
