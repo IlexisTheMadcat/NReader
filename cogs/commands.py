@@ -1,9 +1,10 @@
-from re import search
+from re import search, findall
 from asyncio import sleep, TimeoutError
 from textwrap import shorten
 from copy import deepcopy
 from contextlib import suppress
 
+from udpy import AsyncUrbanClient
 from discord import Forbidden, NotFound
 from discord.ext.commands import (
     Cog, bot_has_permissions, 
@@ -383,7 +384,7 @@ class Commands(Cog):
                 await conf.clear_reactions()
 
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Timeout", style=2, emoji="🔄", id="button1", disabled=True)])
+                components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button1", disabled=True)])
             
             return
         
