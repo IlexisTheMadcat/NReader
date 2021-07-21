@@ -1339,6 +1339,8 @@ class Commands(Cog):
             self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
             return
 
+        else:
+            self.bot.doujin_cache[code] = doujin
         
         if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
             await edit.edit(embed=Embed(
