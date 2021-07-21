@@ -19,6 +19,7 @@ from cogs.classes import (
     SearchResultsBrowser)
 from utils.utils import language_to_flag, restricted_tags
 
+newline = "\n"
 
 class Commands(Cog):
     def __init__(self, bot):
@@ -69,6 +70,12 @@ class Commands(Cog):
         manage_channels=True, 
         manage_roles=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -276,6 +283,12 @@ class Commands(Cog):
         manage_channels=True, 
         manage_roles=True)
     async def search_doujins(self, ctx, *, query: str = ""):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -283,7 +296,7 @@ class Commands(Cog):
         except KeyError:
             pass
         
-        if ctx.guild and not ctx.channel.is_nsfw():
+        if not ctx.channel.is_nsfw():
             await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
             return
         
@@ -488,6 +501,12 @@ class Commands(Cog):
         manage_channels=True, 
         manage_roles=True)
     async def popular(self, ctx):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -562,6 +581,12 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def favorites(self, ctx, mode:str=None, code=None):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -793,6 +818,12 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def bookmarks(self, ctx):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -800,7 +831,7 @@ class Commands(Cog):
         except KeyError:
             pass
         
-        if ctx.guild and not ctx.channel.is_nsfw():
+        if not ctx.channel.is_nsfw():
             await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
             return
 
@@ -891,6 +922,12 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def whitelist(self, ctx, mode=None):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         if ctx.guild and ctx.author.id != ctx.guild.owner_id:
             await ctx.send(embed=Embed(
                 color=0xFF0000,
@@ -985,13 +1022,23 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    async def history(self, ctx, switch="view"): # view (default), toggle, clear
+    async def history(self, ctx, switch="view"):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
+
+        if not ctx.channel.is_nsfw():
+            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
+            return
     
         if switch.lower() == "view":
             nhentai_api = NHentai()
@@ -1251,12 +1298,22 @@ class Commands(Cog):
         manage_channels=True, 
         manage_roles=True)
     async def recall(self, ctx):
+        if not ctx.guild:
+            await ctx.send(embed=Embed(
+                description=":x: These commands must be run in a server. Consider making a private one."))
+
+            return
+
         lolicon_allowed = False
         try:
-            if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
+            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
+
+        if not ctx.channel.is_nsfw():
+            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
+            return
         
         recall_id = self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"]
         if recall_id == "N/A":
@@ -1300,6 +1357,137 @@ class Commands(Cog):
             await edit.edit(embed=Embed(description="❌ You didn't answer the recall in time. Run this command again."))
         
         return
+
+    @command(aliases=["urban", "ud"])
+    @bot_has_permissions(
+        send_messages=True, 
+        embed_links=True)
+    async def urban_dictionary(self, ctx, *, word):
+        edit = await self.bot.comp_ext.send_component_msg(ctx, embed=Embed(
+            color=0x1d2439,
+            description="<a:loading:813237675553062954>"))
+
+        udclient = AsyncUrbanClient()
+        response = await udclient.get_definition(word)
+
+        if not response:
+            await self.bot.comp_ext.edit_component_msg(edit, embed=Embed(
+                color=0x1d2439,
+                description="🔎❌ I did not find anything. Maybe you typed something wrong?"))
+            
+            return
+        else:
+            print(f"[] {ctx.author} ({ctx.author.id}) looked up '{word}' using the built-in Urban Dictionary.")
+
+        # Manual cleaning
+        for res in response:
+            defhyperlinks = findall(r"""(\[([A-Za-z0-9_ "']+)\])""", res.definition)
+            exahyperlinks = findall(r"""(\[([A-Za-z0-9_ "']+)\])""", res.example)
+            for hl, hl_word in defhyperlinks: 
+                res.definition = res.definition.replace(hl, f"**[{hl_word}](https://www.urbandictionary.com/define.php?term={hl_word.replace(' ', '%20')})**")
+            for hl, hl_word in exahyperlinks: 
+                res.example = res.example.replace(hl, f"**[{hl_word}](https://www.urbandictionary.com/define.php?term={hl_word.replace(' ', '%20')})**")
+            res.example = res.example.replace("\r", "") 
+            res.example = res.example.strip("\n") 
+            res.examples = res.example.split("\n") 
+            while "" in res.examples: res.examples.remove("")
+
+
+        current_def = 0
+
+        examples_part = []
+        for ind, example in enumerate(response[current_def].examples):
+            examples_part.append(f"> *{example}*")
+
+        await self.bot.comp_ext.edit_component_msg(edit, 
+            embed=Embed(
+                color=0x1d2439,
+                title=response[current_def].word,
+                description=f"{response[current_def].definition}\n"
+                            f"\n"
+                            f"{newline.join(examples_part)}\n"
+                            f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
+                            f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+            ).set_author(
+                name="Urban Dictionary",
+                url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
+                icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
+            
+            components=[[
+                Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=False),
+                Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
+                Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=False)]]
+        )
+
+        while True:
+            try:
+                interaction = await self.bot.wait_for("button_click", timeout=60, 
+                    check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
+
+            except TimeoutError:
+                examples_part = []
+                for example in response[current_def].examples:
+                    examples_part.append(f"> *{example}*")
+
+                await self.bot.comp_ext.edit_component_msg(edit, 
+                    embed=Embed(
+                        color=0x1d2439,
+                        title=response[current_def].word,
+                        description=f"{response[current_def].definition}\n"
+                                    f"\n"
+                                    f"{newline.join(examples_part)}\n"
+                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
+                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+                    ).set_author(
+                        name="Urban Dictionary",
+                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
+                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
+            
+                    components=[[
+                        Button(label="Timeout", style=2, emoji="◀️", id="button1", disabled=True),
+                        Button(label=f"{current_def+1}/{len(response)}", style=2, id="button0", disabled=True),
+                        Button(label="Timeout", style=2, emoji="▶️", id="button2", disabled=True)]]
+                )
+            else:
+                await interaction.respond(type=6)
+
+                if interaction.component.id == "button1":
+                    if current_def == 0:
+                        current_def = len(response)-1
+                    else:
+                        current_def = current_def - 1
+
+                elif interaction.component.id == "button2":
+                    if current_def == len(response)-1:
+                        current_def = 0
+                    else:
+                        current_def = current_def + 1
+
+                examples_part = []
+                for example in response[current_def].examples:
+                    examples_part.append(f"> *{example}*")
+
+                await self.bot.comp_ext.edit_component_msg(edit, 
+                    embed=Embed(
+                        color=0x1d2439,
+                        title=response[current_def].word,
+                        description=f"{response[current_def].definition}\n"
+                                    f"\n"
+                                    f"{newline.join(examples_part)}\n"
+                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
+                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+                    ).set_author(
+                        name="Urban Dictionary",
+                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
+                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
+            
+                    components=[[
+                        Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=False),
+                        Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
+                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=False)]]
+                )
+
+                continue
 
     @favorites.before_invoke
     @bookmarks.before_invoke
