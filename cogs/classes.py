@@ -637,7 +637,7 @@ class ImagePageReader:
 
                                     continue
                     
-                    elif interaction.component.id == "paus":  # Pause for a maximum of one hour
+                    elif interaction.component.id == "paus":  # Pause and send to recall
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.description = Embed.Empty
