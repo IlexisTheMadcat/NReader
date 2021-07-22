@@ -1383,22 +1383,36 @@ class Commands(Cog):
 
         # Manual cleaning
         for res in response:
+            # Remove redundant characters and escape markdown
+            res.example = res.example.replace("\r", "") 
+            res.example = res.example.strip("\n")
+            res.example = res.example.replace("*", "\*")
+            res.example = res.example.replace("_", "\_")
+            res.example = res.example.replace("`", "\`")
+
+            res.definition = res.definition.replace("\r", "") 
+            res.definition = res.definition.strip("\n")
+            res.definition = res.definition.replace("*", "\*")
+            res.definition = res.definition.replace("_", "\_")
+            res.definition = res.definition.replace("`", "\`")
+
+            # Add bot markdown
             defhyperlinks = findall(r"""(\[([A-Za-z0-9_ "']+)\])""", res.definition)
             exahyperlinks = findall(r"""(\[([A-Za-z0-9_ "']+)\])""", res.example)
             for hl, hl_word in defhyperlinks: 
                 res.definition = res.definition.replace(hl, f"**[{hl_word}](https://www.urbandictionary.com/define.php?term={hl_word.replace(' ', '%20')})**")
             for hl, hl_word in exahyperlinks: 
                 res.example = res.example.replace(hl, f"**[{hl_word}](https://www.urbandictionary.com/define.php?term={hl_word.replace(' ', '%20')})**")
-            res.example = res.example.replace("\r", "") 
-            res.example = res.example.strip("\n") 
-            res.examples = res.example.split("\n") 
-            while "" in res.examples: res.examples.remove("")
+            
+            res.example_lines = res.example.split("\n") 
+            while "" in res.example_lines: res.example_lines.remove("")
+            for ind, ex in enumerate(res.example_lines):
+                res.example_lines[ind] = ex.strip(" ")
 
 
         current_def = 0
-
         examples_part = []
-        for ind, example in enumerate(response[current_def].examples):
+        for ind, example in enumerate(response[current_def].example_lines):
             examples_part.append(f"> *{example}*")
 
         await self.bot.comp_ext.edit_component_msg(edit, 
@@ -1428,7 +1442,7 @@ class Commands(Cog):
 
             except TimeoutError:
                 examples_part = []
-                for example in response[current_def].examples:
+                for example in response[current_def].example_lines:
                     examples_part.append(f"> *{example}*")
 
                 await self.bot.comp_ext.edit_component_msg(edit, 
@@ -1447,7 +1461,7 @@ class Commands(Cog):
             
                     components=[[
                         Button(label="Timeout", style=2, emoji="◀️", id="button1", disabled=True),
-                        Button(label=f"{current_def+1}/{len(response)}", style=2, id="button0", disabled=True),
+                        Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
                         Button(label="Timeout", style=2, emoji="▶️", id="button2", disabled=True)]]
                 )
             else:
@@ -1466,7 +1480,7 @@ class Commands(Cog):
                         current_def = current_def + 1
 
                 examples_part = []
-                for example in response[current_def].examples:
+                for example in response[current_def].example_lines:
                     examples_part.append(f"> *{example}*")
 
                 await self.bot.comp_ext.edit_component_msg(edit, 
