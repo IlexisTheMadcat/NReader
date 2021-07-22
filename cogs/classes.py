@@ -461,9 +461,6 @@ class ImagePageReader:
             try:
                 interaction = await self.bot.wait_for("button_click", timeout=60*5,
                     check=lambda i: i.message.id==self.active_message.id and i.user.id==self.ctx.author.id)
-            
-            except BotInteractionCooldown:
-                continue
 
             except TimeoutError:
                 with suppress(NotFound):
