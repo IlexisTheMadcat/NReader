@@ -217,9 +217,11 @@ class ErrorLog:
 
         em = Embed(color=Colour.red(), title=title, description=f"{description}")
 
-        try:
+        if hasattr(ctx, "author") and hasattr(ctx, "guild"):
+            em.set_footer(text=f"This event was caused by user {ctx.author} ({ctx.author.id}) in server {ctx.guild} ({ctx.guild.id})")
+        elif hasattr(ctx, "author"):
             em.set_footer(text=f"This event was caused by user {ctx.author} ({ctx.author.id})")
-        except AttributeError:
+        else:
             em.set_footer(text=f"This event was caused by an element in the source code.")
 
         for field in tb_fields:
