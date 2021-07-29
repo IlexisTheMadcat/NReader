@@ -1,11 +1,12 @@
-# IMPORTS
+﻿# IMPORTS
+from os import getcwd
 from sys import exc_info
+from typing import List
 from copy import deepcopy
 from textwrap import shorten
 from asyncio import sleep
 from asyncio.exceptions import TimeoutError
 from contextlib import suppress
-from typing import List
 
 from discord import (
     Message, TextChannel,
@@ -13,8 +14,7 @@ from discord import (
 from discord.utils import get
 from discord.ext.commands import Context
 from discord.ext.commands.cog import Cog
-from discord_components import Button
-from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
+from NHentai.nhentai_async import NHentaiAsync as NHentai, SearchPage, PopularPage
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
 from utils.utils import (
@@ -320,7 +320,7 @@ class SettingsEditor:
 
 
 class ImagePageReader:
-    def __init__(self, bot: Bot, ctx: Context, images:list, name:str, code:str, **kwargs):
+    def __init__(self, bot: Bot, ctx: Context, images:list, name:str, **kwargs):
         """Create and run a reader based on pages from a Doujin. 
         To work for any purpose, this class needs a few changes.
         
@@ -328,21 +328,18 @@ class ImagePageReader:
         `ctx` - Context used
         `images` The list of image urls to use
         `name` - Title of the reader
-        `code` - Book/Item ID
-
         `**kwargs` - Further keyword arguments if need be
-        -- `current_page` - The starting page as an integer. Defaults to `0`
 
+        This class in particular requires a certain format for `name`:
+        `f"{int()} || {str()}"`, where int would be an object id and str for title.
         """
         self.bot = bot
-        self.ctx: Context = ctx
+        self.current_page: int = 0
         self.images: list = images
         self.name: str = name
-        self.code: str = code
-
-        self.current_page: int = kwargs.pop("starting_page", 0)
+        self.code: str = self.name.split('[*n*]')[0].strip(" ")
+        self.ctx: Context = ctx
         self.active_message: Message = None
-
         self.am_embed: Embed = None
         self.am_channel: TextChannel = None
         self.is_paused: bool = False
@@ -351,6 +348,16 @@ class ImagePageReader:
     async def setup(self):
         edit = await self.ctx.send(embed=Embed(
             description="<a:nreader_loading:810936543401213953>"))
+        
+        self.am_embed: Embed = Embed(
+            color=0xEC2854,
+            description=f"Active emojis will appear here.\n" \
+                        "▶ Play")
+        self.am_embed.set_author(
+            name=self.name,
+            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+        self.am_embed.set_footer(
+            text=f"Page [0/{len(self.images)}]: Press ▶ Play to start reading.")
 
         # Fetch existing category for readers, otherwise create new
         cat = get(self.ctx.guild.categories, name="📖NReader")
@@ -370,18 +377,8 @@ class ImagePageReader:
         await channel.set_permissions(self.ctx.guild.default_role, read_messages=False)
         await channel.set_permissions(self.ctx.author, read_messages=True)
 
-        self.am_embed = Embed(
-            description=f"Waiting.")
-        self.am_embed.set_author(
-            name=self.name,
-            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        self.am_embed.set_footer(
-            text=f"Page [0/{len(self.images)}]: Press ▶ Start to start reading.")
-        
         # Reader message
-        conf = await self.bot.comp_ext.send_component_msg(channel, 
-            content=self.ctx.author.mention, embed=self.am_embed,
-            components=[Button(label="Start", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
+        conf = await channel.send(content=self.ctx.author.mention, embed=self.am_embed)
 
         # Portal
         await edit.edit(
@@ -393,333 +390,314 @@ class ImagePageReader:
                     icon_url=self.bot.user.avatar_url),
             delete_after=10)
         
-        # `delete_after` doesn't work currently with the DC wrapper
-        await edit.delete(delay=10)
+        await conf.add_reaction("▶")
         
-        while True:
-            try:
-                interaction = await self.bot.wait_for("button_click", timeout=30, bypass_cooldown=True,
-                    check=lambda i: 
-                        i.message.id == conf.id and \
-                        i.user.id == self.ctx.author.id)
+        try:
+            await self.bot.wait_for("reaction_add", timeout=30, bypass_cooldown=True,
+                check=lambda r,u: r.message.id == conf.id and \
+                    u.id == self.ctx.author.id and \
+                    str(r.emoji) == "▶")
         
-            except TimeoutError:
-                await conf.edit(content="<a:nreader_loading:810936543401213953> Closing...")
+        except TimeoutError:
+            await conf.edit(content="<a:nreader_loading:810936543401213953> Closing...")
             
-                await sleep(1)
-                await conf.channel.delete()
-                return False
+            await sleep(1)
+            await conf.channel.delete()
+            return False
         
-            else:
-                try: await interaction.respond(type=6)
-                except NotFound: continue
+        else:
+            self.active_message = conf
+            self.am_channel = conf.channel
+            await self.active_message.clear_reactions()
             
-                self.active_message = conf
-                self.am_channel = conf.channel
-            
-                self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
-                                            f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                            f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-                self.am_embed.set_image(url=self.images[self.current_page])
-                self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
-                self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
-                await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
-                    components=[
-                        [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
-                        Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
-                        Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="sele"),
-                        Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                        Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
-                        [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                        Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                        Button(label="Provided by MechHub", style=2, disabled=True)]])
+            edit = await self.am_channel.send("<a:nreader_loading:810936543401213953>")
+            self.am_embed.description = "⏮⏭ Previous|Next\n🔢⏹ Select|Stop\n⏯🔖 Pause|Bookmark"
+            self.am_embed.set_image(url=self.images[0])
+            self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
+            self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+            await self.active_message.edit(embed=self.am_embed)
 
-                await sleep(0.2)
-                with suppress(NotFound):
-                    await edit.delete()
-
-                return True
+            await self.active_message.add_reaction("⏮")
+            await self.active_message.add_reaction("⏭")
+            await self.active_message.add_reaction("🔢")
+            await self.active_message.add_reaction("⏹")
+            await self.active_message.add_reaction("⏯")
+            await self.active_message.add_reaction("🔖")
+            await sleep(0.2)
+            await edit.delete()
+            return True
 
     async def start(self):
         if self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][0]:
             self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].insert(0, 
-                self.bot.doujin_cache[self.code].id)
-            
+            self.bot.doujin_cache[self.code].id)
             if "placeholer" in self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].remove("placeholder")
             
             if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) >= 2 and \
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1][1] == \
-                    self.bot.doujin_cache[self.code].id:
-                
+                self.bot.doujin_cache[self.code].id:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop(0)
             
             while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) > 25:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop()
-        
+
+        def payload_check(payload):  # Use raw payload to compensate for the longer wait
+            return \
+                payload.message_id==self.active_message.id and \
+                payload.user_id==self.ctx.author.id and \
+                str(payload.emoji) in ["⏮", "⏭", "🔢", "⏹", "⏯", "▶", "🔖", "❌"]
+
         while True:
             try:
-                interaction = await self.bot.wait_for("button_click", timeout=60*5,
-                    check=lambda i: i.message.id==self.active_message.id and i.user.id==self.ctx.author.id)
+                payload = await self.bot.wait_for("raw_reaction_add", timeout=60*5,
+                    check=payload_check)
+            
+            except BotInteractionCooldown:
+                continue
 
             except TimeoutError:
                 with suppress(NotFound):
+                    await self.active_message.clear_reactions()
+                    
                     self.am_embed.description = ""
                     self.am_embed.set_footer(text=f"You timed out on page [{self.current_page+1}/{len(self.images)}].\n")
 
                     self.am_embed.set_image(url=Embed.Empty)
                     self.am_embed.set_thumbnail(url=Embed.Empty)
                     await self.active_message.edit(embed=self.am_embed)
-                    temp = await self.am_channel.send(content=f"{self.ctx.author.mention}, you timed out in your doujin. Forgot to press pause?", delete_after=1)
-                    await temp.delete(delay=1)
-        
+                    await self.am_channel.send(content=f"{self.ctx.author.mention}, you timed out in your doujin. Forgot to press pause?", delete_after=1)
+            
                     await sleep(10)
                     await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
 
                     await sleep(1)
                     await self.am_channel.delete()
 
-                    break
+                break
             
             except BotInteractionCooldown:
                 continue
             
             else:
-                try:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                self.bot.inactive = 0
+                with suppress(Forbidden):
+                    user = await self.bot.fetch_user(payload.user_id)
+                    await self.active_message.remove_reaction(str(payload.emoji), user)
 
-                    if isinstance(interaction.component, list):
-                        delay = await self.am_channel.send("Returned unexpected datatype. Please try again. If that fails, let the doujin time out and try again later.")
-                        await delay.delete(delay=5)
-                        continue
-
-                    self.bot.inactive = 0
-                    if interaction.component.id == "next":  # Next page
-                        self.current_page = self.current_page + 1
-                        if self.current_page > (len(self.images)-1):  # Finish the doujin if at last page
-                            self.am_embed.set_image(url=Embed.Empty)
-                            self.am_embed.set_thumbnail(url=Embed.Empty)
-                            self.am_embed.description = Embed.Empty
-                            self.am_embed.set_footer(text="You finished this doujin.")
-                            await self.active_message.edit(embed=self.am_embed)
-                            
-                            await sleep(2)
-                            await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
-
-                            await sleep(1)
-                            await self.am_channel.delete()
-                            
-                            break
-                        else:
-                            pass
+                if str(payload.emoji) == "⏭":  # Next page
+                    self.current_page = self.current_page + 1
+                    if self.current_page > (len(self.images)-1):  # Finish the doujin if at last page
+                        await self.active_message.clear_reactions()
                         
-                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                            if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
-                                self.on_bookmarked_page = True
-                            else:
-                                self.on_bookmarked_page = False
-                        
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
-                        self.am_embed.set_image(url=self.images[self.current_page])
-                        self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
-                        
-                        self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
-                                                    f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                                    f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-
-                        await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
-                            components=[
-                                [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
-                                Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
-                                Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="sele"),
-                                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                                Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
-                                [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                                Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                                Button(label="Provided by MechHub", style=2, disabled=True)]])
-                        
-                        continue
-
-                    elif interaction.component.id == "prev":  # Previous page
-                        if self.current_page == 0:  # Not allowed to go behind zero
-                            continue
-                        
-                        else:
-                            self.current_page = self.current_page - 1
-                        
-                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                            if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
-                                self.on_bookmarked_page = True
-                            else:
-                                self.on_bookmarked_page = False
-                        
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
-                        self.am_embed.set_image(url=self.images[self.current_page])
-                        self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
-                        
-                        self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
-                                                    f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                                    f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-                        
-                        await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
-                            components=[
-                                [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
-                                Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
-                                Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="sele"),
-                                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                                Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
-                                [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                                Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                                Button(label="Provided by MechHub", style=2, disabled=True)]])
-                        
-                        continue
-                    
-                    elif interaction.component.id == "sele":  # Select page
-                        conf = await self.am_channel.send(embed=Embed(
-                            description=f"Enter the page number you would like to go to."
-                                        f"{newline+'Bookmarked page: '+str(int(self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code])+1) if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'] else ''}"))
-                        
-                        while True:
-                            try:
-                                resp = await self.bot.wait_for("message", timeout=10, bypass_cooldown=True,
-                                    check=lambda m: m.channel.id == self.am_channel.id and
-                                        m.author.id == self.ctx.author.id)
-                            except TimeoutError:
-                                await conf.delete()
-                                break
-                            
-                            except BotInteractionCooldown:
-                                continue
-
-                            else:
-                                if is_int(resp.content) and (int(resp.content)-1) in range(0, len(self.images)):
-                                    self.current_page = (int(resp.content)-1)
-                                    await resp.delete()
-                                    await conf.delete()
-                                    
-                                    if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                                        if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
-                                            self.on_bookmarked_page = True
-                                        else:
-                                            self.on_bookmarked_page = False
-
-                                    self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
-                                    self.am_embed.set_image(url=self.images[self.current_page])
-                                    self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
-                                    
-                                    self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
-                                                                f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                                                f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-
-                                    await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
-                                        components=[
-                                            [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
-                                            Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
-                                            Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="sele"),
-                                            Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                                            Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
-                                            [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                                            Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                                            Button(label="Provided by MechHub", style=2, disabled=True)]])
-                                    
-                                    break
-                                
-                                else:
-                                    await resp.delete()
-                                    await self.am_channel.send(embed=Embed(
-                                        color=0xFF0000,
-                                        description="Not a valid number!"), 
-                                        delete_after=2)
-
-                                    continue
-                    
-                    elif interaction.component.id == "paus":  # Pause and send to recall
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.description = Embed.Empty
-                        self.am_embed.set_footer(text=f"You've paused this doujin on page [{self.current_page+1}/{len(self.images)}].")
+                        self.am_embed.set_footer(text="You finished this doujin.")
                         await self.active_message.edit(embed=self.am_embed)
                         
                         await sleep(2)
                         await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
-                        
-                        await sleep(1)
-                        await self.am_channel.delete()
-                        
-                        await sleep(1)
-                        self.bot.user_data["UserData"][str(self.ctx.author.id)]["Recall"] = f"{self.code}*n*{self.current_page}"
-                        await self.ctx.author.send(embed=Embed(
-                            title="Recall saved.",
-                            description=f"Doujin `{self.code}` saved to recall to page [{self.current_page+1}/{len(self.images)}].\n"
-                                        f"To get back to this page, run the `n!recall` command to instantly open a new reader starting on that page."))
-                        break
 
-                    elif interaction.component.id == "stop":  # Stop entirely
-                        self.am_embed.set_image(url=Embed.Empty)
-                        self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.description = Embed.Empty
-                        self.am_embed.set_footer(text=f"You stopped this doujin on page [{self.current_page+1}/{len(self.images)}].")
-                        await self.active_message.edit(embed=self.am_embed)
-                        
-                        await sleep(2)
-                        await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
-                        
                         await sleep(1)
                         await self.am_channel.delete()
+                        
                         break
+                    else:
+                        pass
                     
-                    elif interaction.component.id == "book":  # Set/Remove bookmark
-                        if not self.on_bookmarked_page:
-                            if self.current_page == 0:
-                                await self.am_channel.send(embed=Embed(
-                                    color=0xFF0000,
-                                    description="You cannot bookmark the first page. Use favorites instead!"),
-                                    delete_after=3)
-
-                                try: await interaction.respond(type=6)
-                                except NotFound: continue
-                                
-                                continue
-
-                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code] = self.current_page
+                    if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
+                        if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
                             self.on_bookmarked_page = True
-                        
                         else:
-                            if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'].pop(self.code)
-
-                                self.on_bookmarked_page = False
-                        
-                        self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
-                                                    f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                                    f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]{' Bookmarked' if self.on_bookmarked_page else ''}")
-                        
-                        await self.active_message.edit(embed=self.am_embed)
-
-                        continue
-            
-                except Exception:
-                    error = exc_info()
-                    temp = await self.am_channel.send(embed=Embed(
-                        color=0xFF0000,
-                        description="An unhandled error occured; Please try again.\n"
-                                    "If the issue persists, please try reopening the doujin.\n"
-                                    "If reopening doesn't work, click the `Support Server` button."
-                        ).set_footer(text="This message will disappear in 10 seconds."),
-                        delete_after=10)
+                            self.on_bookmarked_page = False
                     
-                    await temp.delete(delay=10)
-                        
-                    await self.bot.errorlog.send(error, ctx=self.ctx, event="ImagePageReader")
+                    self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                    self.am_embed.set_image(url=self.images[self.current_page])
+                    self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                    self.am_embed.description = f"⏮⏭ Previous|{'**__Finish__**' if self.current_page == (len(self.images)-1) else 'Next'}\n🔢⏹ Select|Stop\n⏯🔖 Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
+
+                    await self.active_message.edit(embed=self.am_embed)
                     
                     continue
+
+                elif str(payload.emoji) == "⏮":  # Previous page
+                    if self.current_page == 0:  # Not allowed to go behind zero
+                        continue
+                    
+                    else:
+                        self.current_page = self.current_page - 1
+                    
+                    if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
+                        if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
+                            self.on_bookmarked_page = True
+                        else:
+                            self.on_bookmarked_page = False
+                    
+                    self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                    self.am_embed.set_image(url=self.images[self.current_page])
+                    self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                    self.am_embed.description = f"⏮⏭ Previous|Next\n🔢⏹ Select|Stop\n⏯🔖 Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
+
+                    await self.active_message.edit(embed=self.am_embed)
+                    
+                    continue
+                
+                elif str(payload.emoji) == "🔢":  # Select page
+                    conf = await self.am_channel.send(embed=Embed(
+                        description=f"Enter the page number you would like to go to."
+                                    f"{newline+'Bookmarked page: '+str(int(self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code])+1) if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'] else ''}"))
+                    
+                    while True:
+                        try:
+                            resp = await self.bot.wait_for("message", timeout=10, bypass_cooldown=True,
+                                check=lambda m: m.channel.id == self.am_channel.id and
+                                    m.author.id == self.ctx.author.id)
+                        except TimeoutError:
+                            await conf.delete()
+                            break
+                        
+                        except BotInteractionCooldown:
+                            continue
+
+                        else:
+                            if is_int(resp.content) and (int(resp.content)-1) in range(0, len(self.images)):
+                                self.current_page = (int(resp.content)-1)
+                                await resp.delete()
+                                await conf.delete()
+                                
+                                if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
+                                    if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
+                                        self.on_bookmarked_page = True
+                                    else:
+                                        self.on_bookmarked_page = False
+
+                                self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                                self.am_embed.set_image(url=self.images[self.current_page])
+                                self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                                self.am_embed.description = f"⏮⏭ Previous|{'**__Finish__**' if self.current_page == (len(self.images)-1) else 'Next'}\n🔢⏹ Select|Stop\n⏯🔖 Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
+
+                                await self.active_message.edit(embed=self.am_embed)
+                                break
+                            
+                            else:
+                                await resp.delete()
+                                await self.am_channel.send(embed=Embed(
+                                    color=0xFF0000,
+                                    description="Not a valid number!"), 
+                                    delete_after=2)
+
+                                continue
+                
+                elif str(payload.emoji) == "⏯":  # Pause for a maximum of one hour
+                    self.am_embed.set_image(url=Embed.Empty)
+                    self.am_embed.set_thumbnail(url=self.images[0])
+                    self.am_embed.description = "⏯ Play"
+                    self.am_embed.set_footer(text="You've paused this doujin. Come back within an hour!")
+                    
+                    await self.active_message.edit(embed=self.am_embed)
+                    
+                    def payload_check_pause(payload):  # Use raw payload to compensate for the longer wait
+                        return \
+                            payload.message_id==self.active_message.id and \
+                            payload.user_id==self.ctx.author.id and \
+                            str(payload.emoji)=="⏯"
+                    
+                    try:
+                        await self.bot.wait_for("raw_reaction_add", timeout=(60*55), bypass_cooldown=True,
+                            check=payload_check_pause)
+                    
+                    except TimeoutError:
+                        warning = await self.am_channel.send(f"{self.ctx.author.mention}, you're about to time out in 5 minutes. Press play and pause again if you need more time.")
+                        
+                        try:                               
+                            await self.bot.wait_for("raw_reaction_add", timeout=(60*5), bypass_cooldown=True,
+                                check=payload_check_pause)
+                        
+                        except TimeoutError:
+                            await warning.delete()
+                            await self.active_message.delete()
+                            conf = await self.am_channel.send(f"{self.ctx.author.mention}, you timed out on page [{self.current_page+1}/{len(self.images)}]. This reader will be terminated.")
+                            
+                            await sleep(10)
+                            await conf.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
+                            
+                            await sleep(1)
+                            await self.am_channel.delete()
+                            return
+                        
+                        else:
+                            await warning.delete()
+
+                            with suppress(Forbidden):
+                                await self.active_message.remove_reaction("⏯", self.ctx.author)
+
+                            self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
+                            self.am_embed.set_image(url=self.images[self.current_page])
+                            self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                            self.am_embed.description = f"⏮⏭ Previous|Next\n🔢⏹ Select|Stop\n⏯🔖 Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
+                            
+                            await self.active_message.edit(embed=self.am_embed)
+
+                    else:
+                        with suppress(Forbidden):
+                            await self.active_message.remove_reaction("⏯", self.ctx.author)
+
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
+                        self.am_embed.set_image(url=self.images[self.current_page])
+                        self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                        self.am_embed.description = f"⏮⏭ Previous|Next\n🔢⏹ Select|Stop\n⏯🔖 Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
+                        
+                        await self.active_message.edit(embed=self.am_embed)
+
+                elif str(payload.emoji) == "⏹":  # Stop entirely
+                    self.am_embed.set_image(url=Embed.Empty)
+                    self.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.am_embed.description = Embed.Empty
+                    self.am_embed.set_footer(text=f"You stopped this doujin on page [{self.current_page+1}/{len(self.images)}].")
+                    await self.active_message.edit(embed=self.am_embed)
+                    
+                    await sleep(2)
+                    await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
+                    
+                    await sleep(1)
+                    await self.am_channel.delete()
+                    break
+                
+                elif str(payload.emoji) == "🔖":  # Set/Remove bookmark
+                    if not self.on_bookmarked_page:
+                        if self.current_page == 0:
+                            await self.am_channel.send(embed=Embed(
+                                color=0xFF0000,
+                                description="You cannot bookmark the first page. Use favorites instead!"),
+                                delete_after=3)
+                            
+                            continue
+
+                        self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code] = self.current_page
+
+                        self.on_bookmarked_page = True
+
+                        self.am_embed.description = "⏮⏭ Previous|Next\n🔢⏹ Select|Stop\n⏯🔖 Pause|Unbookmark"
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] Bookmarked")
+                        await self.active_message.edit(embed=self.am_embed)
+                        continue
+                    
+                    else:
+                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
+                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'].pop(self.code)
+
+                            self.on_bookmarked_page = False
+
+                            self.am_embed.description = f"⏮⏭ Previous|Next\n🔢⏹ Select|Stop\n⏯🔖 Pause|Bookmark"
+                            self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
+                            await self.active_message.edit(embed=self.am_embed)
+                            continue
 
         return
 
 class SearchResultsBrowser:
-    def __init__(self, bot: Bot, ctx: Context, results: List[Doujin], **kwargs):
+    def __init__(self, bot: Bot, ctx: Context, results: list, page: int, msg:Message=None, msg2:Message=None, lolicon_allowed=False):
         """Class to create and run a browser from NHentai-API
 
         `results` - obtained from nhentai_api.search(query); Modified `SearchPage` to contain real Doujins, not DoujinThumbnails.
@@ -728,21 +706,32 @@ class SearchResultsBrowser:
         """
         self.bot = bot
         self.ctx = ctx
-        self.doujins = results
-        self.index = 0
-        self.active_message: Message = kwargs.pop("msg", None)
-        self.lolicon_allowed = kwargs.pop("lolicon_allowed", None)
-        self.name = kwargs.pop("name", "Search Results")
-
+        self.page = page
+        self.results = results
+        self.doujins = results.doujins
+        self.lolicon_allowed = lolicon_allowed
+        self.current_result = 0
+        self.active_message: Message = msg
+        self.active_message2: Message = msg2
         self.am_embed: Embed = None
+    
+    async def edit_dual_messages(self, embed1, embed2):
+        # Local veriable doesn't change when editing, do so manually
+        await self.active_message.edit(content='', embed=embed1)
+        self.active_message.content = ''
+        self.active_message.embeds[0] = embed1
+
+        await self.active_message2.edit(content='', embed=embed2)
+        self.active_message.content = ''
+        self.active_message.embeds[0] = embed2
     
     async def update_browser(self, ctx):
         message_part = []
         for ind, dj in enumerate(self.doujins):
             try: 
-                if ind == self.index and int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Doujins']: symbol = '🟩'
-                elif ind == self.index: symbol='🟥'
-                elif int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Doujins']: symbol = '🟦'
+                if ind == self.current_result and int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Doujins']: symbol = "*️⃣"
+                elif ind == self.current_result: symbol='🟥'
+                elif int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Doujins']: symbol = "🟦"
                 else: symbol='⬛'
             except KeyError: 
                 symbol='⬛'
@@ -751,295 +740,297 @@ class SearchResultsBrowser:
                 message_part.append(f"`{symbol} {str(ind+1).ljust(2)}` | __`       `__ | ⚠🚫 | Not available in this server.")
             else:
                 message_part.append(
-                    f"{'**' if ind == self.index else ''}"
                     f"`{symbol} {str(ind+1).ljust(2)}` | "
-                    f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
+                    f"{'**' if ind == self.current_result else ''}__`{str(self.doujins[ind].id).ljust(7)}`__ | "
                     f"{language_to_flag(self.doujins[ind].languages)} | "
-                    f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.index else ''}")
-
-        self.am_embed = Embed(
-            title=self.name,
-            description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
+                    f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.current_result else ''}")
+        
+        if isinstance(self.results, SearchPage):
+            self.am_embed = Embed(
+                description=f"Showing page {self.page}/{self.results.total_pages}"
+                            f"{'; illegal results are hidden:' if ctx.guild and not self.lolicon_allowed else ':'}"
+                            f"\n"+('\n'.join(message_part)))
+        
+        elif isinstance(self.results, PopularPage):
+            self.am_embed = Embed(
+                description=f"🔥 Popular Now 🔥"
+                            f"\n"+('\n'.join(message_part)))
             
         self.am_embed.set_author(
             name="NHentai Search Results [INTERACTIVE]",
             url=f"https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        self.am_embed.set_footer(text="Provided by NHentai-API")
+        self.am_embed.set_footer(
+            text="Provided by NHentai-API")
 
         nhentai_api = NHentai()
-        if self.doujins[self.index].id not in self.bot.doujin_cache:
-            doujin = await nhentai_api.get_doujin(self.doujins[self.index].id)
-            self.bot.doujin_cache[self.doujins[self.index].id] = doujin
+        if self.doujins[self.current_result].id not in self.bot.doujin_cache:
+            doujin = await nhentai_api.get_doujin(self.doujins[self.current_result].id)
+            self.bot.doujin_cache[self.doujins[self.current_result].id] = doujin
         else:
-            doujin = self.bot.doujin_cache[self.doujins[self.index].id]
+            doujin = self.bot.doujin_cache[self.doujins[self.current_result].id]
         
         if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and self.ctx.guild and not self.lolicon_allowed:
-            self.am_embed.add_field(
-                name="Main Title",
-                inline=False,
-                value="No information available.\n"
-                      "This doujin cannot be viewed here.")
+            emb = Embed(
+                description="No information available.")
+            emb.set_author(
+                name=f"Not available in this server.",
+                url=f"https://nhentai.net/g/",
+                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
             
             doujin.images[0] = str(self.bot.user.avatar_url)
         
         else:
-            self.am_embed.add_field(
-                name=f"Main Title",
-                inline=False,
-                value=f"{doujin.title}"
-            ).add_field(
-                inline=False,
-                name="Secondary Title",
-                value=f"`{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Doujin ID ー Pages",
-                value=f"`{doujin.id} ー {len(doujin.images)} pages`"
-            ).add_field(
-                inline=False,
-                name="Language(s)",
-                value=f"{language_to_flag(doujin.languages)} `{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Artist(s)",
-                value=f"`{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Character(s)",
-                value=f"`{', '.join(doujin.characters) if doujin.characters else 'Original'}`"
-            ).add_field(
-                inline=False,
-                name="Parody Of",
-                value=f"`{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`"
-            ).add_field(
-                inline=False,
-                name="Tags",
-                value=f"```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```"
-            )
+            emb = Embed(
+                description=f"Doujin ID: __`{doujin.id}`__\n"
+                            f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
+                            f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
+                            f"Pages: `{len(doujin.images)}`\n"
+                            f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
+                            f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
+                            f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
+                            f"Tags: ```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```\n")
+            emb.set_author(
+                name=f"{doujin.title}",
+                url=f"https://nhentai.net/g/{doujin.id}/",
+                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
             
-        previous_emb = deepcopy(self.active_message.embeds[0])
+        previous_emb = deepcopy(self.active_message2.embeds[0])
         if previous_emb.image:
-            self.am_embed.set_image(url=doujin.images[0])
-            self.am_embed.set_thumbnail(url=Embed.Empty)
+            emb.set_image(url=doujin.images[0])
+            emb.set_thumbnail(url=Embed.Empty)
+            emb.set_footer(text="🔼🔽🔢⏹📖🔍 |Up|Down|Select|Stop|Read|Zoom-|")
         elif previous_emb.thumbnail:
-            self.am_embed.set_thumbnail(url=doujin.images[0])
-            self.am_embed.set_image(url=Embed.Empty)
+            emb.set_thumbnail(url=doujin.images[0])
+            emb.set_image(url=Embed.Empty)
+            emb.set_footer(text="🔼🔽🔢⏹📖🔍 |Up|Down|Select|Stop|Read|Zoom+|")
         else:  # Image wasn't set yet
-            self.am_embed.set_thumbnail(url=doujin.images[0])
+            emb.set_thumbnail(url=doujin.images[0])
+            emb.set_footer(text="🔼🔽🔢⏹📖🔍 |Up|Down|Select|Stop|Read|Zoom+|")
 
-        if self.active_message:
-            await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
-                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                    Button(label="Provided by MechHub", style=2, disabled=True)]])
-        else:
-            self.active_message = await self.bot.comp_ext.send_component_msg(self.ctx, embed=self.am_embed,
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
-                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                    Button(label="Provided by MechHub", style=2, disabled=True)]])
-            
-            await sleep(0.5)
+        await self.edit_dual_messages(self.am_embed, emb)
     
     async def start(self, ctx):
         """Initial start of the result browser."""
 
+        if not self.active_message:
+            self.active_message = await ctx.send("<a:nreader_loading:810936543401213953>")
+            await sleep(0.5)
+        
+        if not self.active_message2:
+            self.active_message2 = await ctx.send(
+                embed=Embed(description="<a:nreader_loading:810936543401213953> Getting things ready..."))
+            await sleep(0.5)
+        
+        await self.active_message2.add_reaction("🔼")
+        await self.active_message2.add_reaction("🔽")
+        await self.active_message2.add_reaction("🔢")
+        await self.active_message2.add_reaction("⏹")
+        await self.active_message2.add_reaction("📖")
+        
+        await sleep(0.5)
         await self.update_browser(self.ctx)
+
+        await self.active_message2.add_reaction("🔍")
 
         while True:
             try:
-                interaction = await self.bot.wait_for("button_click", timeout=300, 
-                    check=lambda i: \
-                        i.message.id == self.active_message.id and \
-                        i.user.id == self.ctx.author.id)
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=300, 
+                    check=lambda r,u: r.message.id == self.active_message2.id and \
+                        str(r.emoji) in ["🔼", "🔽", "🔢", "⏹", "📖", "🔍"] and \
+                        u.id == self.ctx.author.id)
             except TimeoutError:
+                try:
+                    await self.active_message.clear_reactions()
+                except NotFound:
+                    return
+
                 message_part = []
                 for ind, dj in enumerate(self.doujins):
                     message_part.append(
-                        f"{'**' if ind == self.index else ''}__`{str(self.doujins[ind].id).ljust(7)}`__{'**' if ind == self.index else ''} | "
+                        f"{'**' if ind == self.current_result else ''}__`{str(self.doujins[ind].id).ljust(7)}`__{'**' if ind == self.current_result else ''} | "
                         f"{language_to_flag(self.doujins[ind].languages)} | "
                         f"{shorten(self.doujins[ind].title, width=50, placeholder='...')}")
                 
-                self.am_embed = Embed(
-                    title=self.name,
-                    description=f"\n"+('\n'.join(message_part)))
+                if isinstance(self.results, SearchPage):
+                    self.am_embed = Embed(
+                        description=f"Showing page {self.page}/{self.results.total_pages}"
+                                    f"{'; illegal results are hidden:' if ctx.guild and not self.lolicon_allowed else ':'}"
+                                    f"\n"+('\n'.join(message_part)))
+                
+                elif isinstance(self.results, PopularPage):
+                    self.am_embed = Embed(
+                        description=f"🔥 Popular Now 🔥"
+                                    f"\n"+('\n'.join(message_part)))
+
                 self.am_embed.set_author(
                     name="NHentai Search Results",
                     url=f"https://nhentai.net/",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                self.am_embed.set_footer(text=f"Provided by NHentai-API")
+                self.am_embed.set_footer(
+                    text=f"Provided by NHentai-API")
+                self.am_embed.set_image(
+                    url=Embed.Empty)
 
-                self.am_embed.set_thumbnail(url=Embed.Empty)
-                self.am_embed.set_image(url=Embed.Empty)
-
-                await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed, components=[])
-                
+                await self.active_message.edit(content='', embed=self.am_embed)
+                await self.active_message2.delete()
                 return
 
             except BotInteractionCooldown:
                 continue
             
             else:
-                try:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                self.bot.inactive = 0
+                with suppress(Forbidden):
+                    await self.active_message2.remove_reaction(str(reaction.emoji), user)
+                
+                if str(reaction.emoji) == "🔼":
+                    if self.current_result > 0:
+                        self.current_result -= 1
+                        await self.update_browser(self.ctx)
+                    elif self.current_result == 0:
+                        self.current_result = len(self.doujins)-1
+                        await self.update_browser(self.ctx)
 
-                    self.bot.inactive = 0
-                    
-                    if interaction.component.id == "up":
-                        if self.index > 0:
-                            self.index -= 1
-                            await self.update_browser(self.ctx)
-                        elif self.index == 0:
-                            self.index = len(self.doujins)-1
-                            await self.update_browser(self.ctx)
+                elif str(reaction.emoji) == "🔽":
+                    if self.current_result < len(self.doujins)-1:
+                        self.current_result += 1
+                        await self.update_browser(self.ctx)
+                    elif self.current_result == len(self.doujins)-1:
+                        self.current_result = 0
+                        await self.update_browser(self.ctx)
+                
+                elif str(reaction.emoji) == "🔢":
+                    self.am_embed.set_footer(text="Enter a result number...")
+                    await self.active_message.edit(embed=self.am_embed)
 
-                    elif interaction.component.id == "down":
-                        if self.index < len(self.doujins)-1:
-                            self.index += 1
-                            await self.update_browser(self.ctx)
-                        elif self.index == len(self.doujins)-1:
-                            self.index = 0
-                            await self.update_browser(self.ctx)
-                    
-                    elif interaction.component.id == "select":
-                        conf = await self.ctx.send(embed=Embed(
-                            description="Enter a result number..."))
-
-                        await self.active_message.edit(embed=self.am_embed)
-
-                        while True:
-                            try:
-                                m = await self.bot.wait_for("message", timeout=10, bypass_cooldown=True,
-                                    check=lambda m: m.author.id == self.ctx.author.id and \
-                                        m.channel.id == self.ctx.channel.id)
-                            except TimeoutError:
-                                await conf.delete()
-                                break
-                            
-                            except BotInteractionCooldown:
-                                continue
-
-                            else:
-                                await m.delete()
-                                
-                                if is_int(m.content) and (int(m.content)-1) in range(0, len(self.doujins)):
-                                    self.index = int(m.content)-1
-                                    await conf.delete()
-                                    await self.update_browser(self.ctx)
-                                    break
-                                else:
-                                    await self.ctx.send(embed=Embed(
-                                        color=0xFF0000,
-                                        description="Not a valid number!"), 
-                                        delete_after=2)
-                                    continue
-                    
-                    elif interaction.component.id == "stop":
-                        message_part = []
-                        for ind, dj in enumerate(self.doujins):                        
-                            if ("lolicon" in dj.tags or "shotacon" in dj.tags) and self.ctx.guild and not self.lolicon_allowed:
-                                message_part.append("__`       `__ | ⚠🚫 | Not available in this server.")
-                            else:
-                                message_part.append(
-                                    f"__`{str(dj.id).ljust(7)}`__ | "
-                                    f"{language_to_flag(dj.languages)} | "
-                                    f"{shorten(dj.title, width=50, placeholder='...')}")
-                        
-                        self.am_embed = Embed(
-                            title=self.name,
-                            description=f"\n"+('\n'.join(message_part)))
-
-                        self.am_embed.set_author(
-                            name="NHentai Search Results",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        self.am_embed.set_footer(text=f"Provided by NHentai-API")
-                        self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.set_image(url=Embed.Empty)
-                        await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed, components=[])
-                        
-                        return
-                    
-                    elif interaction.component.id == "read":
-                        if ("lolicon" in self.doujins[self.index].tags or "shotacon" in self.doujins[self.index].tags) and self.ctx.guild and not self.lolicon_allowed:
-                            continue
-                        
-                        await self.active_message.clear_reactions()
-
-                        message_part = []
-                        for ind, dj in enumerate(self.doujins):                        
-                            if ("lolicon" in dj.tags or "shotacon" in dj.tags) and self.ctx.guild and not self.lolicon_allowed:
-                                message_part.append("__`       `__ | ⚠🚫 | Not available in this server.")
-                            else:
-                                message_part.append(
-                                f"{'**' if ind == self.index else ''}"
-                                f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
-                                f"{language_to_flag(self.doujins[ind].languages)} | "
-                                f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.index else ''}")
-
-                        self.am_embed = Embed(
-                            title=self.name,
-                            description=f"\n"+('\n'.join(message_part)))
-                        self.am_embed.set_author(
-                            name="NHentai Search Results",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        self.am_embed.set_footer(text=f"Provided by NHentai-API")
-                        self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.set_image(url=Embed.Empty)
-
-                        await self.active_message.edit(content='', embed=self.am_embed)
-
-                        doujin = self.doujins[self.index]
-                        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}", str(doujin.id))
-                        response = await session.setup()
-                        if response:
-                            await session.start()
-                        else:
-                            self.am_embed.set_footer(text="Provided by NHentai-API")
+                    while True:
+                        try:
+                            m = await self.bot.wait_for("message", timeout=10, bypass_cooldown=True,
+                                check=lambda m: m.author.id == self.ctx.author.id and \
+                                    m.channel.id == self.ctx.channel.id)
+                        except TimeoutError:
+                            self.am_embed.set_footer(text=Embed.Empty)
                             await self.active_message.edit(embed=self.am_embed)
+                            break
+                        
+                        except BotInteractionCooldown:
+                            continue
 
-                        return
+                        else:
+                            await m.delete()
+                            
+                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.doujins)):
+                                self.current_result = int(m.content)-1
+                                await self.update_browser(self.ctx)
+                                break
+                            else:
+                                await self.am_channel.send("Not a valid number!", delete_after=2)
+                                continue
+                
+                elif str(reaction.emoji) == "⏹":
+                    message_part = []
+                    for ind, dj in enumerate(self.doujins):                        
+                        if ("lolicon" in dj.tags or "shotacon" in dj.tags) and self.ctx.guild and not self.lolicon_allowed:
+                            message_part.append("__`       `__ | ⚠🚫 | Not available in this server.")
+                        else:
+                            message_part.append(
+                                f"__`{str(dj.id).ljust(7)}`__ | "
+                                f"{language_to_flag(dj.languages)} | "
+                                f"{shorten(dj.title, width=50, placeholder='...')}")
                     
-                    elif interaction.component.id == "zoom":
-                        emb = deepcopy(self.am_embed)
-                        if not emb.image:
-                            self.am_embed.set_image(url=emb.thumbnail.url)
-                            self.am_embed.set_thumbnail(url=Embed.Empty)
-                        elif not emb.thumbnail:
-                            self.am_embed.set_thumbnail(url=emb.image.url)
-                            self.am_embed.set_image(url=Embed.Empty)
-                        
+                    if isinstance(self.results, SearchPage):
+                        self.am_embed = Embed(
+                            description=f"Showing page {self.page}/{self.results.total_pages}"
+                                        f"{'; illegal results are hidden:' if ctx.guild and not self.lolicon_allowed else ':'}"
+                                        f"\n"+('\n'.join(message_part)))
+                    
+                    elif isinstance(self.results, PopularPage):
+                        self.am_embed = Embed(
+                            description=f"🔥 Popular Now 🔥"
+                                        f"\n"+('\n'.join(message_part)))
+                                        
+                    self.am_embed.set_author(
+                        name="NHentai Search Results",
+                        url=f"https://nhentai.net/",
+                        icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+                    self.am_embed.set_footer(
+                        text=f"Provided by NHentai-API")
+                    self.am_embed.set_thumbnail(
+                        url=Embed.Empty)
+                    self.am_embed.set_image(
+                        url=Embed.Empty)
+
+                    await self.active_message.clear_reactions()
+                    await self.active_message.edit(content='', embed=self.am_embed)
+                    await self.active_message2.delete()
+                    return
+                
+                elif str(reaction.emoji) == "📖":
+                    if ("lolicon" in self.doujins[self.current_result].tags or "shotacon" in self.doujins[self.current_result].tags) and self.ctx.guild and not self.lolicon_allowed:
+                        continue
+                    
+                    await self.active_message.clear_reactions()
+
+                    message_part = []
+                    for ind, dj in enumerate(self.doujins):                        
+                        if ("lolicon" in dj.tags or "shotacon" in dj.tags) and self.ctx.guild and not self.lolicon_allowed:
+                            message_part.append("__`       `__ | ⚠🚫 | Not available in this server.")
+                        else:
+                            message_part.append(
+                            f"{'**' if ind == self.current_result else ''}"
+                            f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
+                            f"{language_to_flag(self.doujins[ind].languages)} | "
+                            f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.current_result else ''}")
+
+                    if isinstance(self.results, SearchPage):
+                        self.am_embed = Embed(
+                            description=f"Showing page {self.page}/{self.results.total_pages}"
+                                        f"{'; illegal results are hidden:' if ctx.guild and not self.lolicon_allowed else ':'}"
+                                        f"\n"+('\n'.join(message_part)))
+                    
+                    elif isinstance(self.results, PopularPage):
+                        self.am_embed = Embed(
+                            description=f"🔥 Popular Now 🔥"
+                                        f"\n"+('\n'.join(message_part)))
+                                        
+                    self.am_embed.set_author(
+                        name="NHentai Search Results",
+                        url=f"https://nhentai.net/",
+                        icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+                    self.am_embed.set_footer(
+                        text=f"Provided by NHentai-API; Opened doujin {self.doujins[self.current_result].id}")
+                    self.am_embed.set_thumbnail(
+                        url=Embed.Empty)
+                    self.am_embed.set_image(
+                        url=Embed.Empty)
+
+                    await self.active_message.edit(content='', embed=self.am_embed)
+                    await self.active_message2.delete()
+
+                    session = ImagePageReader(self.bot, ctx, self.bot.doujin_cache[self.doujins[self.current_result].id].images, 
+                        f"{self.bot.doujin_cache[self.doujins[self.current_result].id].id} [*n*] {self.bot.doujin_cache[self.doujins[self.current_result].id].title}")
+                    response = await session.setup()
+                    if response:
+                        await session.start()
+                    else:
+                        self.am_embed.set_footer(text="Provided by NHentai-API")
                         await self.active_message.edit(embed=self.am_embed)
-            
-                except Exception:
-                    error = exc_info()
-                    temp = await self.ctx.send(embed=Embed(
-                        color=0xFF0000,
-                        description="An unhandled error occured; Please try again.\n"
-                                    "If the issue persists, please try searching again.\n"
-                                    "If searching again doesn't work, click the `Support Server` button."
-                        ).set_footer(text="This message will disappear in 10 seconds."),
-                        delete_after=10)
+
+                    return
+                
+                elif str(reaction.emoji) == "🔍":
+                    emb = deepcopy(self.active_message2.embeds[0])
+                    if not emb.image:
+                        emb.set_image(url=emb.thumbnail.url)
+                        emb.set_thumbnail(url=Embed.Empty)
+                        emb.set_footer(text="🔼🔽🔢⏹📖🔍 |Up|Down|Select|Stop|Read|Zoom-|")
+                    elif not emb.thumbnail:
+                        emb.set_thumbnail(url=emb.image.url)
+                        emb.set_image(url=Embed.Empty)
+                        emb.set_footer(text="🔼🔽🔢⏹📖🔍 |Up|Down|Select|Stop|Read|Zoom+|")
                     
-                    await temp.delete(delay=10)
-                        
-                    await self.bot.errorlog.send(error, ctx=self.ctx, event="ImagePageReader")
-                    
-                    continue
+                    await self.active_message2.edit(embed=emb)
 
 def setup(bot):
     bot.add_cog(Classes(bot))
