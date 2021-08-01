@@ -396,56 +396,62 @@ class ImagePageReader:
         # `delete_after` doesn't work currently with the DC wrapper
         await edit.delete(delay=10)
         
-        try:
-            interaction = await self.bot.wait_for("button_click", timeout=30, bypass_cooldown=True,
-                check=lambda i: 
-                    i.message.id == conf.id and \
-                    i.user.id == self.ctx.author.id)
+        while True:
+            try:
+                interaction = await self.bot.wait_for("button_click", timeout=30, bypass_cooldown=True,
+                    check=lambda i: 
+                        i.message.id == conf.id and \
+                        i.user.id == self.ctx.author.id)
         
-        except TimeoutError:
-            await conf.edit(content="<a:nreader_loading:810936543401213953> Closing...")
+            except TimeoutError:
+                await conf.edit(content="<a:nreader_loading:810936543401213953> Closing...")
             
-            await sleep(1)
-            await conf.channel.delete()
-            return False
+                await sleep(1)
+                await conf.channel.delete()
+                return False
         
-        else:
-            await interaction.respond(type=6)
+            else:
+                try: await interaction.respond(type=6)
+                except NotFound: continue
             
-            self.active_message = conf
-            self.am_channel = conf.channel
+                self.active_message = conf
+                self.am_channel = conf.channel
             
-            self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
-                                        f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                        f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-            self.am_embed.set_image(url=self.images[self.current_page])
-            self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
-            self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
-            await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
-                    Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="sele"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
-                    [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                    Button(label="Provided by MechHub", style=2, disabled=True)]])
+                self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
+                                            f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
+                                            f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
+                self.am_embed.set_image(url=self.images[self.current_page])
+                self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
+                self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
+                    components=[
+                        [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
+                        Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
+                        Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="sele"),
+                        Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
+                        Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
+                        [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
+                        Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
+                        Button(label="Provided by MechHub", style=2, disabled=True)]])
 
-            await sleep(0.2)
-            await edit.delete()
-            return True
+                await sleep(0.2)
+                with suppress(NotFound):
+                    await edit.delete()
+
+                return True
 
     async def start(self):
         if self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][0]:
             self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].insert(0, 
-            self.bot.doujin_cache[self.code].id)
+                self.bot.doujin_cache[self.code].id)
+            
             if "placeholer" in self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].remove("placeholder")
             
             if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) >= 2 and \
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1][1] == \
-                self.bot.doujin_cache[self.code].id:
+                    self.bot.doujin_cache[self.code].id:
+                
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop(0)
             
             while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) > 25:
@@ -455,27 +461,25 @@ class ImagePageReader:
             try:
                 interaction = await self.bot.wait_for("button_click", timeout=60*5,
                     check=lambda i: i.message.id==self.active_message.id and i.user.id==self.ctx.author.id)
-            
-            except BotInteractionCooldown:
-                continue
 
             except TimeoutError:
-                self.am_embed.description = ""
-                self.am_embed.set_footer(text=f"You timed out on page [{self.current_page+1}/{len(self.images)}].\n")
+                with suppress(NotFound):
+                    self.am_embed.description = ""
+                    self.am_embed.set_footer(text=f"You timed out on page [{self.current_page+1}/{len(self.images)}].\n")
 
-                self.am_embed.set_image(url=Embed.Empty)
-                self.am_embed.set_thumbnail(url=Embed.Empty)
-                await self.active_message.edit(embed=self.am_embed)
-                temp = await self.am_channel.send(content=f"{self.ctx.author.mention}, you timed out in your doujin. Forgot to press pause?", delete_after=1)
-                await temp.delete(delay=1)
+                    self.am_embed.set_image(url=Embed.Empty)
+                    self.am_embed.set_thumbnail(url=Embed.Empty)
+                    await self.active_message.edit(embed=self.am_embed)
+                    temp = await self.am_channel.send(content=f"{self.ctx.author.mention}, you timed out in your doujin. Forgot to press pause?", delete_after=1)
+                    await temp.delete(delay=1)
         
-                await sleep(10)
-                await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
+                    await sleep(10)
+                    await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
 
-                await sleep(1)
-                await self.am_channel.delete()
+                    await sleep(1)
+                    await self.am_channel.delete()
 
-                break
+                    break
             
             except BotInteractionCooldown:
                 continue
@@ -484,6 +488,11 @@ class ImagePageReader:
                 try:
                     try: await interaction.respond(type=6)
                     except NotFound: continue
+
+                    if isinstance(interaction.component, list):
+                        delay = await self.am_channel.send("Returned unexpected datatype. Please try again. If that fails, let the doujin time out and try again later.")
+                        await delay.delete(delay=5)
+                        continue
 
                     self.bot.inactive = 0
                     if interaction.component.id == "next":  # Next page
@@ -625,7 +634,7 @@ class ImagePageReader:
 
                                     continue
                     
-                    elif interaction.component.id == "paus":  # Pause for a maximum of one hour
+                    elif interaction.component.id == "paus":  # Pause and send to recall
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.description = Embed.Empty
@@ -747,10 +756,10 @@ class SearchResultsBrowser:
                     f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
                     f"{language_to_flag(self.doujins[ind].languages)} | "
                     f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.index else ''}")
-        
+
         self.am_embed = Embed(
             title=self.name,
-            description=f"\n"+('\n'.join(message_part)))
+            description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
             
         self.am_embed.set_author(
             name="NHentai Search Results [INTERACTIVE]",
@@ -767,7 +776,7 @@ class SearchResultsBrowser:
         
         if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and self.ctx.guild and not self.lolicon_allowed:
             self.am_embed.add_field(
-                name="Selected Doujin",
+                name="Main Title",
                 inline=False,
                 value="No information available.\n"
                       "This doujin cannot be viewed here.")
@@ -776,16 +785,38 @@ class SearchResultsBrowser:
         
         else:
             self.am_embed.add_field(
-                name=f"Selected Doujin: {shorten(doujin.title, width=240, placeholder='...')}",
+                name=f"Main Title",
                 inline=False,
-                value=f"Doujin ID: __`{doujin.id}`__\n"
-                      f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
-                      f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
-                      f"Pages: `{len(doujin.images)}`\n"
-                      f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
-                      f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
-                      f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
-                      f"Tags: ```{', '.join(doujin.tags) if doujin.tags else 'None provided'}```\n")
+                value=f"{doujin.title}"
+            ).add_field(
+                inline=False,
+                name="Secondary Title",
+                value=f"`{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`"
+            ).add_field(
+                inline=False,
+                name="Doujin ID ー Pages",
+                value=f"`{doujin.id} ー {len(doujin.images)} pages`"
+            ).add_field(
+                inline=False,
+                name="Language(s)",
+                value=f"{language_to_flag(doujin.languages)} `{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`"
+            ).add_field(
+                inline=False,
+                name="Artist(s)",
+                value=f"`{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`"
+            ).add_field(
+                inline=False,
+                name="Character(s)",
+                value=f"`{', '.join(doujin.characters) if doujin.characters else 'Original'}`"
+            ).add_field(
+                inline=False,
+                name="Parody Of",
+                value=f"`{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`"
+            ).add_field(
+                inline=False,
+                name="Tags",
+                value=f"```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```"
+            )
             
         previous_emb = deepcopy(self.active_message.embeds[0])
         if previous_emb.image:
