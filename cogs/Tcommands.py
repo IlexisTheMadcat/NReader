@@ -1,13 +1,10 @@
-from re import search, findall
-from inspect import isawaitable
+from re import search
 from asyncio import sleep, TimeoutError
 from textwrap import shorten
 from copy import deepcopy
 from contextlib import suppress
 
-from udpy import AsyncUrbanClient
 from discord import Forbidden, NotFound
-from discord.utils import maybe_coroutine
 from discord.ext.commands import (
     Cog, bot_has_permissions, 
     bot_has_guild_permissions, command)
@@ -16,18 +13,17 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.classes import (
+from cogs.Tclasses import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.utils import language_to_flag, restricted_tags
 
-newline = "\n"
 
 class Commands(Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @command(name="test")
+    @command(name="Ttest")
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def test(self, ctx):
         try:
@@ -44,14 +40,15 @@ class Commands(Cog):
             components=[Button(label="Example.", style=1, emoji="🔘", id="button1")])
 
         try:
-            def check(i):
-                return i.message.id==edit.id and i.user.id==ctx.author.id
-
-            interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-        except (TimeoutError, AttributeError):
-            await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(description="Button failed. (3/3)."),
-                components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
+            interaction = await self.bot.wait_for("button_click", timeout=10, bypass_cooldown=True,
+                check=lambda i: \
+                    i.user.id == ctx.author.id and \
+                    i.message.id == conf.id and \
+                    i.component.id == "button1")
+        
+        except TimeoutError:
+            await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(description="Button failed (3/3)."),
+                components=[Button(label="Failed.", style=4, emoji="⛔", id="button1", disabled=True)])
         
         else:
             await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(description="Button complete. (3/3)."),
@@ -62,7 +59,7 @@ class Commands(Cog):
         
         print(f"{ctx.author} ({ctx.author.id}) tested.")
        
-    @command(aliases=["code"])
+    @command(aliases=["Tcode"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -70,13 +67,7 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    async def doujin_info(self, ctx, code="random", interface="new"):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Tdoujin_info(self, ctx, code="random", interface="new"):
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -96,7 +87,7 @@ class Commands(Cog):
                 code = str(code)
         except ValueError:
             await ctx.send(embed=Embed(
-                description=":x: You didn't type a proper ID. Come on, numbers!"))
+                description=":x: You didn't type a proper ID. Hint: It has to be a number!"))
 
             return
         
@@ -134,7 +125,7 @@ class Commands(Cog):
         else:
             while True:
                 doujin = await nhentai_api.get_random()
-                self.bot.doujin_cache[str(doujin.id)] = doujin
+                self.bot.doujin_cache[doujin.id] = doujin
                 if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
                     await edit.edit(embed=Embed(
                         description="<a:nreader_loading:810936543401213953> Retrying..."))
@@ -206,18 +197,9 @@ class Commands(Cog):
 
         while True:
             try:
-                def check(i):
-                    return i.message.id==edit.id and i.user.id==ctx.author.id
-
-                interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
+                interaction = await self.bot.wait_for("button_click", timeout=60, 
+                    check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
             
-            except AttributeError as e: 
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[
-                        [Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True),
-                         Button(label="Error", style=2, emoji="⛔", id="button2", disabled=True)]])
-                raise e
-
             except TimeoutError:
                 emb.set_footer(text="Provided by NHentai-API")
                 emb.set_thumbnail(
@@ -229,7 +211,8 @@ class Commands(Cog):
                     await self.bot.comp_ext.edit_component_msg(edit, embed=emb, 
                         components=[
                             [Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                             Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]])
+                            Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
+                        ])
                 
                 return
             
@@ -283,7 +266,7 @@ class Commands(Cog):
 
                     continue
     
-    @command(aliases=["search"])
+    @command(aliases=["Tsearch"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -291,13 +274,7 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    async def search_doujins(self, ctx, *, query: str = ""):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Tsearch_doujins(self, ctx, *, query: str = ""):
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -305,7 +282,7 @@ class Commands(Cog):
         except KeyError:
             pass
         
-        if not ctx.channel.is_nsfw():
+        if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
             return
         
@@ -396,23 +373,17 @@ class Commands(Cog):
         print(f"[] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
 
         try:
-            def check(i):
-                i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                return i.message.id==edit.id and i.user.id==ctx.author.id
-
-            interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
+            interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                check=lambda i: i.message.id==conf.id and \
+                i.user.id==ctx.author.id and \
+                i.component.id=="button1")
         
-        except AttributeError as e: 
-            await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-            raise e
-
         except TimeoutError:
             with suppress(Forbidden):
                 await conf.clear_reactions()
 
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button1", disabled=True)])
+                components=[Button(label="Timeout", style=2, emoji="🔄", id="button1", disabled=True)])
             
             return
         
@@ -489,17 +460,10 @@ class Commands(Cog):
             components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
         
         try:
-            def check(i):
-                i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                return i.message.id==edit.id and i.user.id==ctx.author.id
-
-            interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-        except AttributeError as e: 
-            await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-            raise e
-
+            interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                check=lambda i: i.message.id==conf.id and \
+                    i.user.id==ctx.author.id and \
+                    i.component.id=="button1")
         except TimeoutError:
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                 components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
@@ -514,7 +478,7 @@ class Commands(Cog):
             interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
     
-    @command(aliases=["pop"])
+    @command(aliases=["Tpop"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -522,13 +486,7 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    async def popular(self, ctx):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Tpopular(self, ctx):
         lolicon_allowed = False
         try:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -580,17 +538,10 @@ class Commands(Cog):
             components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
         
         try:
-            def check(i):
-                i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                return i.message.id==edit.id and i.user.id==ctx.author.id
-
-            interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-        except AttributeError as e: 
-            await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-            raise e
-
+            interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                check=lambda i: i.message.id==conf.id and \
+                    i.user.id==ctx.author.id and \
+                    i.component.id=="button1")
         except TimeoutError:
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                 components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
@@ -605,17 +556,11 @@ class Commands(Cog):
             interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, name=f"<:npopular:853883174455214102> **Popular Now**", lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
     
-    @command(aliases=["fav"])
+    @command(aliases=["Tfav"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    async def favorites(self, ctx, mode:str=None, code=None):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Tfavorites(self, ctx, mode:str=None, code=None):
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -705,17 +650,10 @@ class Commands(Cog):
                     components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
                 
                 try:
-                    def check(i):
-                        i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                        return i.message.id==edit.id and i.user.id==ctx.author.id
-
-                    interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-                except AttributeError as e: 
-                    await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                        components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-                    raise e
-
+                    interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                        check=lambda i: i.message.id==edit.id and \
+                            i.user.id==ctx.author.id and \
+                            i.component.id=="button1")
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
                         components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
@@ -739,20 +677,10 @@ class Commands(Cog):
         
         elif mode:
             if mode.lower() in ["add", "a", "+"]:
-                if not code:
-                    await ctx.send(embed=Embed(
-                        description=":x: What are you adding to your favorites list?\n"
-                                    "`n!favorites add <doujin_id>`"))
-                    
-                    return
-
                 try:
                     code = int(code)
-                    code = str(code)
                 except ValueError:
-                    await ctx.send(embed=Embed(
-                        description=":x: You didn't type a proper ID. Come on, numbers!"))
-                    
+                    await ctx.send(":x: You didn't type a proper ID. Hint: It has to be a number!")
                     return
 
                 nhentai_api = NHentai()
@@ -764,11 +692,8 @@ class Commands(Cog):
                     doujin = self.bot.doujin_cache[code]
 
                 if not doujin:
-                    await edit.edit(embed=Embed(
-                        description=":mag_right::x: I did not find a doujin with that ID."))
-
+                    await edit.edit(content=":mag_right::x: I did not find a doujin with that ID.")
                     return
-
                 else:
                     self.bot.doujin_cache[code] = doujin
 
@@ -778,8 +703,7 @@ class Commands(Cog):
                     
                     if len(self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]) >= 25:
                         emb = Embed(
-                            description=f":x: Your favorites list is full. You can only hold 25.\n"
-                                        f"This is not the developer being mean, any more would make the favorites list message too large to send."
+                            description=f":x: Your favorites list is full. You can only hold 25."
                         ).set_author(
                             name="NHentai Favorites",
                             url=f"https://nhentai.net/",
@@ -810,21 +734,13 @@ class Commands(Cog):
                         await edit.edit(content="", embed=emb)
             
             elif mode.lower() in ["remove", "r", "-"]:
-                if not code:
-                    await ctx.send(embed=Embed(
-                        description=":x: What are you removing from your favorites list?\n"
-                                    "`n!favorites remove <doujin_id>`"))
-                    
-                    return
-
                 try:
                     code = int(code)
-                    code = str(code)
                 except ValueError:
-                    await ctx.send(embed=Embed(
-                        description=":x: You didn't type a proper ID. Come on, numbers!"))
-
+                    await ctx.send(":x: You didn't type a proper ID. Hint: It has to be a number!")
                     return
+                
+                self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'].remove(0)  # Remove placeholder value
 
                 if code in self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]:
                     self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"].remove(code)
@@ -849,17 +765,11 @@ class Commands(Cog):
             else:
                 await ctx.send("You didn't specify a mode. Valid modes are `add/a/+` and `remove/r/-`.")
 
-    @command(aliases=["bm"])
+    @command(aliases=["Tbm"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    async def bookmarks(self, ctx):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Tbookmarks(self, ctx):
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -867,7 +777,7 @@ class Commands(Cog):
         except KeyError:
             pass
         
-        if not ctx.channel.is_nsfw():
+        if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
             return
 
@@ -929,17 +839,10 @@ class Commands(Cog):
                 components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
             
             try:
-                def check(i):
-                    i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                    return i.message.id==edit.id and i.user.id==ctx.author.id
-
-                interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-            except AttributeError as e: 
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-                raise e
-
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: i.message.id==edit.id and \
+                        i.user.id==ctx.author.id and \
+                        i.component.id=="button1")
             except TimeoutError:
                 await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
                     components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
@@ -960,17 +863,11 @@ class Commands(Cog):
         
         await edit.edit(content="", embed=emb)
     
-    @command(aliases=["whl"])
+    @command()
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    async def whitelist(self, ctx, mode=None):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Twhitelist(self, ctx, mode=None):
         if ctx.guild and ctx.author.id != ctx.guild.owner_id:
             await ctx.send(embed=Embed(
                 color=0xFF0000,
@@ -1014,19 +911,11 @@ class Commands(Cog):
                      Button(label="I decline", style=4, id="button2")]])
             
             try:
-                def check(i):
-                    i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                    return i.message.id==conf.id and i.user.id==ctx.author.id
-
-                interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: \
+                        i.message.id==conf.id and \
+                        i.user.id==ctx.author.id)
             
-            except AttributeError as e: 
-                await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                    components=[
-                        [Button(label="Error", style=3, emoji="⛔", id="button1", disabled=True),
-                         Button(label="Error", style=4, emoji="⛔", id="button2", disabled=True)]])
-                raise e
-
             except TimeoutError:
                 await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                     components=[
@@ -1069,27 +958,17 @@ class Commands(Cog):
                 color=0xFF0000,
                 description="You didn't specify a mode. Valid modes are `add/a/+` and `remove/r/-`."))
 
-    @command(aliases=["h"])
+    @command()
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    async def history(self, ctx, switch="view"):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Thistory(self, ctx, switch="view"): # view (default), toggle, clear
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-
-        if not ctx.channel.is_nsfw():
-            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
-            return
     
         if switch.lower() == "view":
             nhentai_api = NHentai()
@@ -1170,17 +1049,10 @@ class Commands(Cog):
                     components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
                 
                 try:
-                    def check(i):
-                        i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                        return i.message.id==edit.id and i.user.id==ctx.author.id
-
-                    interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-                except AttributeError as e: 
-                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                        components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-                    raise e
-
+                    interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                        check=lambda i: i.message.id==edit.id and \
+                            i.user.id==ctx.author.id and \
+                            i.component.id=="button1")
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
                         components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
@@ -1230,11 +1102,11 @@ class Commands(Cog):
 
             await ctx.send(embed=emb)
 
-    @command(aliases=["append"])
+    @command(aliases=["Tappend"])
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
-    async def search_appendage(self, ctx, *, appendage=""):
+    async def Tsearch_appendage(self, ctx, *, appendage=""):
         if appendage and appendage != "clear_appendage":
             emb = embed=Embed(
                 title = "Confirm Search Appendage Update",
@@ -1251,16 +1123,10 @@ class Commands(Cog):
                 components=[Button(label="Update", style=1, emoji="💾", id="button1")])
                 
             try:
-                def check(i):
-                    i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                    return i.message.id==edit.id and i.user.id==ctx.author.id
-
-                interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-            except AttributeError as e: 
-                await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                    components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-                raise e
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: i.message.id==conf.id and \
+                        i.user.id==ctx.author.id and \
+                        i.component.id=="button1")
 
             except TimeoutError:
                 await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
@@ -1308,16 +1174,10 @@ class Commands(Cog):
                 components=[Button(label="Erase", style=4, emoji="💾", id="button1")])
                 
             try:
-                def check(i):
-                    i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                    return i.message.id==edit.id and i.user.id==ctx.author.id
-
-                interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-            except AttributeError as e: 
-                await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                    components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-                raise e
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: i.message.id==conf.id and \
+                        i.user.id==ctx.author.id and \
+                        i.component.id=="button1")
 
             except TimeoutError:
                 await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
@@ -1359,7 +1219,7 @@ class Commands(Cog):
                     description = "ℹ Nothing is being added to your searches."
                 ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
 
-    @command(aliases=["rc"])
+    @command(aliases=["Trc"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -1367,23 +1227,13 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    async def recall(self, ctx):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
+    async def Trecall(self, ctx):
         lolicon_allowed = False
         try:
-            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
+            if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-
-        if not ctx.channel.is_nsfw():
-            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
-            return
         
         recall_id = self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"]
         if recall_id == "N/A":
@@ -1397,20 +1247,7 @@ class Commands(Cog):
         edit = await ctx.send(embed=Embed(description="<a:nreader_loading:810936543401213953> Recalling..."))
 
         nhentai_api = NHentai()
-        if code not in self.bot.doujin_cache:
-            doujin = await nhentai_api.get_doujin(code)
-        else:
-            doujin = self.bot.doujin_cache[code]
-        
-        if not doujin:
-            await ctx.send(embed=Embed(
-                description=":mag_right::x: Unfortunately, the doujin you were reading is no longer available."))
-            
-            self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
-            return
-
-        else:
-            self.bot.doujin_cache[code] = doujin
+        doujin = await nhentai_api.get_doujin(code)
         
         if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
             await edit.edit(embed=Embed(
@@ -1430,215 +1267,62 @@ class Commands(Cog):
         
         return
 
-    @command(aliases=["urban", "ud"])
-    @bot_has_permissions(
-        send_messages=True, 
-        embed_links=True)
-    async def urban_dictionary(self, ctx, *, word):
-        edit = await self.bot.comp_ext.send_component_msg(ctx, embed=Embed(
-            color=0x1d2439,
-            description="<a:loading:813237675553062954>"))
-
-        udclient = AsyncUrbanClient()
-        response = await udclient.get_definition(word)
-
-        if not response:
-            await self.bot.comp_ext.edit_component_msg(edit, embed=Embed(
-                color=0x1d2439,
-                description="🔎❌ I did not find anything. Maybe you typed something wrong?"))
-            
-            return
-        else:
-            print(f"[] {ctx.author} ({ctx.author.id}) looked up '{word}' using the built-in Urban Dictionary.")
-
-        # Manual cleaning
-        for res in response:
-            # Remove redundant characters and escape markdown
-            res.example = res.example.replace("\r", "") 
-            res.example = res.example.strip("\n")
-            res.example = res.example.replace("*", "\*")
-            res.example = res.example.replace("_", "\_")
-            res.example = res.example.replace("`", "\`")
-
-            res.definition = res.definition.replace("\r", "") 
-            res.definition = res.definition.strip("\n")
-            res.definition = res.definition.replace("*", "\*")
-            res.definition = res.definition.replace("_", "\_")
-            res.definition = res.definition.replace("`", "\`")
-
-            # Add bot markdown
-            defhyperlinks = findall(r"""(\[([A-Za-z0-9_ "']+)\])""", res.definition)
-            exahyperlinks = findall(r"""(\[([A-Za-z0-9_ "']+)\])""", res.example)
-            for hl, hl_word in defhyperlinks: 
-                res.definition = res.definition.replace(hl, f"**[{hl_word}](https://www.urbandictionary.com/define.php?term={hl_word.replace(' ', '%20')})**")
-            for hl, hl_word in exahyperlinks: 
-                res.example = res.example.replace(hl, f"**[{hl_word}](https://www.urbandictionary.com/define.php?term={hl_word.replace(' ', '%20')})**")
-            
-            res.example_lines = res.example.split("\n") 
-            while "" in res.example_lines: res.example_lines.remove("")
-            for ind, ex in enumerate(res.example_lines):
-                res.example_lines[ind] = ex.strip(" ")
-
-
-        current_def = 0
-        examples_part = []
-        for ind, example in enumerate(response[current_def].example_lines):
-            examples_part.append(f"> *{example}*")
-
-        await self.bot.comp_ext.edit_component_msg(edit, 
-            embed=Embed(
-                color=0x1d2439,
-                title=response[current_def].word,
-                description=f"{response[current_def].definition}\n"
-                            f"\n"
-                            f"{newline.join(examples_part)}\n"
-                            f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                            f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
-            ).set_author(
-                name="Urban Dictionary",
-                url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
-            
-            components=[[
-                Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=False),
-                Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=False)]]
-        )
-
-        while True:
-            try:
-                def check(i):
-                    i = self.bot.loop.create_task(maybe_coroutine(i)).result()
-                    return i.message.id==edit.id and i.user.id==ctx.author.id
-
-                interaction = await self.bot.wait_for("button_click", timeout=60, check=check)
-
-            except AttributeError as e: 
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Error", style=1, emoji="⛔", id="button1", disabled=True)])
-                raise e
-
-            except TimeoutError:
-                examples_part = []
-                for example in response[current_def].example_lines:
-                    examples_part.append(f"> *{example}*")
-
-                await self.bot.comp_ext.edit_component_msg(edit, 
-                    embed=Embed(
-                        color=0x1d2439,
-                        title=response[current_def].word,
-                        description=f"{response[current_def].definition}\n"
-                                    f"\n"
-                                    f"{newline.join(examples_part)}\n"
-                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
-                    ).set_author(
-                        name="Urban Dictionary",
-                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
-            
-                    components=[[
-                        Button(label="Timeout", style=2, emoji="◀️", id="button1", disabled=True),
-                        Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Timeout", style=2, emoji="▶️", id="button2", disabled=True)]]
-                )
-            else:
-                await interaction.respond(type=6)
-
-                if interaction.component.id == "button1":
-                    if current_def == 0:
-                        current_def = len(response)-1
-                    else:
-                        current_def = current_def - 1
-
-                elif interaction.component.id == "button2":
-                    if current_def == len(response)-1:
-                        current_def = 0
-                    else:
-                        current_def = current_def + 1
-
-                examples_part = []
-                for example in response[current_def].example_lines:
-                    examples_part.append(f"> *{example}*")
-
-                await self.bot.comp_ext.edit_component_msg(edit, 
-                    embed=Embed(
-                        color=0x1d2439,
-                        title=response[current_def].word,
-                        description=f"{response[current_def].definition}\n"
-                                    f"\n"
-                                    f"{newline.join(examples_part)}\n"
-                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
-                    ).set_author(
-                        name="Urban Dictionary",
-                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
-            
-                    components=[[
-                        Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=False),
-                        Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=False)]]
-                )
-
-                continue
-
-    @favorites.before_invoke
-    @bookmarks.before_invoke
-    @whitelist.before_invoke
-    @history.before_invoke
-    @search_appendage.before_invoke
+    @Tfavorites.before_invoke
+    @Tbookmarks.before_invoke
+    @Twhitelist.before_invoke
+    @Thistory.before_invoke
+    @Tsearch_appendage.before_invoke
     async def placeholder_remove(self, ctx):
-        if ctx.command.name == "favorites":
+        if ctx.command.name == "Tfavorites":
             if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'].remove(0)
                 return
         
-        if ctx.command.name == "bookmarks":
+        if ctx.command.name == "Tbookmarks":
             if "0" in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'].pop("placeholder")
                 return
         
-        if ctx.command.name == "whitelist":
+        if ctx.command.name == "Twhitelist":
             if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers'].remove(0)
 
-        if ctx.command.name == "history":
+        if ctx.command.name == "Thistory":
             if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1].remove(0)
                 return
         
-        if ctx.command.name == "search_appendage":
+        if ctx.command.name == "Tsearch_appendage":
             if len(self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']) == 1:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage'] = ""
                 return
         
-    @favorites.after_invoke
-    @bookmarks.after_invoke
-    @whitelist.after_invoke
-    @history.after_invoke
-    @search_appendage.after_invoke
+    @Tfavorites.after_invoke
+    @Tbookmarks.after_invoke
+    @Twhitelist.after_invoke
+    @Thistory.after_invoke
+    @Tsearch_appendage.after_invoke
     async def placeholder_add(self, ctx):
-        if ctx.command.name == "favorites":
+        if ctx.command.name == "Tfavorites":
             if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'].append(0)
                 return
         
-        if ctx.command.name == "bookmarks":
+        if ctx.command.name == "Tbookmarks":
             if "0" not in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'].update({"placeholder": 1})
                 return
         
-        if ctx.command.name == "whitelist":
+        if ctx.command.name == "Twhitelist":
             if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers'].append(0)
         
-        if ctx.command.name == "history":
+        if ctx.command.name == "Thistory":
             if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1].append(0)
                 return
         
-        if ctx.command.name == "search_appendage":
+        if ctx.command.name == "Tsearch_appendage":
             if not self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage'] = " "
                 return
