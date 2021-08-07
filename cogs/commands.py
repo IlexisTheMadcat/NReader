@@ -441,7 +441,7 @@ class Commands(Cog):
                             f"{shorten(dj2.title, width=50, placeholder='...')}")
                         
                     emb2 = Embed(
-                        description=f"Showing page {page}/{results.total_pages}"
+                        description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'}"
                                     f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
                                     f"\n"+('\n'.join(message_part2)))
                     emb2.set_author(
@@ -461,7 +461,7 @@ class Commands(Cog):
             doujins = doujins2
 
         emb = Embed(
-            description=f"Showing page {page}/{results.total_pages}"
+            description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'}"
                         f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
                         f"\n"+('\n'.join(message_part)))
         emb.set_author(
