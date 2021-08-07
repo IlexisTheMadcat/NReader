@@ -24,35 +24,40 @@ from utils.FirebaseDB import FirebaseDB
 DATA_DEFAULTS = {
     "UserData": {
         "UID": {  
-            "Settings": {  # User Settings dict
-                "UnrestrictedServers": [0],  # [int(serverID)]
+            "Settings": {  
                 # Listings that are normally blocked for legal reasons in servers show in these servers.
                 # Only the owner of the server can add its ID to this list.
+                "UnrestrictedServers": [0],  # [int(serverID)]
 
-                "SearchAppendage": " ",  # str(appendage)
                 # Users may add a string to the end of searches. 
                 # This string will be appended to all their searches no matter the case.
+                "SearchAppendage": " ",  # str(appendage)
 
+                # A notification sent to users when they use a command for the first time.
+                # These are set to true after being executed. Resets by command.
                 "NotificationsDue": {
                     "FirstTime": False,
                     "LoliconViewingTip": False
                 }  # dict of str:bool
-                # A notification sent to users when they use a command for the first time.
-                # These are set to true after being executed. Resets by command.
-
             },
-            "nFavorites": {  # User favorites including bookmarks
+
+            # User favorites including bookmarks
+            "nFavorites": {  
                 "Doujins": [0],  # [int(code)]
                 "Bookmarks": {"placeholder": 1}  # {str(code):int(page)}
             },
+
+            # Users may wish to add search results to a `To Read` list.
+            "ToRead": [0],  # [int(code)]
+
+            # Keep a history of the user's reading.
+            # "Bool"; Control whether or not the bot should record the user's history.
             "History": [
                 True,  # bool
                 [0]  # [int(code)]
             ],
-            # Keep a history of the user's reading.
-            # "Bool"; Control whether or not the bot should record the user's history.
 
-            "Recall": 0x000001
+            "Recall": 0x000001,
         }
     },
     "Tokens": {  # Replace ONLY for initialization
