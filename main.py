@@ -44,20 +44,32 @@ DATA_DEFAULTS = {
             # User favorites including bookmarks
             "nFavorites": {  
                 "Doujins": [0],  # [int(code)]
-                "Bookmarks": {"placeholder": 1}  # {str(code):int(page)}
+                "Bookmarks": {"placeholder": 0}  # {str(code):int(page)}
             },
+
+            "History": [
+                True, 
+                [0]
+            ],
 
             # Users may wish to add search results to a `To Read` list.
             "ToRead": [0],  # [int(code)]
 
-            # Keep a history of the user's reading.
-            # "Bool"; Control whether or not the bot should record the user's history.
-            "History": [
-                True,  # bool
-                [0]  # [int(code)]
-            ],
+            "Recall": 0,
 
-            "Recall": 0x000001,
+            # User collections
+            "Lists": {
+                "Built-in": {
+                    "Favorites": ["0"],  # Top favorites
+                    "To Read": ["0"],  # To Read list, auto-changed by search browser and finishing doujin.
+                    "Bookmarks": {"0": 0},  # Bookmark dictionary 
+                    "History": [True, ["0"]]  # Reading history
+                },
+                "Custom": {
+                    "placeholder": {"alias": "pl", "list": ["0"]}
+                }
+            },
+
         }
     },
     "Tokens": {  # Replace ONLY for initialization
