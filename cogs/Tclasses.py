@@ -724,7 +724,6 @@ class SearchResultsBrowser:
 
         `results` - obtained from nhentai_api.search(query); Modified `SearchPage` to contain real Doujins, not DoujinThumbnails.
         `msg` - optional message that the bot owns to edit, otherwise created 
-        `msg2` - optional second message
         """
         self.bot = bot
         self.ctx = ctx
@@ -765,7 +764,6 @@ class SearchResultsBrowser:
             name="NHentai Search Results [INTERACTIVE]",
             url=f"https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        self.am_embed.set_footer(text="Provided by NHentai-API")
 
         nhentai_api = NHentai()
         if self.doujins[self.index].id not in self.bot.doujin_cache:
@@ -837,8 +835,8 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                     Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
                     [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                    Button(label="Provided by MechHub", style=2, disabled=True)]])
+                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="toread"),
+                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
         else:
             self.active_message = await self.bot.comp_ext.send_component_msg(self.ctx, embed=self.am_embed,
                 components=[
@@ -848,8 +846,8 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                     Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
                     [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                    Button(label="Provided by MechHub", style=2, disabled=True)]])
+                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="toread"),
+                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
             
             await sleep(0.5)
     
@@ -893,9 +891,6 @@ class SearchResultsBrowser:
             
             else:
                 try:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
-
                     self.bot.inactive = 0
                     
                     if interaction.component.id == "up":
@@ -915,36 +910,31 @@ class SearchResultsBrowser:
                             await self.update_browser(self.ctx)
                     
                     elif interaction.component.id == "select":
-                        conf = await self.ctx.send(embed=Embed(
-                            description="Enter a result number..."))
-
-                        await self.active_message.edit(embed=self.am_embed)
+                        await interaction.respond(
+                            embed=Embed(
+                                description="Enter a result number within 15 seconds, or type `n-cancel` to cancel.\n"
+                                            "Your message will be deleted to keep clean."
+                            ).set_footer(text="You may dismiss this message, but the controls won't work until you respond or time out."))
 
                         while True:
                             try:
-                                m = await self.bot.wait_for("message", timeout=10, bypass_cooldown=True,
-                                    check=lambda m: m.author.id == self.ctx.author.id and \
-                                        m.channel.id == self.ctx.channel.id)
-                            except TimeoutError:
-                                await conf.delete()
-                                break
+                                m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
+                                    check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id)
                             
-                            except BotInteractionCooldown:
-                                continue
+                            except TimeoutError:
+                                break
 
                             else:
                                 await m.delete()
+                                if m.content == "n-cancel":
+                                    break
                                 
                                 if is_int(m.content) and (int(m.content)-1) in range(0, len(self.doujins)):
                                     self.index = int(m.content)-1
-                                    await conf.delete()
                                     await self.update_browser(self.ctx)
                                     break
+
                                 else:
-                                    await self.ctx.send(embed=Embed(
-                                        color=0xFF0000,
-                                        description="Not a valid number!"), 
-                                        delete_after=2)
                                     continue
                     
                     elif interaction.component.id == "stop":
@@ -1024,6 +1014,26 @@ class SearchResultsBrowser:
                             self.am_embed.set_image(url=Embed.Empty)
                         
                         await self.active_message.edit(embed=self.am_embed)
+
+                    elif interaction.component.id == "toread":
+                        if self.doujins[self.index].id not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["ToRead"]:
+                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["ToRead"].append(self.doujins[self.index].id)
+                            await interaction.respond(
+                                mention_author=False,
+                                embed=Embed(
+                                    description=f"✅ Added `{self.doujins[self.index].id}` to your To Read list!"
+                                ).set_footer(text="You may dismiss this message."))
+                        else:
+                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["ToRead"].remove(self.doujins[self.index].id)
+                            await interaction.respond(
+                                mention_author=False,
+                                embed=Embed(
+                                    description=f"✅ Removed `{self.doujins[self.index].id}` from your To Read list!"
+                                ).set_footer(text="You may dismiss this message."))
+                    
+                    # Respond if not already
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
             
                 except Exception:
                     error = exc_info()
