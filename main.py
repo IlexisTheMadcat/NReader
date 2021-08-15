@@ -63,7 +63,7 @@ DATA_DEFAULTS = {
                 "Built-in": {
                     "Favorites|*n*|fav": ["0"],  # Top favorites
                     "Read Later|*n*|rl": ["0"],  # To Read list, auto-changed by search browser and finishing doujin.
-                    "Bookmarks|*n*|bm": {"0": 0},  # Bookmark dictionary of code:page
+                    "Bookmarks|*n*|bm": ["0/-/0"],  # Bookmarks; code/-/page. Use `.split("/-/")`.
                     "History|*n*|his": {"enabled": True, "list": ["0"]},  # Reading history 
                 },
                 "Custom": {
