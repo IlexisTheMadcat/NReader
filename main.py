@@ -58,15 +58,16 @@ DATA_DEFAULTS = {
             "Recall": 0,
 
             # User collections
+            # Dev note: When editing keys, also use the CTRL+SHIFT+F to replace respective keys in the project.
             "Lists": {
                 "Built-in": {
-                    "Favorites": ["0"],  # Top favorites
-                    "To Read": ["0"],  # To Read list, auto-changed by search browser and finishing doujin.
-                    "Bookmarks": {"0": 0},  # Bookmark dictionary 
-                    "History": [True, ["0"]]  # Reading history
+                    "Favorites|*n*|fav": ["0"],  # Top favorites
+                    "Read Later|*n*|rl": ["0"],  # To Read list, auto-changed by search browser and finishing doujin.
+                    "Bookmarks|*n*|bm": {"0": 0},  # Bookmark dictionary of code:page
+                    "History|*n*|his": {"enabled": True, "list": ["0"]},  # Reading history 
                 },
                 "Custom": {
-                    "placeholder": {"alias": "pl", "list": ["0"]}
+                    "placeholder|*n*|ph": ["0"],
                 }
             },
 
