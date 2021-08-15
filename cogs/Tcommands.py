@@ -1614,6 +1614,10 @@ class Commands(Cog):
             emb = Embed(
                 title="Your Library",
                 description="Here are your lists."
+            ).set_author(
+                    name="NHentai",
+                    url="https://nhentai.net/",
+                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
             ).add_field(
                 name="__📌 Built-in__",
                 inline=False,
@@ -1652,7 +1656,7 @@ class Commands(Cog):
                         alias_name = _alias
                         full_name = _list_full_name
                         sys_category = _sys_category
-                        target_list = self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][_sys_category][full_name]
+                        target_list = self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][_sys_category][_list_full_name]
                         break
 
             if not full_name or list_name == "placeholder":
@@ -1681,15 +1685,83 @@ class Commands(Cog):
                 await load_list(target_list)
                 return
 
-            elif mode in ["clear", "c"]:
-                target_list = ["0"]
+            elif mode in ["add", "a", "+"]:
+                if code in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is already in that list."))
+                    return
 
-                emb = Embed()
-                emb.set_author(
-                    name="NHentai",
-                    url=f"https://nhentai.net/",
-                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                emb.description = "✅ Favorites cleared."
+                if len(target_list) >= 25: 
+                    await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
+                    return
+
+                try:
+                    code = int(code)
+                    code = str(code)
+                except ValueError:
+                    await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
+                    return
+
+                nhentai_api = NHentai()
+                if code not in self.bot.doujin_cache:
+                    doujin = await nhentai_api.get_doujin(code)
+                else:
+                    doujin = self.bot.doujin_cache[code]
+
+                if not doujin:
+                    await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
+                    return
+
+                self.bot.doujin_cache[code] = doujin
+
+                if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
+                    await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
+                    return
+
+                target_list.append(code)
+                await ctx.send(embed=Embed(description=f"✅ Added `{code}` to `{list_name}`."))
+                return
+
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is not in that list."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
+            elif mode in ["clear", "c"]:
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                else:
+                    await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
 
         elif name in ["Read Later", "rl"]:
             if mode and mode not in ["add", "a", "+", "remove", "r", "-", "clear", "c"]:
@@ -1700,17 +1772,89 @@ class Commands(Cog):
                 await load_list(target_list)
                 return
 
-            elif mode in ["clear", "c"]:
-                target_list = ["0"]
+            elif mode in ["add", "a", "+"]:
+                if code in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is already in that list."))
+                    return
 
-                emb = Embed()
-                emb.set_author(
-                    name="NHentai",
-                    url=f"https://nhentai.net/",
-                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                emb.description = "✅ Read Later cleared."
+                if len(target_list) >= 25: 
+                    await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
+                    return
+
+                try:
+                    code = int(code)
+                    code = str(code)
+                except ValueError:
+                    await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
+                    return
+
+                nhentai_api = NHentai()
+                if code not in self.bot.doujin_cache:
+                    doujin = await nhentai_api.get_doujin(code)
+                else:
+                    doujin = self.bot.doujin_cache[code]
+
+                if not doujin:
+                    await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
+                    return
+
+                self.bot.doujin_cache[code] = doujin
+
+                if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
+                    await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
+                    return
+
+                target_list.append(code)
+                await ctx.send(embed=Embed(description=f"✅ Added `{code}` to `{list_name}`."))
+                return
+
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is not in that list."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
+            elif mode in ["clear", "c"]:
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                else:
+                    await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
 
         elif name in ["Bookmarks", "bm"]:
+            if code == "0/-/0":
+                await ctx.send(embed=Embed(description="❌ `0/-/0` is a system placeholder and cannot be changed."))
+                return
+
             if mode and mode not in ["remove", "r", "-", "clear", "c"]:
                 await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `remove/r/-` and `clear/c`."))
                 return
@@ -1719,20 +1863,52 @@ class Commands(Cog):
                 await load_list(target_list)
                 return
 
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(
+                        description="❌ That doujin is not in that list.\n"
+                                    "Note: In the case of bookmarks, use the format `code/-/bookmarked_page` for `code`."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
             elif mode in ["clear", "c"]:
-                target_list = ["0/-/0"]
-
-                emb = Embed()
-                emb.set_author(
-                    name="NHentai",
-                    url=f"https://nhentai.net/",
-                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                emb.description = "✅ Bookmarks cleared."
-
-                await ctx.send(embed=emb)
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                else:
+                    await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0/-/0"]
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
 
         elif name in ["History", "his"]:
-            if mode and mode not in ["remove", "r", "-", "clear", "c", "toggle", "t", "clear", "c"]:
+            if mode and mode not in ["remove", "r", "-", "clear", "c", "toggle", "t"]:
                 await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `remove/r/-`, `clear/c`, and `toggle/t`."))
                 return
             
@@ -1740,29 +1916,54 @@ class Commands(Cog):
                 await load_list(target_list['list'])
                 return
 
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(
+                        description="❌ That doujin is not in that list.\n"
+                                    "Note: In the case of bookmarks, use the format `code/-/bookmarked_page` for `code`."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
             elif mode in ["clear", "c"]:
-                target_list["list"] = ["0"]
-
-                emb = Embed()
-                emb.set_author(
-                    name="NHentai",
-                    url=f"https://nhentai.net/",
-                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                emb.description = "✅ History cleared."
-
-                await ctx.send(embed=emb)
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                else:
+                    await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name]["list"] = ["0"]
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
         
             elif mode in ["toggle", "t"]:
                 target_list["enabled"] = not target_list["enabled"]
-
-                emb = Embed()
-                emb.set_author(
-                    name="NHentai",
-                    url="https://nhentai.net/",
-                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                emb.description = f"✅ History is now {'`On`' if target_list['enabled'] else '`Off`'}."
-
-                await ctx.send(embed=emb)
+                await ctx.send(embed=Embed(description=f"✅ History is now {'`On`' if target_list['enabled'] else '`Off`'}."))
+                return
 
         else:  # Queried list is custom
             if mode in ["add", "a", "+", "remove", "r", "-", "clear", "c", "delete", "del", "create", "cr", None]:
@@ -1834,8 +2035,12 @@ class Commands(Cog):
                     return
 
                 elif mode in ["add", "a", "+"]:
-                    if code in self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][full_name]:
+                    if code in target_list:
                         await ctx.send(embed=Embed(description="❌ That doujin is already in that list."))
+                        return
+
+                    if len(target_list) >= 25: 
+                        await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
                         return
 
                     try:
@@ -1862,22 +2067,50 @@ class Commands(Cog):
                         await edit.edit(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
                         return
 
-                    self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][full_name].append(code)
+                    target_list.append(code)
                     await edit.edit(embed=Embed(description=f"✅ Added `{code}` to `{list_name}`."))
                     return
 
                 elif mode in ["remove", "r", "-"]:
-                    if code not in self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][full_name]:
+                    if code not in target_list:
                         await ctx.send(embed=Embed(description="❌ That doujin is not in that list."))
                         return
 
-                    self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][full_name].remove(code)
+                    target_list.remove(code)
                     await edit.edit(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
                     return
 
                 elif mode in ["clear", "c"]:
-                    self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][full_name] = ["0"]
-                    await edit.edit(embed=Embed(description=f"✅ Cleared/reset `{list_name}`."))
+                    emb = Embed(
+                        title="Clearing An Occupied List",
+                        description=f"Are you sure you want to clear this list?\n"
+                                    f"\n"
+                                    f"**Name**: {list_name}\n"
+                                    f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                    f"**Number of doujins inside**: {len(target_list)-1}")
+                    conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                        components=[
+                            [Button(label="Continue", style=4, id="button1"),
+                            Button(label="Cancel", style=2, id="button2")]])
+                    try:
+                        interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                            check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                    except TimeoutError:
+                        await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                            components=[
+                                [Button(label="Timeout", style=4, id="button1", disabled=True),
+                                Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                    else:
+                        await interaction.respond(type=6)
+                        if interaction.component.id == "button1":
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                            await self.bot.comp_ext.edit_component_msg(
+                                conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        elif interaction.component.id == "button2":
+                            await self.bot.comp_ext.edit_component_msg(
+                                conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
                     return
 
                 elif mode in ["delete", "del"]:
