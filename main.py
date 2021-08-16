@@ -55,7 +55,7 @@ DATA_DEFAULTS = {
             # Users may wish to add search results to a `To Read` list.
             "ToRead": [0],  # [int(code)]
 
-            "Recall": 0,
+            "Recall": "N/A",
 
             # User collections
             # Dev note: When editing keys, also use the CTRL+SHIFT+F to replace respective keys in the project.
