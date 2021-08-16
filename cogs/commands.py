@@ -587,7 +587,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def favorites(self, ctx, mode:str=None, code=None):
-        await ctx.send("Please use the new `library` command to manage your favorites. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your favorites.")
 
     @command(
         name=f"{experimental_prefix}bookmarks",
@@ -596,7 +596,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def bookmarks(self, ctx):
-        await ctx.send("Please use the new `library` command to manage your bookmarks. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your bookmarks.")
     
     @command(
         name=f"{experimental_prefix}toread",
@@ -605,7 +605,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def toread(self, ctx, mode:str=None, code=None):
-        await ctx.send("Please use the new `library` command to manage your Read Later list. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your Read Later list.")
 
 
     @command(
@@ -615,7 +615,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def history(self, ctx, switch="view"):
-        await ctx.send("Please use the new `library` command to manage your history. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your history.")
     
     @command(
         name=f"{experimental_prefix}whitelist",
