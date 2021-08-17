@@ -10,7 +10,7 @@ from discord.ext.commands import (
     Cog, bot_has_permissions, 
     bot_has_guild_permissions, command)
 from discord_components import Button
-from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
+from dev_nhentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
@@ -50,6 +50,10 @@ class Commands(Cog):
                     i.component.id == "button1")
         
         except TimeoutError:
+            await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(description="Button failed (3/3)."),
+                components=[Button(label="Timed out.", style=4, emoji="🕒", id="button1", disabled=True)])
+
+        except Exception:
             await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(description="Button failed (3/3)."),
                 components=[Button(label="Failed.", style=4, emoji="⛔", id="button1", disabled=True)])
         
@@ -162,41 +166,39 @@ class Commands(Cog):
             emb.add_field(
                 inline=False,
                 name="Secondary Title",
-                value=f"`{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`"
+                value=f"`{doujin.title[1] if len(doujin.title) > 1 else 'Not provided'}`"
             ).add_field(
                 inline=False,
                 name="Doujin ID ー Pages",
-                value=f"`{doujin.id} ー {len(doujin.images)} pages`"
+                value=f"`{doujin.id} ー {doujin.total_pages} pages`"
             ).add_field(
                 inline=False,
                 name="Language(s)",
-                value=f"{language_to_flag(doujin.languages)} `{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`"
+                value=f"{language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
             ).add_field(
                 inline=False,
                 name="Artist(s)",
-                value=f"`{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`"
+                value=f"`{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
             ).add_field(
                 inline=False,
                 name="Character(s)",
-                value=f"`{', '.join(doujin.characters) if doujin.characters else 'Original'}`"
+                value=f"`{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
             ).add_field(
                 inline=False,
                 name="Parody Of",
-                value=f"`{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`"
+                value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
             ).add_field(
                 inline=False,
                 name="Tags",
-                value=f"```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```"
+                value=f"```{', '.join([tag.name for tag in doujin.tags]) if doujin.tags else 'None provided'}```"
             )
 
         emb.set_author(
-            name=f"{shorten(doujin.title, width=120, placeholder='...')}",
+            name=f"{shorten(doujin.title[0], width=120, placeholder='...')}",
             url=f"https://nhentai.net/g/{doujin.id}/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
         emb.set_thumbnail(
             url=doujin.images[0])
-        emb.set_footer(
-            text="Would you like to read this doujin on Discord?")
         
         print(f"[] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
@@ -212,7 +214,6 @@ class Commands(Cog):
                     check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
             
             except TimeoutError:
-                emb.set_footer(text="null")
                 emb.set_thumbnail(
                     url=doujin.images[0])
                 emb.set_image(
@@ -587,7 +588,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def favorites(self, ctx, mode:str=None, code=None):
-        await ctx.send("Please use the new `library` command to manage your favorites. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your favorites.")
 
     @command(
         name=f"{experimental_prefix}bookmarks",
@@ -596,7 +597,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def bookmarks(self, ctx):
-        await ctx.send("Please use the new `library` command to manage your bookmarks. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your bookmarks.")
     
     @command(
         name=f"{experimental_prefix}toread",
@@ -605,7 +606,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def toread(self, ctx, mode:str=None, code=None):
-        await ctx.send("Please use the new `library` command to manage your Read Later list. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your Read Later list.")
 
 
     @command(
@@ -615,7 +616,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def history(self, ctx, switch="view"):
-        await ctx.send("Please use the new `library` command to manage your history. Join the support server for a documentation of this command until it appears on the Google Doc.")
+        await ctx.send("Please use the new `library` command to manage your history.")
     
     @command(
         name=f"{experimental_prefix}whitelist",
