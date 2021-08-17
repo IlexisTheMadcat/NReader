@@ -14,7 +14,7 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.Tclasses import (
+from cogs.classes import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.utils import language_to_flag, restricted_tags
@@ -782,7 +782,6 @@ class Commands(Cog):
                 code = parts[0]
 
                 if code not in self.bot.doujin_cache and code != "0":
-                    print(code)
                     is_loading = True
                     break
             
@@ -793,9 +792,8 @@ class Commands(Cog):
                     ind -= 1
 
                 bookmark_page = None
-                parts = item.split("/-/")
-                code = parts[0]
-                if len(parts)==2: bookmark_page = parts[1]
+                if isinstance(list_items, dict):  # Is the Bookmarks list
+                    bookmark_page = list_items[item]
 
                 if code == "0":
                     passed_placeholder = True
@@ -906,6 +904,7 @@ class Commands(Cog):
                         if list_name == "Bookmarks": 
                             length = len(contents)
                             list_name = "🔖 Bookmarks"
+                            print(contents)
                         if list_name == "History": 
                             length = len(contents["list"])
                             list_name = "🕑 History"
@@ -1202,7 +1201,7 @@ class Commands(Cog):
                 else:
                     await interaction.respond(type=6)
                     if interaction.component.id == "button1":
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0/-/0"]
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"0": 0}
                         await self.bot.comp_ext.edit_component_msg(
                             conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
                     elif interaction.component.id == "button2":

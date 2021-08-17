@@ -517,13 +517,13 @@ class ImagePageReader:
                         else:
                             pass
                         
-                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
-                            if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
-                                self.on_bookmarked_page = True
-                            else:
-                                self.on_bookmarked_page = False
+                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+                            self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+                            self.on_bookmarked_page = True
+                        else:
+                            self.on_bookmarked_page = False
                         
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                         self.am_embed.set_image(url=self.images[self.current_page])
                         self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                         
@@ -549,13 +549,13 @@ class ImagePageReader:
                         else:
                             self.current_page = self.current_page - 1
                         
-                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                            if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
-                                self.on_bookmarked_page = True
-                            else:
-                                self.on_bookmarked_page = False
+                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+                            self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+                            self.on_bookmarked_page = True
+                        else:
+                            self.on_bookmarked_page = False
                         
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                         self.am_embed.set_image(url=self.images[self.current_page])
                         self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                         
@@ -575,11 +575,14 @@ class ImagePageReader:
                                 Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]])
                     
                     elif interaction.component.id == "sele":  # Select page
-                        await interaction.respond(
-                            embed=Embed(
-                                description="Enter a page number within 15 seconds, or type `n-cancel` to cancel.\n"
-                                            "Your message will be deleted to keep clean."
-                            ).set_footer(text="You may dismiss this message, but the controls won't work until you respond or time out."))
+                        await interaction.respond(type=6)
+                        bm_page = None
+                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
+                            bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]
+                        
+                        conf = await self.am_channel.send(embed=Embed(
+                            description=f"Enter a page number within 15 seconds, or type `n-cancel` to cancel."
+                                        f"{newline+'Bookmarked page: '+str(bm_page) if bm_page else ''}"))
 
                         while True:
                             try:
@@ -587,23 +590,26 @@ class ImagePageReader:
                                     check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.am_channel.id)
                             
                             except TimeoutError:
+                                await conf.delete()
                                 break
 
                             else:
                                 await m.delete()
                                 if m.content == "n-cancel":
+                                    await conf.delete()
                                     break
                                 
                                 if is_int(m.content) and (int(m.content)-1) in range(0, len(self.images)):
+                                    await conf.delete()
                                     self.current_page = int(m.content)-1
                                     
-                                    if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
-                                        if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
-                                            self.on_bookmarked_page = True
-                                        else:
-                                            self.on_bookmarked_page = False
+                                    if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+                                        self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+                                        self.on_bookmarked_page = True
+                                    else:
+                                        self.on_bookmarked_page = False
 
-                                    self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                                    self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                                     self.am_embed.set_image(url=self.images[self.current_page])
                                     self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                                     
@@ -671,7 +677,6 @@ class ImagePageReader:
                         break
                     
                     elif interaction.component.id == "book":  # Set/Remove bookmark
-                        bm_string = f"self.code/-/self.current_page"
                         if not self.on_bookmarked_page:
                             if self.current_page == 0:
                                 await interaction.respond(embed=Embed(
@@ -680,20 +685,18 @@ class ImagePageReader:
                                 ).set_footer(text="You may dismiss this message."))
                                 continue
 
-                            if bm_string not in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
-                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'].append(bm_string)
-                                self.on_bookmarked_page = True
+                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code] = self.current_page
+                            self.on_bookmarked_page = True
                         
                         else:
-                            if bm_string in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
-                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'].remove(bm_string)
-
+                            if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
+                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'].pop(self.code)
                                 self.on_bookmarked_page = False
                         
                         self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
                                                     f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]{' Bookmarked' if self.on_bookmarked_page else ''}")
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                         
                         await self.active_message.edit(embed=self.am_embed)
 
