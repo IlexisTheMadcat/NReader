@@ -197,7 +197,9 @@ class ErrorLog:
         for i, page in enumerate(em.split()):
             if i:
                 await sleep(0.1)
-            return await self.channel.send(embed=em)
+            
+            msg = await self.channel.send(embed=em)
+            self.bot.error_contexts.update({msg.id: ctx})
 
     @staticmethod
     async def em_tb(error: Tuple, ctx: Context = None, event: str = None) -> Embed:
@@ -217,10 +219,15 @@ class ErrorLog:
 
         em = Embed(color=Colour.red(), title=title, description=f"{description}")
 
-        if hasattr(ctx, "author") and hasattr(ctx, "guild"):
-            em.set_footer(text=f"This event was caused by user {ctx.author} ({ctx.author.id}) in server {ctx.guild} ({ctx.guild.id})")
-        elif hasattr(ctx, "author"):
-            em.set_footer(text=f"This event was caused by user {ctx.author} ({ctx.author.id})")
+        if hasattr(ctx, "author"):
+            em.add_field(
+                name="Context",
+                inline=False,
+                value=f"User: {ctx.author} ({ctx.author.id})\n"
+                      f"Guild: {ctx.guild} ({ctx.guild.id if ctx.guild else None})\n"
+                      f"Channel: {ctx.channel} ({ctx.channel.id})\n"
+                      f"Message: {ctx.message} ({ctx.message.id})\n"
+                      f"**Copy this message ID and access `bot.error_contexts[<id>]` for Context.**")
         else:
             em.set_footer(text=f"This event was caused by an element in the source code.")
 

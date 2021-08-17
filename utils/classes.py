@@ -139,6 +139,10 @@ class Bot(DiscordBot):
         self.global_cooldown = ExpiringDict(max_len=float('inf'), max_age_seconds=2)
 
         # A cache of loaded doujins, it will fill as doujins are retrieved by code.
+        # Values expire in 3 days since addition or resets when bot reloads.
+        self.error_contexts = ExpiringDict(max_len=float('inf'), max_age_seconds=259200)
+
+        # A cache of loaded doujins, it will fill as doujins are retrieved by code.
         # Values expire in 1 day since addition or resets when bot reloads.
         self.doujin_cache = ExpiringDict(max_len=float('inf'), max_age_seconds=86400)
 
