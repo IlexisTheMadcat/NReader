@@ -17,7 +17,7 @@ from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
-from utils.utils import (
+from utils.misc import (
     language_to_flag, 
     is_int, is_float)
 
