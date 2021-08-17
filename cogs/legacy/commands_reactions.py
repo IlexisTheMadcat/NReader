@@ -18,7 +18,7 @@ from utils.classes import (
 from cogs.classes import (
     ImagePageReader,
     SearchResultsBrowser)
-from utils.utils import language_to_flag
+from utils.misc import language_to_flag
 
 
 class Commands(Cog):
