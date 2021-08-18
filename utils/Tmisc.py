@@ -75,5 +75,10 @@ def render_date(datetime):
     }
 
     day = str(datetime.day)
+    hour = deepcopy(datetime.hour)
+    is_noon = False
+    if hour > 12:
+        hour -= 12
+        is_noon = True
 
-    return f"{months[datetime.month]} {datetime.day}{suffixs[int(day[-1])]}, {datetime.year}"
+    return f"On {months[datetime.month]} {datetime.day}{suffixs[int(day[-1])]}, {datetime.year} at {hour}:{datetime.minute} {'PM' if is_noon else 'AM'}"
