@@ -1,4 +1,6 @@
-﻿restricted_tags = ["lolicon", "shotacon"]
+﻿from copy import deepcopy
+
+restricted_tags = ["lolicon", "shotacon"]
 
 def is_int(s):
     try:
@@ -19,6 +21,7 @@ def language_to_flag(languages):
     is_translated = False
     main_language = None
     if isinstance(languages, list):
+        languages = deepcopy(languages)
         if "translated" in [tag.name for tag in languages]:
             is_translated = True
             [languages.remove(tag) for tag in languages if tag.name == "translated"]
@@ -41,3 +44,36 @@ def language_to_flag(languages):
 
     else:
         return "🏳❔"
+
+def render_date(datetime):
+    """Turn a datetime into a word-friendly string"""
+    months = {
+        1: "January",
+        2: "February",
+        3: "March",
+        4: "April",
+        5: "May",
+        6: "June",
+        7: "July",
+        8: "August",
+        9: "September",
+        10: "October",
+        11: "November",
+        12: "December"
+    }
+    suffixs = {
+        1: "st",
+        2: "nd",
+        3: "rd",
+        4: "th",
+        5: "th",
+        6: "th",
+        7: "th",
+        8: "th",
+        9: "th",
+        0: "th"
+    }
+
+    day = str(datetime.day)
+
+    return f"{months[datetime.month]} {datetime.day}{suffixs[int(day[-1])]}, {datetime.year}"
