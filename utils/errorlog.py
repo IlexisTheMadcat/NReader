@@ -223,10 +223,10 @@ class ErrorLog:
             em.add_field(
                 name="Context",
                 inline=False,
-                value=f"User: {ctx.author} ({ctx.author.id})\n"
-                      f"Guild: {ctx.guild.name} ({ctx.guild.id if ctx.guild else None})\n"
-                      f"Channel: {ctx.channel.name} ({ctx.channel.id})\n"
-                      f"Message: {ctx.message.content if ctx.message.content else 'No Content'} ({ctx.message.id})\n"
+                value=f"User: `{ctx.author}` ({ctx.author.id})\n"
+                      f"Guild: `{ctx.guild.name}` ({ctx.guild.id if ctx.guild else None})\n"
+                      f"Channel: `{ctx.channel.name}` ({ctx.channel.id})\n"
+                      f"Message: `{ctx.message.content if ctx.message.content else 'No Content'}`\n"
                       f"**Copy this message ID and access `bot.error_contexts[<id>]` for Context.**")
         else:
             em.set_footer(text=f"This event was caused by an element in the source code.")
