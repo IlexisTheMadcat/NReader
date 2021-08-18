@@ -14,12 +14,14 @@ from discord.utils import get
 from discord.ext.commands import Context
 from discord.ext.commands.cog import Cog
 from discord_components import Button
-from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
+from dev_nhentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
 from utils.Tmisc import (
     language_to_flag, 
-    is_int, is_float)
+    render_date, 
+    is_int, is_float,
+    restricted_tags)
 
 newline = "\n"
 
@@ -350,7 +352,7 @@ class ImagePageReader:
 
     async def setup(self):
         edit = await self.ctx.send(embed=Embed(
-            description="<a:nreader_loading:810936543401213953>"))
+            description=f"{self.bot.get_emoji(810936543401213953)}"))
 
         # Fetch existing category for readers, otherwise create new
         cat = get(self.ctx.guild.categories, name="📖NReader")
@@ -404,7 +406,7 @@ class ImagePageReader:
                         i.user.id == self.ctx.author.id)
         
             except TimeoutError:
-                await conf.edit(content="<a:nreader_loading:810936543401213953> Closing...")
+                await conf.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...")
             
                 await sleep(1)
                 await conf.channel.delete()
@@ -412,7 +414,7 @@ class ImagePageReader:
         
             else:
                 try: await interaction.respond(type=6)
-                except NotFound: continue
+                except Exception: continue
             
                 self.active_message = conf
                 self.am_channel = conf.channel
@@ -420,9 +422,9 @@ class ImagePageReader:
                 self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                             f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
                                             f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-                self.am_embed.set_image(url=self.images[self.current_page])
+                self.am_embed.set_image(url=self.images[self.current_page].src)
                 self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
-                self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                 await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
                     components=[
                         [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
@@ -442,25 +444,23 @@ class ImagePageReader:
 
     async def start(self):
         if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["enabled"]:
+            while self.code in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove(self.code)
+
             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].insert(0, self.code)
-            
-            if "placeholer" in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
-                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove("placeholder")
+
+            if "0" in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove("0")
             
             if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]) >= 2 and \
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"][1] == self.code:
-                
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].pop(0)
             
             while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]) > 25:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].pop()
 
-            while self.code in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
-                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove(self.code)
-
-            for i in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
-                if isinstance(i, int):
-                    self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove(i)
+            if "0" not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].append("0")
         
         while True:
             try:
@@ -524,8 +524,8 @@ class ImagePageReader:
                             self.on_bookmarked_page = False
                         
                         self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
-                        self.am_embed.set_image(url=self.images[self.current_page])
-                        self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                        self.am_embed.set_image(url=self.images[self.current_page].src)
+                        self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                         
                         self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
@@ -556,8 +556,8 @@ class ImagePageReader:
                             self.on_bookmarked_page = False
                         
                         self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
-                        self.am_embed.set_image(url=self.images[self.current_page])
-                        self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                        self.am_embed.set_image(url=self.images[self.current_page].src)
+                        self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                         
                         self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
@@ -582,7 +582,7 @@ class ImagePageReader:
                         
                         conf = await self.am_channel.send(embed=Embed(
                             description=f"Enter a page number within 15 seconds, or type `n-cancel` to cancel."
-                                        f"{newline+'Bookmarked page: '+str(bm_page) if bm_page else ''}"))
+                                        f"{newline+'Bookmarked page: '+str(bm_page+1) if bm_page else ''}"))
 
                         while True:
                             try:
@@ -610,8 +610,8 @@ class ImagePageReader:
                                         self.on_bookmarked_page = False
 
                                     self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
-                                    self.am_embed.set_image(url=self.images[self.current_page])
-                                    self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
+                                    self.am_embed.set_image(url=self.images[self.current_page].src)
+                                    self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                                     
                                     self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                                                 f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
@@ -716,7 +716,7 @@ class ImagePageReader:
 
                     # Respond if not already
                     try: await interaction.respond(type=6)
-                    except NotFound: continue
+                    except Exception: continue
 
                 except Exception:
                     error = exc_info()
@@ -748,7 +748,7 @@ class SearchResultsBrowser:
         self.doujins = results
         self.index = 0
         self.active_message: Message = kwargs.pop("msg", None)
-        self.lolicon_allowed = kwargs.pop("lolicon_allowed", None)
+        self.lolicon_allowed = kwargs.pop("lolicon_allowed", False)
         self.name = kwargs.pop("name", "Search Results")
 
         self.am_embed: Embed = None
@@ -757,92 +757,108 @@ class SearchResultsBrowser:
         message_part = []
         for ind, dj in enumerate(self.doujins):
             try: 
-                if ind == self.index and int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Doujins']: symbol = '🟩'
+                if ind == self.index and int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Favorites|*n*|fav"]: symbol = '🟩'
                 elif ind == self.index: symbol='🟥'
-                elif int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Doujins']: symbol = '🟦'
+                elif int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Favorites|*n*|fav"]: symbol = '🟦'
                 else: symbol='⬛'
             except KeyError: 
                 symbol='⬛'
             
-            if ("lolicon" in dj.tags or "shotacon" in dj.tags) and self.ctx.guild and not self.lolicon_allowed:
-                message_part.append(f"`{symbol} {str(ind+1).ljust(2)}` | __`       `__ | ⚠🚫 | Not available in this server.")
+            tags = [tag.name for tag in dj.tags if tag.type == "tag"]
+            if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
+                message_part.append(f"`{symbol} {str(ind+1).ljust(2)}` | __`       `__ | ⚠🚫 | Contains restricted tags.")
             else:
                 message_part.append(
                     f"{'**' if ind == self.index else ''}"
                     f"`{symbol} {str(ind+1).ljust(2)}` | "
-                    f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
-                    f"{language_to_flag(self.doujins[ind].languages)} | "
-                    f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.index else ''}")
+                    f"__`{str(dj.id).ljust(7)}`__ | "
+                    f"{language_to_flag(dj.languages)} | "
+                    f"{shorten(dj.title.pretty, width=40, placeholder='...')}"
+                    f"{'**' if ind == self.index else ''}")
 
         self.am_embed = Embed(
             title=self.name,
             description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
-            
-        self.am_embed.set_author(
-            name="NHentai",
-            url=f"https://nhentai.net/",
-            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
 
-        nhentai_api = NHentai()
-        if self.doujins[self.index].id not in self.bot.doujin_cache:
-            doujin = await nhentai_api.get_doujin(self.doujins[self.index].id)
-            self.bot.doujin_cache[self.doujins[self.index].id] = doujin
-        else:
-            doujin = self.bot.doujin_cache[self.doujins[self.index].id]
+        nhentai = NHentai()
+        doujin = self.doujins[self.index]
         
-        if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and self.ctx.guild and not self.lolicon_allowed:
+        tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
+        if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.lolicon_allowed:
             self.am_embed.add_field(
                 name="Main Title",
                 inline=False,
-                value="No information available.\n"
-                      "This doujin cannot be viewed here.")
+                value="⚠️❌ This doujin cannot be viewed in this server.")
             
-            doujin.images[0] = str(self.bot.user.avatar_url)
+            doujin.cover.src = str(self.bot.user.avatar_url)
         
         else:
             self.am_embed.add_field(
-                name=f"Main Title",
+                name=f"Title",
                 inline=False,
-                value=f"{doujin.title}"
+                value=f"{shorten(doujin.title.pretty, width=256, placeholder='...')}"
             ).add_field(
                 inline=False,
-                name="Secondary Title",
-                value=f"`{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`"
+                name="ID || Pages",
+                value=f"`{doujin.id}` - `{doujin.total_pages}`"
             ).add_field(
                 inline=False,
-                name="Doujin ID ー Pages",
-                value=f"`{doujin.id} ー {len(doujin.images)} pages`"
+                name="Date Uploaded",
+                value=f"`{render_date(doujin.upload_at)}`"
             ).add_field(
                 inline=False,
-                name="Language(s)",
-                value=f"{language_to_flag(doujin.languages)} `{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`"
+                name="Language(s) in this work",
+                value=f"{language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
             ).add_field(
                 inline=False,
-                name="Artist(s)",
-                value=f"`{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`"
+                name="Featured artist(s)",
+                value=f"`{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
             ).add_field(
                 inline=False,
-                name="Character(s)",
-                value=f"`{', '.join(doujin.characters) if doujin.characters else 'Original'}`"
+                name="Character(s) in this work",
+                value=f"`{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
             ).add_field(
                 inline=False,
-                name="Parody Of",
-                value=f"`{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`"
-            ).add_field(
-                inline=False,
-                name="Tags",
-                value=f"```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```"
+                name="A parody of",
+                value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
             )
+
+            # add a count
+            tags_list = []
+            for tag in doujin.tags:
+                if tag.type != "tag": continue
+                count = tag.count
+                parse_count = list(str(tag.count))
+                if len(parse_count) < 4:
+                    tags_list.append(f"{tag.name}[{count}]")
+                elif len(parse_count) >= 4 and len(parse_count) <= 6:
+                    count = count/1000
+                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
+                elif len(parse_count) > 7:
+                    count = count/1000000
+                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
+
+            self.am_embed.add_field(
+                inline=False,
+                name="Content tags",
+                value=f"```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
+            )
+
+            self.am_embed.set_author(
+                name=f"NHentai",
+                url=f"https://nhentai.net/g/{doujin.id}/",
+                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+            self.am_embed.set_thumbnail(url=doujin.cover.src)
             
         previous_emb = deepcopy(self.active_message.embeds[0])
         if previous_emb.image:
-            self.am_embed.set_image(url=doujin.images[0])
+            self.am_embed.set_image(url=doujin.cover.src)
             self.am_embed.set_thumbnail(url=Embed.Empty)
         elif previous_emb.thumbnail:
-            self.am_embed.set_thumbnail(url=doujin.images[0])
+            self.am_embed.set_thumbnail(url=doujin.cover.src)
             self.am_embed.set_image(url=Embed.Empty)
         else:  # Image wasn't set yet
-            self.am_embed.set_thumbnail(url=doujin.images[0])
+            self.am_embed.set_thumbnail(url=doujin.cover.src)
 
         if self.active_message:
             await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
@@ -883,10 +899,14 @@ class SearchResultsBrowser:
             except TimeoutError:
                 message_part = []
                 for ind, dj in enumerate(self.doujins):
-                    message_part.append(
-                        f"{'**' if ind == self.index else ''}__`{str(self.doujins[ind].id).ljust(7)}`__{'**' if ind == self.index else ''} | "
-                        f"{language_to_flag(self.doujins[ind].languages)} | "
-                        f"{shorten(self.doujins[ind].title, width=50, placeholder='...')}")
+                    tags = [tag.name for tag in dj.tags if tag.type == "tag"]
+                    if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
+                        message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
+                    else:
+                        message_part.append(
+                            f"__`{str(dj.id).ljust(7)}`__ | "
+                            f"{language_to_flag(dj.languages)} | "
+                            f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
                 
                 self.am_embed = Embed(
                     title=self.name,
@@ -957,14 +977,15 @@ class SearchResultsBrowser:
                     
                     elif interaction.component.id == "stop":
                         message_part = []
-                        for ind, dj in enumerate(self.doujins):                        
-                            if ("lolicon" in dj.tags or "shotacon" in dj.tags) and self.ctx.guild and not self.lolicon_allowed:
-                                message_part.append("__`       `__ | ⚠🚫 | Not available in this server.")
+                        for ind, dj in enumerate(self.doujins):
+                            tags = [tag.name for tag in dj.tags if tag.type == "tag"]
+                            if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
+                                message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
                             else:
                                 message_part.append(
                                     f"__`{str(dj.id).ljust(7)}`__ | "
                                     f"{language_to_flag(dj.languages)} | "
-                                    f"{shorten(dj.title, width=50, placeholder='...')}")
+                                    f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
                         
                         self.am_embed = Embed(
                             title=self.name,
@@ -982,21 +1003,22 @@ class SearchResultsBrowser:
                         return
                     
                     elif interaction.component.id == "read":
-                        if ("lolicon" in self.doujins[self.index].tags or "shotacon" in self.doujins[self.index].tags) and self.ctx.guild and not self.lolicon_allowed:
+                        tags = [tag.name for tag in self.doujins[self.index].tags if tag.type == "tag"]
+                        if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
                             continue
                         
-                        await self.active_message.clear_reactions()
-
                         message_part = []
-                        for ind, dj in enumerate(self.doujins):                        
-                            if ("lolicon" in dj.tags or "shotacon" in dj.tags) and self.ctx.guild and not self.lolicon_allowed:
-                                message_part.append("__`       `__ | ⚠🚫 | Not available in this server.")
+                        for ind, dj in enumerate(self.doujins):
+                            tags = [tag.name for tag in dj.tags if tag.type == "tag"]
+                            if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
+                                message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
                             else:
                                 message_part.append(
-                                f"{'**' if ind == self.index else ''}"
-                                f"__`{str(self.doujins[ind].id).ljust(7)}`__ | "
-                                f"{language_to_flag(self.doujins[ind].languages)} | "
-                                f"{shorten(self.doujins[ind].title, width=40, placeholder='...')}{'**' if ind == self.index else ''}")
+                                    f"{'**' if ind == self.index else ''}"
+                                    f"__`{str(dj.id).ljust(7)}`__ | "
+                                    f"{language_to_flag(dj.languages)} | "
+                                    f"{shorten(dj.title.pretty, width=50, placeholder='...')}"
+                                    f"{'**' if ind == self.index else ''}")
 
                         self.am_embed = Embed(
                             title=self.name,
@@ -1013,7 +1035,7 @@ class SearchResultsBrowser:
                         await interaction.respond(type=6)  # Respond now since this option returns.
 
                         doujin = self.doujins[self.index]
-                        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}", str(doujin.id))
+                        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty}", str(doujin.id))
                         response = await session.setup()
                         if response:
                             await session.start()
@@ -1039,19 +1061,19 @@ class SearchResultsBrowser:
                             await interaction.respond(
                                 mention_author=False,
                                 embed=Embed(
-                                    description=f"✅ Added `{self.doujins[self.index].id}` to your To Read list."
+                                    description=f"✅ Added `{self.doujins[self.index].id}` to your Read Later list."
                                 ).set_footer(text="You may dismiss this message."))
                         else:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.doujins[self.index].id))
                             await interaction.respond(
                                 mention_author=False,
                                 embed=Embed(
-                                    description=f"✅ Removed `{self.doujins[self.index].id}` from your To Read list."
+                                    description=f"✅ Removed `{self.doujins[self.index].id}` from your Read Later list."
                                 ).set_footer(text="You may dismiss this message."))
                     
                     # Respond if not already
                     try: await interaction.respond(type=6)
-                    except NotFound: continue
+                    except Exception: continue
             
                 except Exception:
                     error = exc_info()
@@ -1065,7 +1087,7 @@ class SearchResultsBrowser:
                     
                     await temp.delete(delay=10)
                         
-                    await self.bot.errorlog.send(error, ctx=self.ctx, event="ImagePageReader")
+                    await self.bot.errorlog.send(error, ctx=self.ctx, event="SearchResultsBrowser")
                     
                     continue
 
