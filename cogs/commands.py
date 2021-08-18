@@ -776,18 +776,14 @@ class Commands(Cog):
             remove_queue = list()  # It is very rare that a doujin would get deleted from NHentai
 
             is_loading = False
-            for item in list_items:
-                # In case of bookmark, split using bookmark delimiter "/-/"
-                parts = item.split("/-/")
-                code = parts[0]
-
+            for code in list_items:
                 if code not in self.bot.doujin_cache and code != "0":
                     is_loading = True
                     break
             
             doujins = []
             passed_placeholder = False
-            for ind, item in enumerate(list_items):
+            for ind, code in enumerate(list_items):
                 if passed_placeholder:
                     ind -= 1
 
