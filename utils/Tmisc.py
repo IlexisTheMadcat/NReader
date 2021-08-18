@@ -1,6 +1,4 @@
-﻿from NHentai.nhentai import Tag
-
-restricted_tags = ["lolicon", "shotacon"]
+﻿restricted_tags = ["lolicon", "shotacon"]
 
 def is_int(s):
     try:
@@ -16,46 +14,30 @@ def is_float(s):
     except ValueError:
         return False
 
-def language_to_flag(languages: Union[Tag, List[Tag]]):
+def language_to_flag(languages):
     """Given a language, convert it into a 2-emoji string of a respective flag."""
-    
-    if isinstance(language, list):
-        language_to_flag = {"japanese": "🇯🇵", "english": "🇬🇧", "chinese": "🇨🇳"}
-        try:
-            if "translated" in [tag.name for tag in languages]:
-                return f"{language_to_flag[language[1]]}🔄"
+    is_translated = False
+    main_language = None
+    if isinstance(languages, list):
+        if "translated" in [tag.name for tag in languages]:
+            is_translated = True
+            [languages.remove(tag) for tag in languages if tag.name == "translated"]
+        
+        language_to_flag = {"japanese": "🇯🇵", "english": "🇬🇧", "chinese": "🇨🇳", "translated": "🔄"}
+        if "text cleaned" in [tag.name for tag in languages]:
+            return "💬🧹"
 
-            elif "text cleaned" in [tag.name for tag in languages]:
-                return "💬🧹"
+        elif "speechless" in [tag.name for tag in languages]:
+            return "💬❌"
 
-            elif "speechless" in [tag.name for tag in languages]:
-                return "💬❌"
+        elif is_translated:
+            return f"{language_to_flag[languages[0].name]}🔄"
 
-            elif "translated" not in [tag.name for tag in languages]:
-                return f"{language_to_flag[language[0]]}💬"
+        elif not is_translated:
+            return f"{language_to_flag[languages[0].name]}💬"
 
-            elif not languages:
-                return "🏳❔"
-                
-        except Exception:
+        elif not languages:
             return "🏳❔"
 
-    elif isinstance(languages, str):     
-        try:
-            if languages.name == "japanese":
-                return "🇯🇵🔹"
-
-            elif languages.name == "english":
-                return "🇬🇧🔹"
-
-            elif languages.name == "chinese": 
-                return "🇨🇳🔹"
-
-            else:
-                return "🏳❔"
-                
-        except Exception:
-            return "🏳❔"
-    
     else:
         return "🏳❔"
