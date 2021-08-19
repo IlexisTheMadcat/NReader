@@ -1058,7 +1058,7 @@ class SearchResultsBrowser:
                         await self.active_message.edit(embed=self.am_embed)
 
                     elif interaction.component.id == "readlater":
-                        if self.doujins[self.index].id not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
+                        if str(self.doujins[self.index].id) not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.doujins[self.index].id))
                             await interaction.respond(
                                 mention_author=False,
