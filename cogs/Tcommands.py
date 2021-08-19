@@ -181,22 +181,24 @@ class Commands(Cog):
                 inline=False,
                 name="A parody of",
                 value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
+            ).set_footer(
+                text=f"⭐ {doujin.total_favorites}"
             )
 
-            # add a count
+            # Doujin count for tags
             tags_list = []
             for tag in doujin.tags:
                 if tag.type != "tag": continue
                 count = tag.count
-                parse_count = list(str(tag.count))
+                parse_count = list(str(count))
                 if len(parse_count) < 4:
-                    tags_list.append(f"[{tag.name} ({count})]")
+                    tags_list.append(f"{tag.name}[{count}]")
                 elif len(parse_count) >= 4 and len(parse_count) <= 6:
                     count = count/1000
-                    tags_list.append(f"[{tag.name} ({round(count, 1)}k)]")
+                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
                 elif len(parse_count) > 7:
                     count = count/1000000
-                    tags_list.append(f"[{tag.name} ({round(count, 2)}m)]")
+                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
 
             emb.add_field(
                 inline=False,
@@ -278,7 +280,7 @@ class Commands(Cog):
                     
                         return
                     else:
-                        await ctx.send(embed=Embed(description="❌ Unexpected loss of required permissions."))
+                        await ctx.send(embed=Embed(description="❌ Unexpected loss of required permissions."), delete_after=5)
                         continue
                 
                 if interaction.component.id == "button2":

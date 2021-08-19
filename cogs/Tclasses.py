@@ -821,6 +821,8 @@ class SearchResultsBrowser:
                 inline=False,
                 name="A parody of",
                 value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
+            ).set_footer(
+                text=f"⭐ {doujin.total_favorites}"
             )
 
             # add a count
