@@ -63,7 +63,7 @@ DATA_DEFAULTS = {
                 "Built-in": {
                     "Favorites|*n*|fav": ["0"],  # Top favorites
                     "Read Later|*n*|rl": ["0"],  # To Read list, auto-changed by search browser and finishing doujin.
-                    "Bookmarks|*n*|bm": {"0": 0},  # Bookmarks; code/-/page. Use `.split("/-/")`.
+                    "Bookmarks|*n*|bm": {"placeholder": 1},  # Bookmarks; code/-/page. Use `.split("/-/")`.
                     "History|*n*|his": {"enabled": True, "list": ["0"]},  # Reading history 
                 },
                 "Custom": {
@@ -94,7 +94,7 @@ DATA_DEFAULTS = {
                                "own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
                                "This will allow all users in your server to open lolicon/shotacon doujins.\n"
                                "This command is not in the help menu.\n"
-                               "Lolicon/shotacon doujins are __only__ reflected on your history, favorites, bookmarks, or searches __**in whitelisted servers**__."
+                               "Lolicon/shotacon doujins are __only__ reflected on your history, favorites, bookmarks, or searches __**in whitelisted servers**__.",
     }
 }
 
@@ -230,13 +230,13 @@ async def on_ready():
             continue
         
         except Exception as e:
-            if hasattr(error, "original"):
+            if hasattr(e, "original"):
                 print(f"| Failed to load extension {cog}\n|   {type(e.original).__name__}: {e.original}")
             else:
                 print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
             
             error = exc_info()
-            if error:
+            if e:
                 await bot.errorlog.send(error, event="Load Initial Cog")
 
     print(f"#-------------------------------#\n"
