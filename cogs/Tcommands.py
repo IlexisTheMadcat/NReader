@@ -214,10 +214,10 @@ class Commands(Cog):
         
         print(f"[] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
-        if not ctx.guild or not all([
+        if not ctx.guild or (ctx.guild and not all([
             ctx.guild.me.guild_permissions.manage_channels, 
             ctx.guild.me.guild_permissions.manage_roles, 
-            ctx.guild.me.guild_permissions.manage_messages]):
+            ctx.guild.me.guild_permissions.manage_messages])):
             await self.bot.comp_ext.edit_component_msg(edit, content="", embed=emb,
                 components=[
                     [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
@@ -242,7 +242,7 @@ class Commands(Cog):
                 with suppress(NotFound):
                     await self.bot.comp_ext.edit_component_msg(edit, embed=emb, 
                         components=[
-                            [Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
+                            [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
                             Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
                         ])
                 
@@ -256,10 +256,14 @@ class Commands(Cog):
                 if interaction.component.id == "button1":
                     with suppress(Forbidden):
                         await edit.clear_reactions()
-                    if not ctx.guild or not all([
+
+                    if not ctx.guild or (ctx.guild and not all([
                         ctx.guild.me.guild_permissions.manage_channels, 
                         ctx.guild.me.guild_permissions.manage_roles, 
-                        ctx.guild.me.guild_permissions.manage_messages]):
+                        ctx.guild.me.guild_permissions.manage_messages])):
+                        await ctx.send(embed=Embed(description="❌ Unexpected loss of required permissions."), delete_after=5)
+                        continue
+                    else:
                         emb.set_thumbnail(
                             url=doujin.images[0].src)
                         emb.set_image(url=Embed.Empty)
@@ -279,9 +283,6 @@ class Commands(Cog):
                             await edit.edit(embed=emb)
                     
                         return
-                    else:
-                        await ctx.send(embed=Embed(description="❌ Unexpected loss of required permissions."), delete_after=5)
-                        continue
                 
                 if interaction.component.id == "button2":
                     if not emb.image:
@@ -294,10 +295,10 @@ class Commands(Cog):
                         emb.set_image(url=Embed.Empty)
                         word = "Expand"
                     
-                    if not ctx.guild or not all([
+                    if not ctx.guild or (ctx.guild and not all([
                         ctx.guild.me.guild_permissions.manage_channels, 
                         ctx.guild.me.guild_permissions.manage_roles, 
-                        ctx.guild.me.guild_permissions.manage_messages]):
+                        ctx.guild.me.guild_permissions.manage_messages])):
                         await self.bot.comp_ext.edit_component_msg(edit, content="", embed=emb,
                             components=[
                                 [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
@@ -443,7 +444,7 @@ class Commands(Cog):
                     i.component.id=="button1")
         except TimeoutError:
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
+                components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
             
             return
 
@@ -461,17 +462,7 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @bot_has_guild_permissions(
-        manage_messages=True, 
-        manage_channels=True, 
-        manage_roles=True)
     async def popular(self, ctx):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -525,7 +516,7 @@ class Commands(Cog):
                     i.component.id=="button1")
         except TimeoutError:
             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
-                components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
+                components=[Button(label="Start Interactive", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
             
             return
 
@@ -536,43 +527,6 @@ class Commands(Cog):
 
             interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, name=f"<:npopular:853883174455214102> **Popular Now**", lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
-    
-    @command(
-        name=f"{experimental_prefix}favorites",
-        aliases=[f"{experimental_prefix}fav"])
-    @bot_has_permissions(
-        send_messages=True, 
-        embed_links=True)
-    async def favorites(self, ctx, mode:str=None, code=None):
-        await ctx.send("Please use the new `library` command to manage your favorites.")
-
-    @command(
-        name=f"{experimental_prefix}bookmarks",
-        aliases=[f"{experimental_prefix}bm"])
-    @bot_has_permissions(
-        send_messages=True, 
-        embed_links=True)
-    async def bookmarks(self, ctx):
-        await ctx.send("Please use the new `library` command to manage your bookmarks.")
-    
-    @command(
-        name=f"{experimental_prefix}toread",
-        aliases=[f"{experimental_prefix}tr"])
-    @bot_has_permissions(
-        send_messages=True, 
-        embed_links=True)
-    async def toread(self, ctx, mode:str=None, code=None):
-        await ctx.send("Please use the new `library` command to manage your Read Later list.")
-
-
-    @command(
-        name=f"{experimental_prefix}history",
-        aliases=[f"{experimental_prefix}h"])
-    @bot_has_permissions(
-        send_messages=True, 
-        embed_links=True)
-    async def history(self, ctx, switch="view"):
-        await ctx.send("Please use the new `library` command to manage your history.")
     
     @command(
         name=f"{experimental_prefix}whitelist",
@@ -615,7 +569,7 @@ class Commands(Cog):
                     
         elif mode.lower() in ["add", "a", "+"]:
             emb = Embed(
-                title="Server whitelisting",
+                title="Server Whitelisting",
                 description="⚠ You're about to enable restricted features for this entire server. "
                             "Using these features around others may have an impact on their judgements on you.\n"
                             "The bot developer is not responsible for loss of friendships in this case, nor shall the developer be accused of distributing this content under their behalf. It is solely on **you**.\n"
@@ -625,20 +579,20 @@ class Commands(Cog):
             
             conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
                 components=[
-                    [Button(label="I accept", style=3, id="button1"),
-                     Button(label="I decline", style=4, id="button2")]])
+                    [Button(label="Accept", style=2, id="button1"),
+                     Button(label="Decline", style=1, id="button2")]])
             
             try:
-                interaction = await self.bot.wait_for('button_click', timeout=60, bypass_cooldown=True,
+                interaction = await self.bot.wait_for('button_click', timeout=60,
                     check=lambda i: \
                         i.message.id==conf.id and \
                         i.user.id==ctx.author.id)
             
             except TimeoutError:
-                await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                await self.bot.comp_ext.edit_component_msg(conf, embed=emb, bypass_cooldown=True,
                     components=[
-                        [Button(label="Timeout", style=3, id="button1", disabled=True),
-                         Button(label="Timeout", style=4, id="button2", disabled=True)]])
+                        [Button(label="Accept", style=2, emoji="✅", id="button1", disabled=True),
+                         Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
                 
                 return
 
@@ -652,17 +606,17 @@ class Commands(Cog):
                         title="Server whitelisting",
                         description="✔ This server can now access doujins that contain underage characters."),
                         components=[
-                            [Button(label="Accepted", style=3, id="button1", disabled=True),
-                             Button(label="I decline", style=2, id="button2", disabled=True)]])
+                            [Button(label="Accepted", style=3, emoji="✅", id="button1", disabled=True),
+                             Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
                 
                 if interaction.component.id == "button2":
                     await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
                         color=0xFF0000,
                         title="Server whitelisting",
-                        description="Operation cancelled."),
+                        description="❌ Operation cancelled."),
                         components=[
-                            [Button(label="I accept", style=2, id="button1", disabled=True),
-                             Button(label="Declined", style=4, id="button2", disabled=True)]])
+                            [Button(label="Accept", style=2, emoji="✅", id="button1", disabled=True),
+                             Button(label="Declined", style=4, emoji="❌", id="button2", disabled=True)]])
     
         elif mode.lower() in ["remove", "r", "-"]:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
@@ -748,7 +702,7 @@ class Commands(Cog):
                 if isinstance(list_items, dict):  # Is the Bookmarks list
                     bookmark_page = list_items[item]
 
-                if code == "0":
+                if code == "placeholder":
                     passed_placeholder = True
                     continue
 
@@ -798,7 +752,7 @@ class Commands(Cog):
                         i.component.id=="button1")
             except TimeoutError:
                 await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
+                    components=[Button(label="Start Interactive", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
                     
                 return
 
@@ -976,7 +930,7 @@ class Commands(Cog):
                 conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
                     components=[
                         [Button(label="Continue", style=4, id="button1"),
-                        Button(label="Cancel", style=2, id="button2")]])
+                        Button(label="Cancel", style=1, id="button2")]])
                 try:
                     interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
                         check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
@@ -984,8 +938,8 @@ class Commands(Cog):
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                         components=[
-                            [Button(label="Timeout", style=4, id="button1", disabled=True),
-                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                            [Button(label="Continue", style=4, id="button1", disabled=True),
+                            Button(label="Cancel", style=1, id="button2", disabled=True)]])
                         
                 else:
                     await interaction.respond(type=6)
@@ -1071,8 +1025,8 @@ class Commands(Cog):
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                         components=[
-                            [Button(label="Timeout", style=4, id="button1", disabled=True),
-                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                            [Button(label="Continue", style=4, id="button1", disabled=True),
+                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                 else:
                     await interaction.respond(type=6)
@@ -1124,8 +1078,8 @@ class Commands(Cog):
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                         components=[
-                            [Button(label="Timeout", style=4, id="button1", disabled=True),
-                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                            [Button(label="Continue", style=4, id="button1", disabled=True),
+                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                 else:
                     await interaction.respond(type=6)
@@ -1177,8 +1131,8 @@ class Commands(Cog):
                 except TimeoutError:
                     await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                         components=[
-                            [Button(label="Timeout", style=4, id="button1", disabled=True),
-                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                            [Button(label="Continue", style=4, id="button1", disabled=True),
+                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                 else:
                     await interaction.respond(type=6)
@@ -1330,8 +1284,8 @@ class Commands(Cog):
                     except TimeoutError:
                         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                             components=[
-                                [Button(label="Timeout", style=4, id="button1", disabled=True),
-                                Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                                [Button(label="Continue", style=4, id="button1", disabled=True),
+                                Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                     else:
                         await interaction.respond(type=6)
@@ -1370,8 +1324,8 @@ class Commands(Cog):
                         except TimeoutError:
                             await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
                                 components=[
-                                    [Button(label="Timeout", style=4, id="button1", disabled=True),
-                                    Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                                    [Button(label="Continue", style=4, id="button1", disabled=True),
+                                    Button(label="Cancel", style=2, id="button2", disabled=True)]])
             
                             return
         
@@ -1425,10 +1379,8 @@ class Commands(Cog):
                         i.component.id=="button1")
 
             except TimeoutError:
-                await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
-                    title="⌛❌ Timed out.",
-                    description="If you want to update your search appendage, please confirm within 10 seconds next time."), 
-                    components=[Button(label="Timeout", style=2, emoji="💾", id="button1", disabled=True)])
+                await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                    components=[Button(label="Update", style=1, emoji="💾", id="button1", disabled=True)])
                     
                 return
 
@@ -1444,7 +1396,6 @@ class Commands(Cog):
                 ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."),
                 components=[Button(label="Updated", style=3, emoji="💾", id="button1", disabled=True)])
         
-
                 return
 
                 
@@ -1476,10 +1427,8 @@ class Commands(Cog):
                         i.component.id=="button1")
 
             except TimeoutError:
-                await self.bot.comp_ext.edit_component_msg(conf, embed=Embed(
-                    title="⌛❌ Timed out.",
-                    description="If you want to erase your search appendage, please confirm within 10 seconds next time."), 
-                    components=[Button(label="Timeout", style=2, emoji="💾", id="button1", disabled=True)])
+                await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                    components=[Button(label="Erase", style=4, emoji="💾", id="button1", disabled=True)])
                     
                 return
 
