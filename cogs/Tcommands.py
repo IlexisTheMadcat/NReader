@@ -700,7 +700,7 @@ class Commands(Cog):
 
                 bookmark_page = None
                 if isinstance(list_items, dict):  # Is the Bookmarks list
-                    bookmark_page = list_items[item]
+                    bookmark_page = list_items[code]
 
                 if code == "placeholder":
                     passed_placeholder = True
