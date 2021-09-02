@@ -126,7 +126,7 @@ class Admin(Cog):
                 description=f"Module `{module}` loaded successfully",
                 color=0x00ff00
             )
-            print(f"[] Loaded module \"{module}\".")
+            print(f"[HRB] Loaded module \"{module}\".")
 
         await ctx.send(embed=em)
 
@@ -177,7 +177,7 @@ class Admin(Cog):
                 description=f"Module `{module}` unloaded successfully",
                 color=0x00ff00
             )
-            print(f"[] Unloaded module \"{module}\".")
+            print(f"[HRB] Unloaded module \"{module}\".")
         
         await ctx.send(embed=em)
 
@@ -263,7 +263,7 @@ class Admin(Cog):
                 description=f"Module `{module}` reloaded successfully",
                 color=0x00ff00
             )
-            print(f"[] Reloaded module \"{module}\".")
+            print(f"[HRB] Reloaded module \"{module}\".")
     
         await ctx.send(embed=em)
 

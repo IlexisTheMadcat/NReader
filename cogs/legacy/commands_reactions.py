@@ -168,7 +168,7 @@ class Commands(Cog):
         emb.set_footer(
             text="Would you like to read this doujin on Discord?")
         
-        print(f"[] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
+        print(f"[HRB] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
         await edit.edit(content="", embed=emb)
         
@@ -213,7 +213,7 @@ class Commands(Cog):
                     session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}")
                     response = await session.setup()
                     if response:
-                        print(f"[] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
+                        print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
                         await session.start()
                     
                     else:
@@ -321,7 +321,7 @@ class Commands(Cog):
         emb.set_footer(
             text=f"Press the reload button to load more detailed results.")
         await conf.edit(content='', embed=emb)
-        print(f"[] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' || ' if query and appendage else ''}{appendage if appendage else ''}].")
+        print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' || ' if query and appendage else ''}{appendage if appendage else ''}].")
 
         await conf.add_reaction("🔄")
 
@@ -584,7 +584,7 @@ class Commands(Cog):
             emb.set_footer(text=f"[{' '*len(doujin.images)}]")
             await conf.edit(embed=emb)
         
-        print(f"[] {ctx.author} ({ctx.author.id}) started downloading {doujin.id} ({len(doujin.images)} pages).")
+        print(f"[HRB] {ctx.author} ({ctx.author.id}) started downloading {doujin.id} ({len(doujin.images)} pages).")
         
         files = list()
         for ind, page_url in enumerate(doujin.images, 1):

@@ -3,6 +3,7 @@ from asyncio import sleep
 from aiohttp import ClientSession
 from datetime import datetime
 
+from discordspy import Post as DiscordsPost, Client as DiscordsClient
 from discord.activity import Activity
 from discord.enums import ActivityType, Status
 from discord.ext.commands.cog import Cog
@@ -17,6 +18,8 @@ class BackgroundTasks(Cog):
         self.save_data.start()
         self.status_change.start()
         self.del_update_stats.start()
+
+        self.discords = DiscordsClient(bot, DISCORDS_TOKEN)
 
     @loop(seconds=60)
     async def status_change(self):
@@ -42,9 +45,9 @@ class BackgroundTasks(Cog):
     @loop(seconds=57.5)
     async def save_data(self):
         # If the repl is exited while saving, data may be corrupted or reset.
-        print("[HRB: 🟢Saving, do not quit...", end="\r")
+        print("[HRB: ... Saving, do not quit...", end="\r")
         await sleep(2)
-        print("[HRB: ⚠Saving, do not quit...", end="\r")
+        print("[HRB: !!! Saving, do not quit...", end="\r")
         time = datetime.now().strftime("%H:%M, %m/%d/%Y")
 
         self.bot.database.update(self.bot.user_data)
@@ -65,6 +68,15 @@ class BackgroundTasks(Cog):
                 js = await r.json()
                 if js['error'] == True:
                     print(f'Failed to post to discordextremelist.xyz\n{js}')
+    
+    @loop(minutes=30)
+    def discords_update_stats(self):
+        self.discords.post_servers()
+
+    @Cog.listener()  # Callback with response code for the above loop
+    async def on_discords_server_post(self, status):
+        if status != 200:
+            await print("[HRB] Failed to post the server count to Discords.com.")
 
     @status_change.before_loop
     async def sc_wait(self):
@@ -80,6 +92,7 @@ class BackgroundTasks(Cog):
         self.status_change.cancel()
         self.save_data.cancel()
         self.del_update_stats.cancel()
+        self.discords_update_stats.cancel()
 
 def setup(bot):
     bot.add_cog(BackgroundTasks(bot))

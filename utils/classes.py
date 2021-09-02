@@ -128,7 +128,7 @@ class Bot(DiscordBot):
         self.database = kwargs.pop("database")  # Online
         self.user_data = kwargs.pop("user_data") # Local
         self.config = self.user_data["config"]  # Shortcut for user_data['config']
-        print("[] Data and configurations loaded.")
+        print("[HRB] Data and configurations loaded.")
 
         # Get the channel ready for errorlog
         # Bot.get_channel method not available until on_ready

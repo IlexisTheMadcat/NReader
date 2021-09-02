@@ -195,7 +195,7 @@ class Commands(Cog):
         emb.set_footer(
             text="Would you like to read this doujin on Discord?")
         
-        print(f"[] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
+        print(f"[HRB] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
         await self.bot.comp_ext.edit_component_msg(edit, content="", embed=emb,
             components=[
@@ -247,7 +247,7 @@ class Commands(Cog):
                     session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}", str(doujin.id))
                     response = await session.setup()
                     if response:
-                        print(f"[] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
+                        print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
                         await session.start()
                     
                     else:
@@ -384,7 +384,7 @@ class Commands(Cog):
         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
             components=[Button(label="Load", style=1, emoji=self.bot.get_emoji(853684136433942560), id="button1")])
         
-        print(f"[] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
+        print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
 
         try:
             interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
@@ -1589,7 +1589,7 @@ class Commands(Cog):
             self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
             
             await edit.edit(embed=Embed(description="<:nhentai:845298862184726538> Successfully recalled."))
-            print(f"[] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
+            print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
             await session.start()
         
         else:
@@ -1616,7 +1616,7 @@ class Commands(Cog):
             
             return
         else:
-            print(f"[] {ctx.author} ({ctx.author.id}) looked up '{word}' using the built-in Urban Dictionary.")
+            print(f"[HRB] {ctx.author} ({ctx.author.id}) looked up '{word}' using the built-in Urban Dictionary.")
 
         # Manual cleaning
         for res in response:
