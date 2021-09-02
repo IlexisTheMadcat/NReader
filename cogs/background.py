@@ -19,7 +19,8 @@ class BackgroundTasks(Cog):
         self.status_change.start()
         self.del_update_stats.start()
 
-        self.discords = DiscordsClient(bot, DISCORDS_TOKEN)
+        self.discords = DiscordsClient(bot, self.bot.auth["DISCORDS_TOKEN"])
+        self.discords_update_stats.start()
 
     @loop(seconds=60)
     async def status_change(self):
@@ -70,13 +71,13 @@ class BackgroundTasks(Cog):
                     print(f'Failed to post to discordextremelist.xyz\n{js}')
     
     @loop(minutes=30)
-    def discords_update_stats(self):
-        self.discords.post_servers()
+    async def discords_update_stats(self):
+        await self.discords.post_servers()
 
     @Cog.listener()  # Callback with response code for the above loop
     async def on_discords_server_post(self, status):
         if status != 200:
-            await print("[HRB] Failed to post the server count to Discords.com.")
+            print(f"[HRB] Failed to post the server count to Discords.com. HTTP code {status}")
 
     @status_change.before_loop
     async def sc_wait(self):
