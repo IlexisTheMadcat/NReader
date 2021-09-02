@@ -418,12 +418,18 @@ class ImagePageReader:
             
                 self.active_message = conf
                 self.am_channel = conf.channel
+
+                if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+                    self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+                    self.on_bookmarked_page = True
+                else:
+                    self.on_bookmarked_page = False
             
                 self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                             f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
                                             f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
                 self.am_embed.set_image(url=self.images[self.current_page].src)
-                self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]")
+                self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                 self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                 await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
                     components=[
@@ -740,7 +746,7 @@ class SearchResultsBrowser:
     def __init__(self, bot: Bot, ctx: Context, results: List[Doujin], **kwargs):
         """Class to create and run a browser from NHentai-API
 
-        `results` - obtained from nhentai_api.search(query); Modified `SearchPage` to contain real Doujins, not DoujinThumbnails.
+        `results` - obtained from nhentai_api.search(query)
         `msg` - optional message that the bot owns to edit, otherwise created 
         """
         self.bot = bot
@@ -1037,7 +1043,12 @@ class SearchResultsBrowser:
                         await interaction.respond(type=6)  # Respond now since this option returns.
 
                         doujin = self.doujins[self.index]
-                        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty}", str(doujin.id))
+                        if str(doujin.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Bookmarks|*n*|bm"]:
+                            page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Bookmarks|*n*|bm"][str(doujin.id)]
+                        else:
+                            page = 1
+
+                        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty}", str(doujin.id), starting_page=page)
                         response = await session.setup()
                         if response:
                             await session.start()
