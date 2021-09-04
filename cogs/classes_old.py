@@ -15,6 +15,7 @@ from discord.ext.commands import Context
 from discord.ext.commands.cog import Cog
 from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
+# Using NHentai-API==0.0.16
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
 from utils.misc import (
@@ -431,8 +432,8 @@ class ImagePageReader:
                         Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                         Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
                         [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                        Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                        Button(label="Provided by MechHub", style=2, disabled=True)]])
+                        Button(emoji="⭐", style=2, id="fav"),
+                        Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]])
 
                 await sleep(0.2)
                 with suppress(NotFound):
@@ -441,21 +442,26 @@ class ImagePageReader:
                 return True
 
     async def start(self):
-        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][0]:
-            self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].insert(0, 
-                self.bot.doujin_cache[self.code].id)
+        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["enabled"]:
+            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].insert(0, self.code)
             
-            if "placeholer" in self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]:
-                self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].remove("placeholder")
+            if "placeholer" in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove("placeholder")
             
-            if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) >= 2 and \
-                self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1][1] == \
-                    self.bot.doujin_cache[self.code].id:
+            if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]) >= 2 and \
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"][1] == self.code:
                 
-                self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop(0)
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].pop(0)
             
-            while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1]) > 25:
-                self.bot.user_data["UserData"][str(self.ctx.author.id)]["History"][1].pop()
+            while len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]) > 25:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].pop()
+
+            while self.code in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
+                self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove(self.code)
+
+            for i in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
+                if isinstance(i, int):
+                    self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].remove(i)
         
         while True:
             try:
@@ -486,13 +492,9 @@ class ImagePageReader:
             
             else:
                 try:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
-
                     if isinstance(interaction.component, list):
                         delay = await self.am_channel.send("Returned unexpected datatype. Please try again. If that fails, let the doujin time out and try again later.")
                         await delay.delete(delay=5)
-                        continue
 
                     self.bot.inactive = 0
                     if interaction.component.id == "next":  # Next page
@@ -503,6 +505,8 @@ class ImagePageReader:
                             self.am_embed.description = Embed.Empty
                             self.am_embed.set_footer(text="You finished this doujin.")
                             await self.active_message.edit(embed=self.am_embed)
+                            if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl']:
+                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl'].remove(self.code)
                             
                             await sleep(2)
                             await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
@@ -514,13 +518,13 @@ class ImagePageReader:
                         else:
                             pass
                         
-                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                            if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
-                                self.on_bookmarked_page = True
-                            else:
-                                self.on_bookmarked_page = False
+                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+                            self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+                            self.on_bookmarked_page = True
+                        else:
+                            self.on_bookmarked_page = False
                         
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                         self.am_embed.set_image(url=self.images[self.current_page])
                         self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                         
@@ -536,10 +540,8 @@ class ImagePageReader:
                                 Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                                 Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
                                 [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                                Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                                Button(label="Provided by MechHub", style=2, disabled=True)]])
-                        
-                        continue
+                                Button(emoji="⭐", style=2, id="fav"),
+                                Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]])
 
                     elif interaction.component.id == "prev":  # Previous page
                         if self.current_page == 0:  # Not allowed to go behind zero
@@ -548,13 +550,13 @@ class ImagePageReader:
                         else:
                             self.current_page = self.current_page - 1
                         
-                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                            if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
-                                self.on_bookmarked_page = True
-                            else:
-                                self.on_bookmarked_page = False
+                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+                            self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+                            self.on_bookmarked_page = True
+                        else:
+                            self.on_bookmarked_page = False
                         
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                         self.am_embed.set_image(url=self.images[self.current_page])
                         self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                         
@@ -570,41 +572,45 @@ class ImagePageReader:
                                 Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                                 Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
                                 [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                                Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                                Button(label="Provided by MechHub", style=2, disabled=True)]])
-                        
-                        continue
+                                Button(emoji="⭐", style=2, id="fav"),
+                                Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]])
                     
                     elif interaction.component.id == "sele":  # Select page
-                        conf = await self.am_channel.send(embed=Embed(
-                            description=f"Enter the page number you would like to go to."
-                                        f"{newline+'Bookmarked page: '+str(int(self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code])+1) if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'] else ''}"))
+                        await interaction.respond(type=6)
+                        bm_page = None
+                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
+                            bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]
                         
+                        conf = await self.am_channel.send(embed=Embed(
+                            description=f"Enter a page number within 15 seconds, or type `n-cancel` to cancel."
+                                        f"{newline+'Bookmarked page: '+str(bm_page) if bm_page else ''}"))
+
                         while True:
                             try:
-                                resp = await self.bot.wait_for("message", timeout=10, bypass_cooldown=True,
-                                    check=lambda m: m.channel.id == self.am_channel.id and
-                                        m.author.id == self.ctx.author.id)
+                                m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
+                                    check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.am_channel.id)
+                            
                             except TimeoutError:
                                 await conf.delete()
                                 break
-                            
-                            except BotInteractionCooldown:
-                                continue
 
                             else:
-                                if is_int(resp.content) and (int(resp.content)-1) in range(0, len(self.images)):
-                                    self.current_page = (int(resp.content)-1)
-                                    await resp.delete()
+                                await m.delete()
+                                if m.content == "n-cancel":
                                     await conf.delete()
+                                    break
+                                
+                                if is_int(m.content) and (int(m.content)-1) in range(0, len(self.images)):
+                                    await conf.delete()
+                                    self.current_page = int(m.content)-1
                                     
-                                    if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                                        if self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code]:
-                                            self.on_bookmarked_page = True
-                                        else:
-                                            self.on_bookmarked_page = False
+                                    if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+                                        self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+                                        self.on_bookmarked_page = True
+                                    else:
+                                        self.on_bookmarked_page = False
 
-                                    self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'Bookmarked' if self.on_bookmarked_page else ''}")
+                                    self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                                     self.am_embed.set_image(url=self.images[self.current_page])
                                     self.am_embed.set_thumbnail(url=self.images[self.current_page+1] if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
                                     
@@ -620,27 +626,24 @@ class ImagePageReader:
                                             Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                                             Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="paus")],
                                             [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="book"),
-                                            Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2"),
-                                            Button(label="Provided by MechHub", style=2, disabled=True)]])
+                                            Button(emoji="⭐", style=2, id="fav"),
+                                            Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]])
                                     
                                     break
                                 
                                 else:
-                                    await resp.delete()
-                                    await self.am_channel.send(embed=Embed(
-                                        color=0xFF0000,
-                                        description="Not a valid number!"), 
-                                        delete_after=2)
-
                                     continue
                     
                     elif interaction.component.id == "paus":  # Pause and send to recall
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.description = Embed.Empty
-                        self.am_embed.set_footer(text=f"You've paused this doujin on page [{self.current_page+1}/{len(self.images)}].")
+                        self.am_embed.set_footer(text=f"You paused this doujin on page [{self.current_page+1}/{len(self.images)}].")
                         await self.active_message.edit(embed=self.am_embed)
                         
+                        try: await interaction.respond(type=6)
+                        except NotFound: continue
+
                         await sleep(2)
                         await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
                         
@@ -653,6 +656,7 @@ class ImagePageReader:
                             title="Recall saved.",
                             description=f"Doujin `{self.code}` saved to recall to page [{self.current_page+1}/{len(self.images)}].\n"
                                         f"To get back to this page, run the `n!recall` command to instantly open a new reader starting on that page."))
+
                         break
 
                     elif interaction.component.id == "stop":  # Stop entirely
@@ -661,45 +665,60 @@ class ImagePageReader:
                         self.am_embed.description = Embed.Empty
                         self.am_embed.set_footer(text=f"You stopped this doujin on page [{self.current_page+1}/{len(self.images)}].")
                         await self.active_message.edit(embed=self.am_embed)
+
+                        try: await interaction.respond(type=6)
+                        except NotFound: continue
                         
                         await sleep(2)
                         await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
                         
                         await sleep(1)
                         await self.am_channel.delete()
+                        
                         break
                     
                     elif interaction.component.id == "book":  # Set/Remove bookmark
                         if not self.on_bookmarked_page:
                             if self.current_page == 0:
-                                await self.am_channel.send(embed=Embed(
+                                await interaction.respond(embed=Embed(
                                     color=0xFF0000,
-                                    description="You cannot bookmark the first page. Use favorites instead!"),
-                                    delete_after=3)
-
-                                try: await interaction.respond(type=6)
-                                except NotFound: continue
-                                
+                                    description="You cannot bookmark the first page. Use favorites instead!"
+                                ).set_footer(text="You may dismiss this message."))
                                 continue
 
-                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'][self.code] = self.current_page
+                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code] = self.current_page
                             self.on_bookmarked_page = True
                         
                         else:
-                            if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks']:
-                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['nFavorites']['Bookmarks'].pop(self.code)
-
+                            if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
+                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'].pop(self.code)
                                 self.on_bookmarked_page = False
                         
                         self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
                                                     f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
-                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}]{' Bookmarked' if self.on_bookmarked_page else ''}")
+                        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                         
                         await self.active_message.edit(embed=self.am_embed)
 
-                        continue
-            
+                    elif interaction.component.id == "fav":  # Add to favorites
+                        if self.code not in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav']:
+                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].append(self.code)
+
+                            await interaction.respond(embed=Embed(
+                                description=f"✅ Added `{self.code}` to your favorites."
+                            ).set_footer(text="You may dismiss this message."))
+                        else:
+                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].remove(self.code)
+
+                            await interaction.respond(embed=Embed(
+                                description=f"✅ Removed `{self.code}` from your favorites."
+                            ).set_footer(text="You may dismiss this message."))
+
+                    # Respond if not already
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
                 except Exception:
                     error = exc_info()
                     temp = await self.am_channel.send(embed=Embed(
@@ -761,7 +780,7 @@ class SearchResultsBrowser:
             description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
             
         self.am_embed.set_author(
-            name="NHentai Search Results [INTERACTIVE]",
+            name="NHentai",
             url=f"https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
 
@@ -835,7 +854,7 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                     Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
                     [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="toread"),
+                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
                     Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
         else:
             self.active_message = await self.bot.comp_ext.send_component_msg(self.ctx, embed=self.am_embed,
@@ -846,7 +865,7 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                     Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
                     [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
-                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="toread"),
+                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
                     Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
             
             await sleep(0.5)
@@ -874,10 +893,10 @@ class SearchResultsBrowser:
                     title=self.name,
                     description=f"\n"+('\n'.join(message_part)))
                 self.am_embed.set_author(
-                    name="NHentai Search Results",
+                    name="NHentai",
                     url=f"https://nhentai.net/",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                self.am_embed.set_footer(text=f"Provided by NHentai-API")
+                
 
                 self.am_embed.set_thumbnail(url=Embed.Empty)
                 self.am_embed.set_image(url=Embed.Empty)
@@ -953,10 +972,10 @@ class SearchResultsBrowser:
                             description=f"\n"+('\n'.join(message_part)))
 
                         self.am_embed.set_author(
-                            name="NHentai Search Results",
+                            name="NHentai",
                             url=f"https://nhentai.net/",
                             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        self.am_embed.set_footer(text=f"Provided by NHentai-API")
+                        
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.set_image(url=Embed.Empty)
                         await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed, components=[])
@@ -984,14 +1003,15 @@ class SearchResultsBrowser:
                             title=self.name,
                             description=f"\n"+('\n'.join(message_part)))
                         self.am_embed.set_author(
-                            name="NHentai Search Results",
+                            name="NHentai",
                             url=f"https://nhentai.net/",
                             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        self.am_embed.set_footer(text=f"Provided by NHentai-API")
+                        
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.set_image(url=Embed.Empty)
 
                         await self.active_message.edit(content='', embed=self.am_embed)
+                        await interaction.respond(type=6)  # Respond now since this option returns.
 
                         doujin = self.doujins[self.index]
                         session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}", str(doujin.id))
@@ -999,7 +1019,6 @@ class SearchResultsBrowser:
                         if response:
                             await session.start()
                         else:
-                            self.am_embed.set_footer(text="Provided by NHentai-API")
                             await self.active_message.edit(embed=self.am_embed)
 
                         return
@@ -1015,20 +1034,20 @@ class SearchResultsBrowser:
                         
                         await self.active_message.edit(embed=self.am_embed)
 
-                    elif interaction.component.id == "toread":
-                        if self.doujins[self.index].id not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["ToRead"]:
-                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["ToRead"].append(self.doujins[self.index].id)
+                    elif interaction.component.id == "readlater":
+                        if self.doujins[self.index].id not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
+                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.doujins[self.index].id))
                             await interaction.respond(
                                 mention_author=False,
                                 embed=Embed(
-                                    description=f"✅ Added `{self.doujins[self.index].id}` to your To Read list!"
+                                    description=f"✅ Added `{self.doujins[self.index].id}` to your To Read list."
                                 ).set_footer(text="You may dismiss this message."))
                         else:
-                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["ToRead"].remove(self.doujins[self.index].id)
+                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.doujins[self.index].id))
                             await interaction.respond(
                                 mention_author=False,
                                 embed=Embed(
-                                    description=f"✅ Removed `{self.doujins[self.index].id}` from your To Read list!"
+                                    description=f"✅ Removed `{self.doujins[self.index].id}` from your To Read list."
                                 ).set_footer(text="You may dismiss this message."))
                     
                     # Respond if not already

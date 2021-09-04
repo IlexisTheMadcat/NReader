@@ -11,6 +11,7 @@ from discord.ext.commands import (
     bot_has_guild_permissions, command)
 from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
+# Using NHentai-API==0.0.16
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
@@ -20,12 +21,13 @@ from cogs.classes import (
 from utils.misc import language_to_flag, restricted_tags
 
 newline = "\n"
+experimental_prefix = ""
 
 class Commands(Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @command(name="test")
+    @command(name=f"{experimental_prefix}test")
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def test(self, ctx):
         try:
@@ -61,7 +63,9 @@ class Commands(Cog):
         
         print(f"{ctx.author} ({ctx.author.id}) tested.")
        
-    @command(aliases=["code"])
+    @command(
+        name=f"{experimental_prefix}doujin_info", 
+        aliases=[f"{experimental_prefix}code"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -209,7 +213,7 @@ class Commands(Cog):
                     check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
             
             except TimeoutError:
-                emb.set_footer(text="Provided by NHentai-API")
+                emb.set_footer(text="null")
                 emb.set_thumbnail(
                     url=doujin.images[0])
                 emb.set_image(
@@ -233,7 +237,7 @@ class Commands(Cog):
                     with suppress(Forbidden):
                         await edit.clear_reactions()
                     
-                    emb.set_footer(text="Provided by NHentai-API")
+                    emb.set_footer(text="null")  # emb.set_footer(text=Embed.Empty)
                     emb.set_thumbnail(
                         url=doujin.images[0])
                     emb.set_image(
@@ -274,7 +278,9 @@ class Commands(Cog):
 
                     continue
     
-    @command(aliases=["search"])
+    @command(
+        name=f"{experimental_prefix}search_doujins",
+        aliases=[f"{experimental_prefix}search"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -376,10 +382,9 @@ class Commands(Cog):
                         f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
                         f"\n"+('\n'.join(message_part)))
         emb.set_author(
-            name="NHentai Search Results",
+            name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        emb.set_footer(text="Provided by NHentai-API")
         
         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
             components=[Button(label="Load", style=1, emoji=self.bot.get_emoji(853684136433942560), id="button1")])
@@ -408,7 +413,7 @@ class Commands(Cog):
         # Edits message every 5 retrievals to show progress
         if any([isinstance(dj, DoujinThumbnail) for dj in doujins]):
             emb.set_author(
-                name="NHentai Search Results",
+                name="NHentai",
                 url="https://nhentai.net/",
                 icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1")
             emb.set_footer(
@@ -445,7 +450,7 @@ class Commands(Cog):
                                     f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
                                     f"\n"+('\n'.join(message_part2)))
                     emb2.set_author(
-                        name="NHentai Search Results",
+                        name="NHentai",
                         url="https://nhentai.net/",
                         icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1")
                     emb2.set_footer(
@@ -465,10 +470,9 @@ class Commands(Cog):
                         f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
                         f"\n"+('\n'.join(message_part)))
         emb.set_author(
-            name="NHentai Search Results",
+            name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        emb.set_footer(text="Provided by NHentai-API")
         
         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
             components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
@@ -492,7 +496,9 @@ class Commands(Cog):
             interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
     
-    @command(aliases=["pop"])
+    @command(
+        name=f"{experimental_prefix}popular",
+        aliases=[f"{experimental_prefix}pop"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -549,10 +555,9 @@ class Commands(Cog):
             title=f"<:npopular:853883174455214102> **Popular Now**",
             description=f"\n"+('\n'.join(message_part)))
         emb.set_author(
-            name="NHentai Search Results",
+            name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        emb.set_footer(text="Provided by NHentai-API")
         
         await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
             components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
@@ -576,585 +581,46 @@ class Commands(Cog):
             interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, name=f"<:npopular:853883174455214102> **Popular Now**", lolicon_allowed=lolicon_allowed)
             await interactive.start(ctx)
     
-    @command(aliases=["fav"])
+    @command(
+        name=f"{experimental_prefix}favorites",
+        aliases=[f"{experimental_prefix}fav"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
     async def favorites(self, ctx, mode:str=None, code=None):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
+        await ctx.send("Please use the new `library` command to manage your favorites.")
 
-            return
-
-        lolicon_allowed = False
-        try:
-            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
-                lolicon_allowed = True
-        except KeyError:
-            pass
-        
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
-            return
-        
-        if not mode:
-            nhentai_api = NHentai()
-            edit = await ctx.send(embed=Embed(
-                description=f"Loading..."
-            ).set_author(
-                name="NHentai Favorites",
-                url=f"https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
-            ).set_footer(
-                text=f"[{' '*len(self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'])}]"
-            ))
-
-            message_part = list()
-            remove_queue = list()  # It is very rare that a doujin would get deleted from NHentai
-
-            is_loading = False
-            for code in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']:
-                if str(code) not in self.bot.doujin_cache:
-                    is_loading = True
-                    break
-            
-            doujins = []
-            for ind, code in enumerate(self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']):
-                if str(code) not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
-                else:
-                    doujin = self.bot.doujin_cache[str(code)]
-                
-                if not doujin:
-                    remove_queue.append(code)
-                    continue
-                else:
-                    self.bot.doujin_cache[str(code)] = doujin
-
-                    if any([tag in restricted_tags for tag in doujin.tags]): is_lolicon = True
-                    else: is_lolicon = False
-                    
-                    if is_lolicon and not lolicon_allowed:
-                        pass
-                    else:
-                        message_part.append(
-                            f"__`{str(doujin.id).ljust(7)}`__ | "
-                            f"{language_to_flag(doujin.languages)} | "
-                            f"{shorten(doujin.title, width=50, placeholder='...')}")
-                        
-                        doujins.append(doujin)
-                        
-                    if ind%5 == 0 and ind!=0 and is_loading:
-                        await edit.edit(embed=Embed(
-                            description=f"Loading..."
-                        ).set_author(
-                            name="NHentai Favorites",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
-                        ).set_footer(
-                            text=f"[{'|'*ind}{' '*(len(self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'])-ind)}]"
-                        ))
-
-                        await sleep(0.2)
-                    
-                    continue
-            
-            [self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'].pop(code) for code in remove_queue]
-            
-            emb = Embed(
-                title=f"⭐ Favorites",
-                description=f"\n"+('\n'.join(message_part)))
-            emb.set_author(
-                name="NHentai Search Results",
-                url="https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.set_footer(text="Provided by MechHub")
-            
-            if self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']:
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
-                
-                try:
-                    interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                        check=lambda i: i.message.id==edit.id and \
-                            i.user.id==ctx.author.id and \
-                            i.component.id=="button1")
-                except TimeoutError:
-                    await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                        components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
-                    
-                    return
-
-                else:
-                    await interaction.respond(type=6)
-
-                    await self.bot.comp_ext.edit_component_msg(edit, embed=emb, components=[])
-
-                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"⭐ Favorites", lolicon_allowed=lolicon_allowed)
-                    await interactive.start(ctx)
-
-                    return
-            
-            else:
-                emb.description = "You have no favorites."
-
-            await edit.edit(embed=emb)
-        
-        elif mode:
-            if mode.lower() in ["add", "a", "+"]:
-                if not code:
-                    await ctx.send(embed=Embed(
-                        description=":x: What are you adding to your favorites list?\n"
-                                    "`n!favorites add <doujin_id>`"))
-                    
-                    return
-
-                try:
-                    code = int(code)
-                    code = str(code)
-                except ValueError:
-                    await ctx.send(embed=Embed(
-                        description=":x: You didn't type a proper ID. Come on, numbers!"))
-                    
-                    return
-
-                nhentai_api = NHentai()
-                edit = await ctx.send("<a:nreader_loading:810936543401213953>")
-
-                if code not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
-                else:
-                    doujin = self.bot.doujin_cache[code]
-
-                if not doujin:
-                    await edit.edit(embed=Embed(
-                        description=":mag_right::x: I did not find a doujin with that ID."))
-
-                    return
-
-                else:
-                    self.bot.doujin_cache[code] = doujin
-
-                    if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
-                        await edit.edit(content=":warning::no_entry_sign: This doujin contains lolicon/shotacon content and cannot be shown publically.")
-                        return
-                    
-                    if len(self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]) >= 25:
-                        emb = Embed(
-                            description=f":x: Your favorites list is full. You can only hold 25.\n"
-                                        f"This is not the developer being mean, any more would make the favorites list message too large to send."
-                        ).set_author(
-                            name="NHentai Favorites",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        
-                        await edit.edit(content="", embed=emb)
-                        return
-                    
-                    if doujin.id not in self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]:
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"].append(doujin.id)
-                        
-                        emb = Embed(
-                            description=f":white_check_mark: Added `{code}` to your favorites list."
-                        ).set_author(
-                            name="NHentai Favorites",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        await edit.edit(content="", embed=emb)
-                        return
-                    
-                    else:
-                        emb = Embed(
-                            description=f":x: `{code}` is already in your favorites list."
-                        ).set_author(
-                            name="NHentai Favorites",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        await edit.edit(content="", embed=emb)
-            
-            elif mode.lower() in ["remove", "r", "-"]:
-                if not code:
-                    await ctx.send(embed=Embed(
-                        description=":x: What are you removing from your favorites list?\n"
-                                    "`n!favorites remove <doujin_id>`"))
-                    
-                    return
-
-                try:
-                    code = int(code)
-                    code = str(code)
-                except ValueError:
-                    await ctx.send(embed=Embed(
-                        description=":x: You didn't type a proper ID. Come on, numbers!"))
-
-                    return
-
-                if code in self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"]:
-                    self.bot.user_data["UserData"][str(ctx.author.id)]["nFavorites"]["Doujins"].remove(code)
-                    
-                    emb = Embed(
-                        description=f":white_check_mark: Removed `{code}` from your favorites list!"
-                        ).set_author(
-                        name="NHentai Favorites",
-                        url=f"https://nhentai.net/",
-                        icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                    await ctx.send(embed=emb)
-                
-                else:
-                    emb = Embed(
-                        description=f":x: `{code}` is not in your favorites list."
-                        ).set_author(
-                        name="NHentai Favorites",
-                        url=f"https://nhentai.net/",
-                        icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                    await ctx.send(embed=emb)
-                
-            else:
-                await ctx.send("You didn't specify a mode. Valid modes are `add/a/+` and `remove/r/-`.")
-
-    @command(aliases=["bm"])
+    @command(
+        name=f"{experimental_prefix}bookmarks",
+        aliases=[f"{experimental_prefix}bm"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
     async def bookmarks(self, ctx):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
-
-            return
-
-        lolicon_allowed = False
-        try:
-            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
-                lolicon_allowed = True
-        except KeyError:
-            pass
-        
-        if not ctx.channel.is_nsfw():
-            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
-            return
-
-        nhentai_api = NHentai()
-        edit = await ctx.send(embed=Embed(
-                description=f"Loading..."
-            ).set_author(
-                name="NHentai Bookmarks",
-                url=f"https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
-            ).set_footer(
-                text=f"[{' '*len(self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'])}]"
-        ))
-        
-        message_part = list()
-        remove_queue = list()  # It is very rare that a doujin would get deleted from NHentai
-        
-        doujins = []
-        for code, page in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'].items():
-            if str(code) not in self.bot.doujin_cache:
-                doujin = await nhentai_api.get_doujin(code)
-            else:
-                doujin = self.bot.doujin_cache[str(code)]
-
-            if not doujin:
-                remove_queue.append(code)
-                continue
-            else:
-                self.bot.doujin_cache[str(code)] = doujin
-
-                if any([tag in restricted_tags for tag in doujin.tags]): is_lolicon = True
-                else: is_lolicon = False
-                
-                if is_lolicon and not lolicon_allowed:
-                    pass
-                else:
-                    message_part.append(
-                        f"__`{str(code).ljust(7)}`__ | " \
-                        f"{language_to_flag(doujin.languages)} | " \
-                        f"{page+1}/{len(doujin.images)} ー " \
-                        f"{shorten(doujin.title, width=50, placeholder='...')} ")
-                    
-                    doujins.append(doujin)
-
-        [self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'].pop(code) for code in remove_queue]
-
-        emb = Embed(
-            title=f"🔖 Bookmarks")
-        emb.set_author(
-            name="NHentai Search Results",
-            url="https://nhentai.net/",
-            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        emb.set_footer(text="Provided by MechHub")
-
-        if self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks']:
-            emb.description = "\n".join(message_part)
-            
-            await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
-            
-            try:
-                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                    check=lambda i: i.message.id==edit.id and \
-                        i.user.id==ctx.author.id and \
-                        i.component.id=="button1")
-            except TimeoutError:
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
-                
-                return
-
-            else:
-                await interaction.respond(type=6)
-
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb, components=[])
-
-                interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"🔖 Bookmarks", lolicon_allowed=lolicon_allowed)
-                await interactive.start(ctx)
-
-                return
-        else:
-            emb.description = "You have no bookmarks."
-        
-        await edit.edit(content="", embed=emb)
+        await ctx.send("Please use the new `library` command to manage your bookmarks.")
     
-    @command(aliases=["tr"])
+    @command(
+        name=f"{experimental_prefix}toread",
+        aliases=[f"{experimental_prefix}tr"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
     async def toread(self, ctx, mode:str=None, code=None):
-        if not ctx.guild:
-            await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
+        await ctx.send("Please use the new `library` command to manage your Read Later list.")
 
-            return
 
-        lolicon_allowed = False
-        try:
-            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
-                lolicon_allowed = True
-        except KeyError:
-            pass
-        
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
-            return
-        
-        if not mode:
-            nhentai_api = NHentai()
-            edit = await ctx.send(embed=Embed(
-                description=f"Loading..."
-            ).set_author(
-                name="NHentai Favorites",
-                url=f"https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
-            ).set_footer(
-                text=f"[{' '*len(self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead'])}]"
-            ))
-
-            message_part = list()
-            remove_queue = list()  # It is very rare that a doujin would get deleted from NHentai
-
-            is_loading = False
-            for code in self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead']:
-                if str(code) not in self.bot.doujin_cache:
-                    is_loading = True
-                    break
-            
-            doujins = []
-            for ind, code in enumerate(self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead']):
-                if str(code) not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
-                else:
-                    doujin = self.bot.doujin_cache[str(code)]
-                
-                if not doujin:
-                    remove_queue.append(code)
-                    continue
-                else:
-                    self.bot.doujin_cache[str(code)] = doujin
-
-                    if any([tag in restricted_tags for tag in doujin.tags]): is_lolicon = True
-                    else: is_lolicon = False
-                    
-                    if is_lolicon and not lolicon_allowed:
-                        pass
-                    else:
-                        message_part.append(
-                            f"__`{str(doujin.id).ljust(7)}`__ | "
-                            f"{language_to_flag(doujin.languages)} | "
-                            f"{shorten(doujin.title, width=50, placeholder='...')}")
-                        
-                        doujins.append(doujin)
-                        
-                    if ind%5 == 0 and ind!=0 and is_loading:
-                        await edit.edit(embed=Embed(
-                            description=f"Loading..."
-                        ).set_author(
-                            name="NHentai Favorites",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
-                        ).set_footer(
-                            text=f"[{'|'*ind}{' '*(len(self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead'])-ind)}]"
-                        ))
-
-                        await sleep(0.2)
-                    
-                    continue
-            
-            [self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead'].pop(code) for code in remove_queue]
-            
-            emb = Embed(
-                title=f"📑 To Read",
-                description=f"\n"+('\n'.join(message_part)))
-            emb.set_author(
-                name="NHentai Search Results",
-                url="https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.set_footer(text="Provided by MechHub")
-            
-            if self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead']:
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
-                
-                try:
-                    interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                        check=lambda i: i.message.id==edit.id and \
-                            i.user.id==ctx.author.id and \
-                            i.component.id=="button1")
-                except TimeoutError:
-                    await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                        components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
-                    
-                    return
-
-                else:
-                    await interaction.respond(type=6)
-
-                    await self.bot.comp_ext.edit_component_msg(edit, embed=emb, components=[])
-
-                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"📑 To Read", lolicon_allowed=lolicon_allowed)
-                    await interactive.start(ctx)
-
-                    return
-            
-            else:
-                emb.description = "There is nothing in your To Read list."
-
-            await edit.edit(embed=emb)
-        
-        elif mode:
-            if mode.lower() in ["add", "a", "+"]:
-                if not code:
-                    await ctx.send(embed=Embed(
-                        description=":x: What are you adding to your To Read list?\n"
-                                    "`n!toread add <doujin_id>`"))
-                    
-                    return
-
-                try:
-                    code = int(code)
-                    code = str(code)
-                except ValueError:
-                    await ctx.send(embed=Embed(
-                        description=":x: You didn't type a proper ID. Come on, numbers!"))
-                    
-                    return
-
-                nhentai_api = NHentai()
-                edit = await ctx.send("<a:nreader_loading:810936543401213953>")
-
-                if code not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
-                else:
-                    doujin = self.bot.doujin_cache[code]
-
-                if not doujin:
-                    await edit.edit(embed=Embed(
-                        description=":mag_right::x: I did not find a doujin with that ID."))
-
-                    return
-
-                else:
-                    self.bot.doujin_cache[code] = doujin
-
-                    if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
-                        await edit.edit(content=":warning::no_entry_sign: This doujin contains lolicon/shotacon content and cannot be shown publically.")
-                        return
-                    
-                    if len(self.bot.user_data["UserData"][str(ctx.author.id)]["ToRead"]) >= 25:
-                        emb = Embed(
-                            description=f":x: Your To Read list is full. You can only hold 25.\n"
-                                        f"This is not the developer being mean, any more would make the To Read list message too large to send.\n"
-                        ).set_author(
-                            name="NHentai ToRead",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        
-                        await edit.edit(content="", embed=emb)
-                        return
-                    
-                    if doujin.id not in self.bot.user_data["UserData"][str(ctx.author.id)]["ToRead"]:
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["ToRead"].append(doujin.id)
-                        
-                        emb = Embed(
-                            description=f":white_check_mark: Added `{code}` to your To Read list."
-                        ).set_author(
-                            name="NHentai ToRead",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        await edit.edit(content="", embed=emb)
-                        return
-                    
-                    else:
-                        emb = Embed(
-                            description=f":x: `{code}` is already in your To Read list."
-                        ).set_author(
-                            name="NHentai ToRead",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        await edit.edit(content="", embed=emb)
-            
-            elif mode.lower() in ["remove", "r", "-"]:
-                if not code:
-                    await ctx.send(embed=Embed(
-                        description=":x: What are you removing from your To Read list?\n"
-                                    "`n!favorites remove <doujin_id>`"))
-                    
-                    return
-
-                try:
-                    code = int(code)
-                    code = str(code)
-                except ValueError:
-                    await ctx.send(embed=Embed(
-                        description=":x: You didn't type a proper ID. Come on, numbers!"))
-
-                    return
-
-                if code in self.bot.user_data["UserData"][str(ctx.author.id)]["ToRead"]:
-                    self.bot.user_data["UserData"][str(ctx.author.id)]["ToRead"].remove(code)
-                    
-                    emb = Embed(
-                        description=f":white_check_mark: Removed `{code}` from your To Read list!"
-                        ).set_author(
-                        name="NHentai ToRead",
-                        url=f"https://nhentai.net/",
-                        icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                    await ctx.send(embed=emb)
-                
-                else:
-                    emb = Embed(
-                        description=f":x: `{code}` is not in your To Read list."
-                        ).set_author(
-                        name="NHentai ToRead",
-                        url=f"https://nhentai.net/",
-                        icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                    await ctx.send(embed=emb)
-                
-            else:
-                await ctx.send("You didn't specify a mode. Valid modes are `add/a/+` and `remove/r/-`.")
-
-    @command(aliases=["whl"])
+    @command(
+        name=f"{experimental_prefix}history",
+        aliases=[f"{experimental_prefix}h"])
+    @bot_has_permissions(
+        send_messages=True, 
+        embed_links=True)
+    async def history(self, ctx, switch="view"):
+        await ctx.send("Please use the new `library` command to manage your history.")
+    
+    @command(
+        name=f"{experimental_prefix}whitelist",
+        aliases=[f"{experimental_prefix}whl"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -1197,8 +663,7 @@ class Commands(Cog):
                 description="⚠ You're about to enable restricted features for this entire server. "
                             "Using these features around others may have an impact on their judgements on you.\n"
                             "The bot developer is not responsible for loss of friendships in this case, nor shall the developer be accused of distributing this content under their behalf. It is solely on **you**.\n"
-                            "Remember, admins can see what you read in your server. "
-                            "If you want to read in private, remove admins or create a new server.")
+                            "Remember, admins can see what you read in your server. If you want to read in private, remove admins or create a new server.")
             
             emb.set_footer(text="If you still want to continue, press the 'I accept' button.")
             
@@ -1255,14 +720,19 @@ class Commands(Cog):
                 color=0xFF0000,
                 description="You didn't specify a mode. Valid modes are `add/a/+` and `remove/r/-`."))
 
-    @command(aliases=["h"])
+    @command(
+        name=f"{experimental_prefix}lists",
+        aliases=[
+            f"{experimental_prefix}library",
+            f"{experimental_prefix}lib", 
+            f"{experimental_prefix}l"])
     @bot_has_permissions(
-        send_messages=True, 
+        send_messages=True,
         embed_links=True)
-    async def history(self, ctx, switch="view"):
+    async def lists(self, ctx, name=None, mode=None, code=None):
         if not ctx.guild:
             await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
+                description="❌ These commands must be run in a server. Consider making a private one."))
 
             return
 
@@ -1274,44 +744,68 @@ class Commands(Cog):
             pass
 
         if not ctx.channel.is_nsfw():
-            await ctx.send(":x: This command cannot be used in a non-NSFW channel.")
+            await ctx.send("❌ This command cannot be used in a non-NSFW channel.")
             return
-    
-        if switch.lower() == "view":
-            nhentai_api = NHentai()
-            edit = await ctx.send(embed=Embed(
-                    description=f"Loading..."
+
+        async def load_list(list_items):
+            if not len(list_items)-1:
+                emb = Embed(
+                    title=f"{list_name}",
+                    description="❌ There is nothing in this list."
                 ).set_author(
-                    name="NHentai History (BOT)",
+                    name="NHentai",
+                    url="https://nhentai.net/",
+                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+            
+                await ctx.send(embed=emb)
+                return
+
+            nhentai_api = NHentai()
+            edit = await ctx.send(
+                embed=Embed(
+                    description=f"Checking..."
+                ).set_author(
+                    name="NHentai",
                     url=f"https://nhentai.net/",
                     icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
                 ).set_footer(
-                    text=f"[{' '*len(self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1])}]"
-            ))
-            
+                    text=f"[{' '*len(list_items)}]"))
+
+            await sleep(1)
+
             message_part = list()
-            remove_queue = list()
+            remove_queue = list()  # It is very rare that a doujin would get deleted from NHentai
 
             is_loading = False
-            for code in self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]:
-                if str(code) not in self.bot.doujin_cache:
+            for code in list_items:
+                if code not in self.bot.doujin_cache and code != "0":
                     is_loading = True
                     break
-
+            
             doujins = []
-            for ind, code in enumerate(self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]):
-                if str(code) not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
-                    print(code)
+            passed_placeholder = False
+            for ind, code in enumerate(list_items):
+                if passed_placeholder:
+                    ind -= 1
 
+                bookmark_page = None
+                if isinstance(list_items, dict):  # Is the Bookmarks list
+                    bookmark_page = list_items[code]
+
+                if code == "0" or code == "placeholder":
+                    passed_placeholder = True
+                    continue
+
+                if code not in self.bot.doujin_cache:
+                    doujin = await nhentai_api.get_doujin(int(code))
                 else:
-                    doujin = self.bot.doujin_cache[str(code)]
-
+                    doujin = self.bot.doujin_cache[code]
+                
                 if not doujin:
-                    remove_queue.append(code)
+                    remove_queue.append(item)
                     continue
                 else:
-                    self.bot.doujin_cache[str(code)] = doujin
+                    self.bot.doujin_cache[code] = doujin
 
                     if any([tag in restricted_tags for tag in doujin.tags]): is_lolicon = True
                     else: is_lolicon = False
@@ -1319,97 +813,660 @@ class Commands(Cog):
                     if is_lolicon and not lolicon_allowed:
                         pass
                     else:
-                        message_part.append(
-                            f"__`{str(code).ljust(7)}`__ | " \
-                            f"{language_to_flag(doujin.languages)} | " \
-                            f"{shorten(doujin.title, width=50, placeholder='...')} ")
+                        if not bookmark_page:
+                            message_part.append(
+                                f"__`{str(doujin.id).ljust(7)}`__ | "
+                                f"{language_to_flag(doujin.languages)} | "
+                                f"{shorten(doujin.title, width=50, placeholder='...')}")
+                        elif bookmark_page:
+                            message_part.append(
+                                f"__`{str(doujin.id).ljust(7)}`__ | "
+                                f"{language_to_flag(doujin.languages)} | "
+                                f"Page [{bookmark_page}/{len(doujin.images)}] | "
+                                f"{shorten(doujin.title, width=40, placeholder='...')}")
                         
                         doujins.append(doujin)
-                    
+                        
                     if ind%5 == 0 and ind!=0 and is_loading:
-                        await edit.edit(embed=Embed(
-                            description=f"Loading..."
-                        ).set_author(
-                            name="NHentai History (BOT)",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
-                        ).set_footer(
-                            text=f"[{'|'*ind}{' '*(len(self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1])-ind)}]"
-                        ))
+                        await edit.edit(
+                            embed=Embed(
+                                description=f"Loading..."
+                            ).set_author(
+                                name="NHentai",
+                                url=f"https://nhentai.net/",
+                                icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
+                            ).set_footer(
+                                text=f"[{'|'*ind}{' '*((len(list_items)-1)-ind)}]"))
 
-                        await sleep(0.5)
+                        await sleep(0.2)
+                    
+                    continue
             
-            [self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1].pop(code) for code in remove_queue]
+            [list_items.remove(code) for code in remove_queue]
             
             emb = Embed(
-                title=f"🕖 History (Top = Latest)")
-            emb.set_author(
-                name="NHentai Search Results",
+                title=f"{list_name}",
+                description=f"\n"+('\n'.join(message_part))
+            ).set_author(
+                name="NHentai",
                 url="https://nhentai.net/",
                 icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.set_footer(text="Provided by MechHub")
-
-            if self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]:
-                emb.description = "\n".join(message_part)
-
-                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                    components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
                 
-                try:
-                    interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                        check=lambda i: i.message.id==edit.id and \
-                            i.user.id==ctx.author.id and \
-                            i.component.id=="button1")
-                except TimeoutError:
-                    await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
-                        components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
+            await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
+                components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
+                
+            try:
+                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                    check=lambda i: i.message.id==edit.id and \
+                        i.user.id==ctx.author.id and \
+                        i.component.id=="button1")
+            except TimeoutError:
+                await self.bot.comp_ext.edit_component_msg(edit, embed=emb,
+                    components=[Button(label="Timeout", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
                     
+                return
+
+            else:
+                await interaction.respond(type=6)
+
+                await self.bot.comp_ext.edit_component_msg(edit, embed=emb, components=[])
+
+                interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"{list_name}", lolicon_allowed=lolicon_allowed)
+                await interactive.start(ctx)
+
+                return
+
+            await edit.edit(embed=emb)
+
+        if not name:
+            built_in_str = []
+            custom_str = []
+            for sys_category, lists in self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"].items():
+                for ind, (list_full_name, contents) in enumerate(lists.items()):
+                    if "|*n*|" in list_full_name:
+                        parts = list_full_name.split("|*n*|")
+                        list_name = parts[0]
+                        alias = parts[1]
+                    else:
+                        list_name = list_full_name
+                        alias = None
+
+                    if sys_category == "Built-in":
+                        if list_name == "Favorites": 
+                            length = len(contents)
+                            list_name = "⭐ Favorites"
+                        if list_name == "Read Later": 
+                            length = len(contents)
+                            list_name = "📑 Read Later"
+                        if list_name == "Bookmarks": 
+                            length = len(contents)
+                            list_name = "🔖 Bookmarks"
+                            print(contents)
+                        if list_name == "History": 
+                            length = len(contents["list"])
+                            list_name = "🕑 History"
+                        built_in_str.append(f"**{list_name}**{'||/'+alias+'||' if alias else ''} ({length-1})")
+
+                    if sys_category == "Custom" and list_name != "placeholder":
+                        custom_str.append(f"**{list_name}**{'||/'+alias+'||' if alias else ''} ({len(contents)-1})")
+
+            emb = Embed(
+                title="Your Library",
+                description="Here are your lists."
+            ).set_author(
+                    name="NHentai",
+                    url="https://nhentai.net/",
+                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
+            ).add_field(
+                name="__📌 Built-in__",
+                inline=False,
+                value=f"{newline.join(built_in_str)}")
+            if custom_str: emb.add_field(
+                name="__💾 Custom__",
+                inline=False,
+                value=f"{newline.join(custom_str)}")
+
+            await ctx.send(embed=emb)
+            return
+
+        if "|*n*|" in name:
+            await ctx.send(embed=Embed(description="❌ `|*n*|` is a reserved string for the bot and you cannot use it."))
+            return
+
+        # Get item by alias within string
+        list_name = None
+        alias_name = None
+        full_name = None
+        sys_category = None
+        target_list = None
+        if mode not in ["create", "cr"]:
+            for _sys_category, _lists in self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"].items():
+                for ind, (_list_full_name, contents) in enumerate(_lists.items()):
+                    if "|*n*|" in _list_full_name:
+                        parts = _list_full_name.split("|*n*|")
+                        _list_name = parts[0]
+                        _alias = parts[1]
+                    else:
+                        _list_name = _list_full_name
+                        _alias = None
+
+                    if name in [_list_name, _alias]:
+                        list_name = _list_name
+                        alias_name = _alias
+                        full_name = _list_full_name
+                        sys_category = _sys_category
+                        target_list = self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][_sys_category][_list_full_name]
+                        break
+
+            if not full_name or list_name == "placeholder":
+                await ctx.send(embed=Embed(description="🔎❌ That list doesn't exist in your library."))
+                return
+
+        if sys_category == "Built-in" and mode in ["delete", "del"]:
+            if list_name == "History":
+                await ctx.send(embed=Embed(
+                    description="❌ You cannot delete a built-in list.\n"
+                                "You can clear any list using the mode `clear` or `c`.\n"
+                                "If you want to disable history logging, use the mode `toggle`."))
+            else:
+                await ctx.send(embed=Embed(
+                    description="❌ You cannot delete a built-in list.\n"
+                                "You can clear any list using the mode `clear` or `c`."))
+
+            return
+
+        if name in ["Favorites", "fav"]:
+            if mode and mode not in ["add", "a", "+", "remove", "r", "-", "clear", "c"]:
+                await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `add/a/+`, `remove/r/-`, and `clear/c`."))
+                return
+
+            if not mode:
+                await load_list(target_list)
+                return
+
+            elif mode in ["add", "a", "+"]:
+                if code in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is already in that list."))
                     return
 
+                if len(target_list) >= 25: 
+                    await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
+                    return
+
+                try:
+                    code = int(code)
+                    code = str(code)
+                except ValueError:
+                    await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
+                    return
+
+                nhentai_api = NHentai()
+                if code not in self.bot.doujin_cache:
+                    doujin = await nhentai_api.get_doujin(code)
+                else:
+                    doujin = self.bot.doujin_cache[code]
+
+                if not doujin:
+                    await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
+                    return
+
+                self.bot.doujin_cache[code] = doujin
+
+                if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
+                    await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
+                    return
+
+                target_list.append(code)
+                await ctx.send(embed=Embed(description=f"✅ Added `{code}` to `{list_name}`."))
+                return
+
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is not in that list."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
+            elif mode in ["clear", "c"]:
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
                 else:
                     await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
 
-                    await self.bot.comp_ext.edit_component_msg(edit, embed=emb, components=[])
+        elif name in ["Read Later", "rl"]:
+            if mode and mode not in ["add", "a", "+", "remove", "r", "-", "clear", "c"]:
+                await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `add/a/+`, `remove/r/-`, and `clear/c`."))
+                return
+            
+            if not mode:
+                await load_list(target_list)
+                return
 
-                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"🕖 History (Top = Latest)", lolicon_allowed=lolicon_allowed)
-                    await interactive.start(ctx)
-
+            elif mode in ["add", "a", "+"]:
+                if code in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is already in that list."))
                     return
+
+                if len(target_list) >= 25: 
+                    await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
+                    return
+
+                try:
+                    code = int(code)
+                    code = str(code)
+                except ValueError:
+                    await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
+                    return
+
+                nhentai_api = NHentai()
+                if code not in self.bot.doujin_cache:
+                    doujin = await nhentai_api.get_doujin(code)
+                else:
+                    doujin = self.bot.doujin_cache[code]
+
+                if not doujin:
+                    await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
+                    return
+
+                self.bot.doujin_cache[code] = doujin
+
+                if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
+                    await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
+                    return
+
+                target_list.append(code)
+                await ctx.send(embed=Embed(description=f"✅ Added `{code}` to `{list_name}`."))
+                return
+
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(description="❌ That doujin is not in that list."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
+            elif mode in ["clear", "c"]:
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                else:
+                    await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
+
+        elif name in ["Bookmarks", "bm"]:
+            if code == "0/-/0":
+                await ctx.send(embed=Embed(description="❌ `0/-/0` is a system placeholder and cannot be changed."))
+                return
+
+            if mode and mode not in ["remove", "r", "-", "clear", "c"]:
+                await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `remove/r/-` and `clear/c`."))
+                return
+
+            if not mode:
+                await load_list(target_list)
+                return
+
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(
+                        description="❌ That doujin is not in that list.\n"
+                                    "Note: In the case of bookmarks, use the format `code/-/bookmarked_page` for `code`."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
+            elif mode in ["clear", "c"]:
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                else:
+                    await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"0": 0}
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
+
+        elif name in ["History", "his"]:
+            if mode and mode not in ["remove", "r", "-", "clear", "c", "toggle", "t"]:
+                await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `remove/r/-`, `clear/c`, and `toggle/t`."))
+                return
             
+            if not mode:
+                await load_list(target_list['list'])
+                return
+
+            elif mode in ["remove", "r", "-"]:
+                if code not in target_list:
+                    await ctx.send(embed=Embed(
+                        description="❌ That doujin is not in that list.\n"
+                                    "Note: In the case of bookmarks, use the format `code/-/bookmarked_page` for `code`."))
+                    return
+
+                target_list.remove(code)
+                await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                return
+
+            elif mode in ["clear", "c"]:
+                emb = Embed(
+                    title="Clearing An Occupied List",
+                    description=f"Are you sure you want to clear this list?\n"
+                                f"\n"
+                                f"**Name**: {list_name}\n"
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: {len(target_list)-1}")
+                conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                    components=[
+                        [Button(label="Continue", style=4, id="button1"),
+                        Button(label="Cancel", style=2, id="button2")]])
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                except TimeoutError:
+                    await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                        components=[
+                            [Button(label="Timeout", style=4, id="button1", disabled=True),
+                            Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                else:
+                    await interaction.respond(type=6)
+                    if interaction.component.id == "button1":
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name]["list"] = ["0"]
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    elif interaction.component.id == "button2":
+                        await self.bot.comp_ext.edit_component_msg(
+                            conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                return
+        
+            elif mode in ["toggle", "t"]:
+                target_list["enabled"] = not target_list["enabled"]
+                await ctx.send(embed=Embed(description=f"✅ History is now {'`On`' if target_list['enabled'] else '`Off`'}."))
+                return
+
+        else:  # Queried list is custom
+            if mode in ["add", "a", "+", "remove", "r", "-", "clear", "c", "delete", "del", "create", "cr", None]:
+                if mode in ["create", "cr"]:
+                    if len(self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"]) > 25:
+                        await ctx.send(embed=Embed(description="❌ You cannot create more than 25 custom lists."))
+                        return
+                    
+                    input_aliases = name.split("//")
+                    if len(input_aliases[0]) > 25 or \
+                        (len(input_aliases)==2 and len(input_aliases[1]) > 25):
+                        await ctx.send(embed=Embed(description="❌ Your list name or alias cannot exceed 25 characters long."))
+                        return
+
+                    if len(input_aliases) > 2:
+                        await ctx.send(embed=Embed(description="❌ You can only give your list one alias."))
+                        return
+
+                    # Check for existing lists and aliases
+                    for _sys_category, _lists in self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"].items():
+                        for ind, (_list_full_name, contents) in enumerate(_lists.items()):
+                            if "|*n*|" in _list_full_name:
+                                parts = _list_full_name.split("|*n*|")
+                                _list_name = parts[0]
+                                _alias = parts[1]
+                            else:
+                                _list_name = _list_full_name
+                                _alias = None
+
+                            if input_aliases[0] in [_list_name, _alias]:
+                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias `{input_aliases[0]}` already exists."))
+                                return
+                            elif len(input_aliases) == 2 and input_aliases[1] in [_list_name, _alias]:
+                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias `{input_aliases[1]}` already exists."))
+                                return
+
+                    sys_name = "|*n*|".join(input_aliases)
+
+                    self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][sys_name] = ["0"]
+                    await ctx.send(embed=Embed(description=f"✅ Created a new list named `{input_aliases[0]}`{' with the alias `'+input_aliases[1]+'`' if len(input_aliases)==2 else ''}."))
+                
+                    if code:
+                        try:
+                            code = int(code)
+                            code = str(code)
+                        except ValueError:
+                            await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
+                            return
+
+                        nhentai_api = NHentai()
+                        if code not in self.bot.doujin_cache:
+                            doujin = await nhentai_api.get_doujin(code)
+                        else:
+                            doujin = self.bot.doujin_cache[code]
+
+                        if not doujin:
+                            await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
+                            return
+
+                        self.bot.doujin_cache[code] = doujin
+
+                        if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
+                            await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
+                            return
+
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][sys_name].append(code)
+                        await ctx.send(embed=Embed(description=f"✅ Added `{code}` to `{input_aliases[0]}`."))
+                
+                    return
+
+                elif mode in ["add", "a", "+"]:
+                    if code in target_list:
+                        await ctx.send(embed=Embed(description="❌ That doujin is already in that list."))
+                        return
+
+                    if len(target_list) >= 25: 
+                        await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
+                        return
+
+                    try:
+                        code = int(code)
+                        code = str(code)
+                    except ValueError:
+                        await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
+                        return
+
+                    edit = await ctx.send(embed=Embed(description="<a:nreader_loading:810936543401213953>"))
+                    nhentai_api = NHentai()
+                    if code not in self.bot.doujin_cache:
+                        doujin = await nhentai_api.get_doujin(code)
+                    else:
+                        doujin = self.bot.doujin_cache[code]
+
+                    if not doujin:
+                        await edit.edit(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
+                        return
+
+                    self.bot.doujin_cache[code] = doujin
+
+                    if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
+                        await edit.edit(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
+                        return
+
+                    target_list.append(code)
+                    await edit.edit(embed=Embed(description=f"✅ Added `{code}` to `{list_name}`."))
+                    return
+
+                elif mode in ["remove", "r", "-"]:
+                    if code not in target_list:
+                        await ctx.send(embed=Embed(description="❌ That doujin is not in that list."))
+                        return
+
+                    target_list.remove(code)
+                    await edit.edit(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                    return
+
+                elif mode in ["clear", "c"]:
+                    emb = Embed(
+                        title="Clearing An Occupied List",
+                        description=f"Are you sure you want to clear this list?\n"
+                                    f"\n"
+                                    f"**Name**: {list_name}\n"
+                                    f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                    f"**Number of doujins inside**: {len(target_list)-1}")
+                    conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                        components=[
+                            [Button(label="Continue", style=4, id="button1"),
+                            Button(label="Cancel", style=2, id="button2")]])
+                    try:
+                        interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                            check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                    except TimeoutError:
+                        await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                            components=[
+                                [Button(label="Timeout", style=4, id="button1", disabled=True),
+                                Button(label="Timeout", style=2, id="button2", disabled=True)]])
+                        
+                    else:
+                        await interaction.respond(type=6)
+                        if interaction.component.id == "button1":
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                            await self.bot.comp_ext.edit_component_msg(
+                                conf, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        elif interaction.component.id == "button2":
+                            await self.bot.comp_ext.edit_component_msg(
+                                conf, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                    return
+
+                elif mode in ["delete", "del"]:
+                    if not len(target_list)-1:
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
+                        await ctx.send(embed=Embed(description=f"✅ Deleted list `{list_name}` (empty list)."))
+
+                    else:
+                        emb = Embed(
+                            title="Deleting An Occupied List",
+                            description=f"Are you sure you want to delete this list?\n"
+                                        f"\n"
+                                        f"**Name**: {list_name}\n"
+                                        f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                        f"**Number of doujins inside**: {len(target_list)-1}")
+
+                        conf = await self.bot.comp_ext.send_component_msg(ctx, embed=emb,
+                            components=[
+                                [Button(label="Continue", style=4, id="button1"),
+                                Button(label="Cancel", style=2, id="button2")]])
+        
+                        try:
+                            interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                        except TimeoutError:
+                            await self.bot.comp_ext.edit_component_msg(conf, embed=emb,
+                                components=[
+                                    [Button(label="Timeout", style=4, id="button1", disabled=True),
+                                    Button(label="Timeout", style=2, id="button2", disabled=True)]])
+            
+                            return
+        
+                        else:
+                            await interaction.respond(type=6)
+                            if interaction.component.id == "button1":
+                                self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
+                                emb.description = f"✅ Deleted list `{list_name}` (disbanded {len(target_list)-1} doujins)."
+                                await self.bot.comp_ext.edit_component_msg(conf, embed=emb, components=[])
+            
+                            
+                            elif interaction.component.id == "button2":
+                                emb.description = f"❌ Operation cancelled."
+                                await self.bot.comp_ext.edit_component_msg(conf, embed=emb, components=[])
+                    return
+
+                elif not mode:
+                    await load_list(target_list)
+                    return
+
             else:
-                emb.description = "You don't have a history yet."
-            
-            await edit.edit(embed=emb)
-        
-        elif switch.lower() == "clear":
-            self.bot.user_data["UserData"][str(ctx.author.id)]["History"] = [
-                self.bot.user_data["UserData"][str(ctx.author.id)]["History"][0], ["placeholder"]]
+                await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `add/a/+`, `remove/r/-`, `clear/c`, and `delete/del`."))
+                return
 
-            emb = Embed(
-                color=0xEC2854)
-            emb.set_author(
-                name="NHentai History (BOT)",
-                url=f"https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.description = "💾 History cleared"
-
-            await ctx.send(embed=emb)
-        
-        elif switch == "toggle":
-            self.bot.user_data["UserData"][str(ctx.author.id)]["History"][0] = \
-                not self.bot.user_data["UserData"][str(ctx.author.id)]["History"][0]
-
-            emb = Embed(
-                color=0xEC2854)
-            emb.set_author(
-                name="NHentai History (BOT)",
-                url="https://nhentai.net/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.description = f"{'✅' if self.bot.user_data['UserData'][str(ctx.author.id)]['History'][0] else '❎'} History toggled"
-
-            await ctx.send(embed=emb)
-
-    @command(aliases=["append"])
+    @command(
+        name=f"{experimental_prefix}search_appendage",
+        aliases=[f"{experimental_prefix}append"])
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
@@ -1526,7 +1583,9 @@ class Commands(Cog):
                     description = "ℹ Nothing is being added to your searches."
                 ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."))
 
-    @command(aliases=["rc"])
+    @command(
+        name=f"{experimental_prefix}recall",
+        aliases=[f"{experimental_prefix}rc"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -1597,7 +1656,11 @@ class Commands(Cog):
         
         return
 
-    @command(aliases=["urban", "ud"])
+    @command(
+        name=f"{experimental_prefix}urban_dictionary",
+        aliases=[
+            f"{experimental_prefix}urban", 
+            f"{experimental_prefix}ud"])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -1742,72 +1805,24 @@ class Commands(Cog):
 
                 continue
 
-    @favorites.before_invoke
-    @bookmarks.before_invoke
-    @toread.before_invoke
     @whitelist.before_invoke
-    @history.before_invoke
     @search_appendage.before_invoke
     async def placeholder_remove(self, ctx):
-        if ctx.command.name == "favorites":
-            if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'].remove(0)
-                return
-        
-        if ctx.command.name == "bookmarks":
-            if "0" in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks']:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'].pop("placeholder")
-                return
-
-        if ctx.command.name == "toread":
-            if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead']:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead'].remove(0)
-                return
-        
         if ctx.command.name == "whitelist":
             if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers'].remove(0)
-
-        if ctx.command.name == "history":
-            if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1].remove(0)
-                return
         
         if ctx.command.name == "search_appendage":
-            if len(self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']) == 1:
+            if self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage'] == " ":
                 self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage'] = ""
                 return
-        
-    @favorites.after_invoke
-    @bookmarks.after_invoke
-    @toread.after_invoke
+
     @whitelist.after_invoke
-    @history.after_invoke
     @search_appendage.after_invoke
     async def placeholder_add(self, ctx):
-        if ctx.command.name == "favorites":
-            if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins']:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Doujins'].append(0)
-                return
-        
-        if ctx.command.name == "bookmarks":
-            if "0" not in self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks']:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['nFavorites']['Bookmarks'].update({"placeholder": 1})
-                return
-
-        if ctx.command.name == "toread":
-            if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead']:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['ToRead'].append(0)
-                return
-        
         if ctx.command.name == "whitelist":
             if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers']:
                 self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['UnrestrictedServers'].append(0)
-        
-        if ctx.command.name == "history":
-            if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1]:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['History'][1].append(0)
-                return
         
         if ctx.command.name == "search_appendage":
             if not self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']:
