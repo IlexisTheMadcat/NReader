@@ -12,6 +12,7 @@ from discord.utils import oauth_url
 from discord.ext.commands import ExtensionAlreadyLoaded
 from discord_components import DiscordComponents
 from discord_components.interaction import InteractionEventType
+# Using discord_components==0.5.3
 
 from utils.classes import Bot
 from utils.errorlog import ErrorLog
@@ -19,7 +20,6 @@ from utils.FirebaseDB import FirebaseDB
 
 # This bot is based on the NHentai-API module.
 # https://pypi.org/project/NHentai-API/
-# Using discord_components==0.5.3
 
 DATA_DEFAULTS = {
     "UserData": {
