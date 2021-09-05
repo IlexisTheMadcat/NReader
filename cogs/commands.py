@@ -73,8 +73,6 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
-        # TODO: Update ImagePageReader
-
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -368,7 +366,7 @@ class Commands(Cog):
             if value not in ['today', 'week', 'month', 'popular', 'recent']:
                 return await conf.edit(content="", embed=Embed(
                     title="❌ Invalid sort parameter.",
-                    description="That's not a method I can sort by. I can only support by popularity `today`, this `week`, this `month`, all time `popular`, or `recent` (default)."))
+                    description="That's not a method I can sort by. I can only support by popularity `today`, this `week`, this `month`, all time `popular` (default), or `recent`."))
             else:
                 query = query.replace(sort_raw.group(), '').strip(' ')
 
@@ -413,6 +411,7 @@ class Commands(Cog):
         
         message_part = []
         doujins = []
+        thumbnail_url = self.bot.user.avatar_url
         for ind, dj in enumerate(results.doujins):
             if not lolicon_allowed and any([tag.name in restricted_tags for tag in dj.tags]):
                 message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
@@ -421,6 +420,9 @@ class Commands(Cog):
                     f"__`{str(dj.id).ljust(7)}`__ | "
                     f"{language_to_flag(dj.languages)} | "
                     f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
+                if thumbnail_url == self.bot.user.avatar_url:
+                    thumbnail_url = dj.cover.src
+            
 
         emb = Embed(
             description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'} ({results.total_results} doujins)"
@@ -430,7 +432,12 @@ class Commands(Cog):
             name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
-        ).set_thumbnail(url=results.doujins[0].cover.src)
+        )
+
+        if not lolicon_allowed and any([tag.name in restricted_tags for tag in dj.tags]):
+            emb.set_thumbnail(url=self.bot.user.avatar_url)
+        else:
+            emb.set_thumbnail(url=results.doujins[0].cover.src)
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         
