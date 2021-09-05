@@ -423,7 +423,6 @@ class Commands(Cog):
                 if thumbnail_url == self.bot.user.avatar_url:
                     thumbnail_url = dj.cover.src
             
-
         emb = Embed(
             description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'} ({results.total_results} doujins)"
                         f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
@@ -432,12 +431,7 @@ class Commands(Cog):
             name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
-        )
-
-        if not lolicon_allowed and any([tag.name in restricted_tags for tag in dj.tags]):
-            emb.set_thumbnail(url=self.bot.user.avatar_url)
-        else:
-            emb.set_thumbnail(url=results.doujins[0].cover.src)
+        ).set_thumbnail(url=thumbnail_url)
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         
