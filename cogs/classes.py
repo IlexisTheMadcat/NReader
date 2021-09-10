@@ -2,8 +2,7 @@
 from sys import exc_info
 from copy import deepcopy
 from textwrap import shorten
-from asyncio import sleep
-from asyncio.exceptions import TimeoutError
+from asyncio import sleep, TimeoutError
 from contextlib import suppress
 from typing import List
 
