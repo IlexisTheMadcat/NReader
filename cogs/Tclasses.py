@@ -1076,14 +1076,12 @@ class SearchResultsBrowser:
                         if str(self.doujins[self.index].id) not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.doujins[self.index].id))
                             await interaction.respond(
-                                mention_author=False,
                                 embed=Embed(
                                     description=f"✅ Added `{self.doujins[self.index].id}` to your Read Later list."
                                 ).set_footer(text="You may dismiss this message."))
                         else:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.doujins[self.index].id))
                             await interaction.respond(
-                                mention_author=False,
                                 embed=Embed(
                                     description=f"✅ Removed `{self.doujins[self.index].id}` from your Read Later list."
                                 ).set_footer(text="You may dismiss this message."))
