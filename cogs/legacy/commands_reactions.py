@@ -15,7 +15,7 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.classes import (
+from cogs.legacy.classes_reactions import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.misc import language_to_flag
