@@ -5,8 +5,7 @@ from typing import List
 
 from discord import (
     Embed as DiscordEmbed)
-from discord.ext.commands import (
-    Bot as DiscordBot)
+from discord_components import ComponentsBot as DiscordBot
 from expiringdict import ExpiringDict
 
 
