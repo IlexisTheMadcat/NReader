@@ -10,7 +10,7 @@ from discord.enums import Status
 from discord.permissions import Permissions
 from discord.utils import oauth_url
 from discord.ext.commands import ExtensionAlreadyLoaded
-from discord_components import DiscordComponents
+from discord_components import ComponentsBot
 from discord_components.interaction import InteractionEventType
 # Using discord_components==0.5.3
 
@@ -108,7 +108,7 @@ INIT_EXTENSIONS = [
     "events",
     "help",
     "repl",
-    #"web"
+    #"web",
 ]
 
 if exists("Workspace/Files/ServiceAccountKey.json"):
@@ -185,21 +185,6 @@ for root, dirs, files in walk(mypath):
 
 @bot.event
 async def on_ready():
-    bot.comp_ext = DiscordComponents(bot, change_discord_methods=False)
-
-    async def on_socket_response(res):
-        if (res["t"] != "INTERACTION_CREATE") or (res["d"]["type"] != 3):
-            return
-
-        ctx = bot.comp_ext._get_interaction(res)
-        for key, value in InteractionEventType.items():
-            if value == res["d"]["data"]["component_type"]:
-                bot.dispatch(key, ctx)
-                break
-
-    bot.add_listener(on_socket_response, name="on_socket_response")
-
-
     app_info = await bot.application_info()
     bot.owner = app_info.owner
 
