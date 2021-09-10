@@ -22,7 +22,7 @@ from cogs.Tclasses import (
 from utils.Tmisc import language_to_flag, restricted_tags, render_date
 
 newline = "\n"
-experimental_prefix = "T"
+experimental_prefix = ""
 
 class Commands(Cog):
     def __init__(self, bot):
