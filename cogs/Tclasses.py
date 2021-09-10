@@ -2,8 +2,7 @@
 from sys import exc_info
 from copy import deepcopy
 from textwrap import shorten
-from asyncio import sleep
-from asyncio.exceptions import TimeoutError
+from asyncio import sleep, TimeoutError
 from contextlib import suppress
 from typing import List
 
@@ -14,7 +13,7 @@ from discord.utils import get
 from discord.ext.commands import Context
 from discord.ext.commands.cog import Cog
 from discord_components import Button
-from dev_nhentai.nhentai_async import NHentaiAsync as NHentai, Doujin
+from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
 from utils.Tmisc import (
@@ -381,7 +380,7 @@ class ImagePageReader:
             text=f"Page [0/{len(self.images)}]: Press ▶ Start to start reading.")
         
         # Reader message
-        conf = await self.bot.comp_ext.send_component_msg(channel, 
+        conf = await channel.send( 
             content=self.ctx.author.mention, embed=self.am_embed,
             components=[Button(label="Start", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
 
@@ -431,7 +430,8 @@ class ImagePageReader:
                 self.am_embed.set_image(url=self.images[self.current_page].src)
                 self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
                 self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)
-                await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
+                await self.active_message.edit(
+                    embed=self.am_embed,
                     components=[
                         [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
                         Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
@@ -509,6 +509,10 @@ class ImagePageReader:
                             self.am_embed.set_thumbnail(url=Embed.Empty)
                             self.am_embed.description = Embed.Empty
                             self.am_embed.set_footer(text="You finished this doujin.")
+                            
+                            try: await interaction.respond(type=6)
+                            except Exception: continue
+
                             await self.active_message.edit(embed=self.am_embed)
                             if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl']:
                                 self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl'].remove(self.code)
@@ -537,7 +541,7 @@ class ImagePageReader:
                                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
                                                     f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
 
-                        await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
+                        await self.active_message.edit(embed=self.am_embed,
                             components=[
                                 [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
                                 Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
@@ -569,7 +573,7 @@ class ImagePageReader:
                                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
                                                     f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
                         
-                        await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
+                        await self.active_message.edit(embed=self.am_embed,
                             components=[
                                 [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
                                 Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
@@ -623,7 +627,7 @@ class ImagePageReader:
                                                                 f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
                                                                 f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}"
 
-                                    await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
+                                    await self.active_message.edit(embed=self.am_embed,
                                         components=[
                                             [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="prev", disabled=self.current_page==0),
                                             Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
@@ -869,7 +873,7 @@ class SearchResultsBrowser:
             self.am_embed.set_thumbnail(url=doujin.cover.src)
 
         if self.active_message:
-            await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed,
+            await self.active_message.edit(embed=self.am_embed,
                 components=[
                     [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
                     Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
@@ -880,7 +884,7 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
                     Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
         else:
-            self.active_message = await self.bot.comp_ext.send_component_msg(self.ctx, embed=self.am_embed,
+            self.active_message = await self.ctx.send(embed=self.am_embed,
                 components=[
                     [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
                     Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
@@ -928,7 +932,7 @@ class SearchResultsBrowser:
                 self.am_embed.set_thumbnail(url=Embed.Empty)
                 self.am_embed.set_image(url=Embed.Empty)
 
-                await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed, components=[])
+                await self.active_message.edit(embed=self.am_embed, components=[])
                 
                 return
 
@@ -1006,7 +1010,7 @@ class SearchResultsBrowser:
                         
                         self.am_embed.set_thumbnail(url=Embed.Empty)
                         self.am_embed.set_image(url=Embed.Empty)
-                        await self.bot.comp_ext.edit_component_msg(self.active_message, embed=self.am_embed, components=[])
+                        await self.active_message.edit(embed=self.am_embed, components=[])
                         
                         return
                     
