@@ -870,7 +870,7 @@ class SearchResultsBrowser:
             self.am_embed.add_field(
                 inline=False,
                 name="Content tags",
-                value=f"```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
+                value=f"```{shorten(str(', '.join(tags_list) if doujin.tags else 'None provided'), width=1024, placeholder='...')}```"
             )
 
             self.am_embed.set_author(
