@@ -9,7 +9,7 @@ from discord import Forbidden, NotFound
 from discord.ext.commands import (
     Cog, bot_has_permissions, 
     bot_has_guild_permissions, 
-    command, cooldown)
+    command, cooldown, max_concurrency)
 from discord.ext.commands.cooldowns import BucketType
 from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
@@ -74,7 +74,8 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def doujin_info(self, ctx, code="random", interface="new"):
         lolicon_allowed = False
         try:
@@ -222,13 +223,15 @@ class Commands(Cog):
             await edit.edit(content="", embed=emb,
                 components=[
                     [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
+                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
                 ])
         else:
             await edit.edit(content="", embed=emb,
                 components=[
                     [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
+                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
                 ])
 
         while True:
@@ -274,7 +277,7 @@ class Commands(Cog):
                                 Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
                             ])
 
-                        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty}", str(doujin.id))
+                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id))
                         response = await session.setup()
                         if response:
                             print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
@@ -303,16 +306,31 @@ class Commands(Cog):
                         await edit.edit(content="", embed=emb,
                             components=[
                                 [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
+                                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
                             ])
                     else:
                         await edit.edit(content="", embed=emb,
                             components=[
                                 [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
+                                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
                             ])
 
                     continue
+
+                if interaction.component.id == "stop":
+                    emb.set_thumbnail(url=doujin.images[0].src)
+                    emb.set_image(url=Embed.Empty)
+                
+                    with suppress(NotFound):
+                        await edit.edit(embed=emb, 
+                            components=[
+                                [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
+                                Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
+                            ])
+                
+                    return
     
     @command(
         name=f"{experimental_prefix}search_doujins",
@@ -324,7 +342,8 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def search_doujins(self, ctx, *, query: str = ""):
         lolicon_allowed = False
         try:
@@ -440,26 +459,37 @@ class Commands(Cog):
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         
         await conf.edit(embed=emb,
-            components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
+            components=[
+                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1"),
+                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
+            )
         
         try:
             interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                check=lambda i: i.message.id==conf.id and \
-                    i.user.id==ctx.author.id and \
-                    i.component.id=="button1")
+                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+
         except TimeoutError:
             await conf.edit(embed=emb,
-                components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
+                components=[
+                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                )
             
             return
 
         else:
             await interaction.respond(type=6)
 
-            await conf.edit(embed=emb, components=[])
+            if interaction.component.id == "stop":
+                await conf.edit(embed=emb,
+                    components=[
+                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                    )
             
-            interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed)
-            await interactive.start(ctx)
+                return
+
+            else:
+                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed)
+                await interactive.start(ctx)
     
     @command(
         name=f"{experimental_prefix}popular",
@@ -467,7 +497,8 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def popular(self, ctx):
         lolicon_allowed = False
         try:
@@ -513,26 +544,44 @@ class Commands(Cog):
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
         
         await conf.edit(embed=emb,
-            components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
+            components=[
+                Button(label="Start Interactive (out of order)", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+            )
+
+        return  # out of order
+        
+        await conf.edit(embed=emb,
+            components=[
+                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1"),
+                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
+            )
         
         try:
             interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                check=lambda i: i.message.id==conf.id and \
-                    i.user.id==ctx.author.id and \
-                    i.component.id=="button1")
+                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+
         except TimeoutError:
             await conf.edit(embed=emb,
-                components=[Button(label="Start Interactive", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
+                components=[
+                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                )
             
             return
 
         else:
             await interaction.respond(type=6)
 
-            await conf.edit(embed=emb, components=[])
+            if interaction.component.id == "stop":
+                await conf.edit(embed=emb,
+                    components=[
+                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                    )
+            
+                return
 
-            interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, name=f"<:npopular:853883174455214102> **Popular Now**", lolicon_allowed=lolicon_allowed)
-            await interactive.start(ctx)
+            else:
+                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed)
+                await interactive.start(ctx)
     
     @command(
         name=f"{experimental_prefix}whitelist",
@@ -540,7 +589,8 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def whitelist(self, ctx, mode=None):
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -586,20 +636,20 @@ class Commands(Cog):
             
             conf = await ctx.send(embed=emb,
                 components=[
-                    [Button(label="Accept", style=2, id="button1"),
-                     Button(label="Decline", style=1, id="button2")]])
+                    [Button(label="Accept", style=2, emoji="✅", id="button1"),
+                    Button(label="Decline", style=1, emoji="❌", id="button2")]])
             
             try:
-                interaction = await self.bot.wait_for('button_click', timeout=60,
+                interaction = await self.bot.wait_for('button_click', timeout=60, bypass_cooldown=True,
                     check=lambda i: \
                         i.message.id==conf.id and \
                         i.user.id==ctx.author.id)
             
             except TimeoutError:
-                await conf.edit(embed=emb, bypass_cooldown=True,
+                await conf.edit(embed=emb,
                     components=[
                         [Button(label="Accept", style=2, emoji="✅", id="button1", disabled=True),
-                         Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
+                        Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
                 
                 return
 
@@ -610,27 +660,31 @@ class Commands(Cog):
                     if ctx.guild.id not in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].append(ctx.guild.id)
                     await conf.edit(embed=Embed(
-                        title="Server whitelisting",
-                        description="✔ This server can now access doujins that contain underage characters."),
+                        title="Server Whitelisting",
+                        description="✅ This server can now access doujins that contain underage characters."),
                         components=[
                             [Button(label="Accepted", style=3, emoji="✅", id="button1", disabled=True),
                              Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
                 
                 if interaction.component.id == "button2":
                     await conf.edit(embed=Embed(
-                        color=0xFF0000,
-                        title="Server whitelisting",
+                        title="Server Whitelisting",
                         description="❌ Operation cancelled."),
                         components=[
                             [Button(label="Accept", style=2, emoji="✅", id="button1", disabled=True),
                              Button(label="Declined", style=4, emoji="❌", id="button2", disabled=True)]])
+
     
         elif mode.lower() in ["remove", "r", "-"]:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].remove(ctx.guild.id)
-            await ctx.send(embed=Embed(
-                title="Server whitelisting",
-                description="✔ This server can no longer access doujins that contain underage characters."))
+                await ctx.send(embed=Embed(
+                    title="Server Whitelisting",
+                    description="✅ This server can no longer access doujins that contain underage characters."))
+            else:
+                await ctx.send(embed=Embed(
+                    title="Server Whitelisting",
+                    description="❌ This server is not already in the whitelist."))
         
         else:
             await ctx.send(embed=Embed(
@@ -646,7 +700,8 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def lists(self, ctx, name=None, mode=None, code=None):
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -751,28 +806,37 @@ class Commands(Cog):
                 icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                 
             await edit.edit(embed=emb,
-                components=[Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
-                
+                components=[
+                    [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1"),
+                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
+                )
+        
             try:
                 interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                    check=lambda i: i.message.id==edit.id and \
-                        i.user.id==ctx.author.id and \
-                        i.component.id=="button1")
+                    check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
+
             except TimeoutError:
                 await edit.edit(embed=emb,
-                    components=[Button(label="Start Interactive", style=2, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)])
-                    
+                    components=[
+                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                    )
+            
                 return
 
             else:
                 await interaction.respond(type=6)
 
-                await edit.edit(embed=emb, components=[])
+                if interaction.component.id == "stop":
+                    await edit.edit(embed=emb,
+                        components=[
+                            Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                        )
+            
+                    return
 
-                interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, name=f"{list_name}", lolicon_allowed=lolicon_allowed)
-                await interactive.start(ctx)
-
-                return
+                else:
+                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, lolicon_allowed=lolicon_allowed)
+                    await interactive.start(ctx)
 
             await edit.edit(embed=emb)
 
@@ -1354,7 +1418,8 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def search_appendage(self, ctx, *, appendage=""):
         if appendage and appendage != "clear_appendage":
             emb = embed=Embed(
@@ -1473,7 +1538,8 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def recall(self, ctx):
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -1545,7 +1611,8 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 5, BucketType.user)
+    @cooldown(1, 2, BucketType.user)
+    @max_concurrency(1, BucketType.user)
     async def urban_dictionary(self, ctx, *, word):
         edit = await ctx.send(embed=Embed(
             color=0x1d2439,
