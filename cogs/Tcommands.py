@@ -74,7 +74,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def doujin_info(self, ctx, code="random", interface="new"):
         lolicon_allowed = False
@@ -136,19 +135,33 @@ class Commands(Cog):
                 else:
                     break
         
-        if interface == "old":
+        if interface in ["compact", "comp", "c"]:
+            # Doujin count for tags
+            tags_list = []
+            for tag in doujin.tags:
+                if tag.type != "tag": continue
+                count = tag.count
+                parse_count = list(str(count))
+                if len(parse_count) < 4:
+                    tags_list.append(f"{tag.name}[{count}]")
+                elif len(parse_count) >= 4 and len(parse_count) <= 6:
+                    count = count/1000
+                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
+                elif len(parse_count) > 7:
+                    count = count/1000000
+                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
+
             emb = Embed(
                 description=f"Doujin ID: __`{doujin.id}`__\n"
-                            f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
-                            f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
+                            f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
                             f"Pages: `{len(doujin.images)}`\n"
-                            f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
-                            f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
-                            f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
-                            f"Tags: ```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```\n")
+                            f"Artist(s): `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
+                            f"Character(s): `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
+                            f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
+                            f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```")
             
             emb.set_author(
-                name=f"{doujin.title if doujin.title else '[Untitled]'}",
+                name=doujin.title.pretty,
                 url=f"https://nhentai.net/g/{doujin.id}/",
                 icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
             emb.set_thumbnail(
@@ -256,7 +269,7 @@ class Commands(Cog):
                 continue
             
             else:
-                await interaction.respond(type=6)
+                #await interaction.respond(type=6)
                 if interaction.component.id == "button1":
                     with suppress(Forbidden):
                         await edit.clear_reactions()
@@ -271,7 +284,7 @@ class Commands(Cog):
                         emb.set_thumbnail(
                             url=doujin.images[0].src)
                         emb.set_image(url=Embed.Empty)
-                        await edit.edit(content="", embed=emb,
+                        await interaction.respond(type=7, content="", embed=emb,
                             components=[
                                 [Button(label="Opened", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
                                 Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
@@ -282,9 +295,6 @@ class Commands(Cog):
                         if response:
                             print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
                             await session.start()
-                    
-                        else:
-                            await edit.edit(embed=emb)
                     
                         return
                 
@@ -303,14 +313,14 @@ class Commands(Cog):
                         ctx.guild.me.guild_permissions.manage_channels, 
                         ctx.guild.me.guild_permissions.manage_roles, 
                         ctx.guild.me.guild_permissions.manage_messages])):
-                        await edit.edit(content="", embed=emb,
+                        await interaction.respond(type=7, content="", embed=emb,
                             components=[
                                 [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
                                 Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
                                 Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
                             ])
                     else:
-                        await edit.edit(content="", embed=emb,
+                        await interaction.respond(type=7, content="", embed=emb,
                             components=[
                                 [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
                                 Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
@@ -324,7 +334,7 @@ class Commands(Cog):
                     emb.set_image(url=Embed.Empty)
                 
                     with suppress(NotFound):
-                        await edit.edit(embed=emb, 
+                        await interaction.respond(type=7, embed=emb, 
                             components=[
                                 [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
                                 Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
@@ -342,7 +352,6 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def search_doujins(self, ctx, *, query: str = ""):
         lolicon_allowed = False
@@ -477,10 +486,8 @@ class Commands(Cog):
             return
 
         else:
-            await interaction.respond(type=6)
-
             if interaction.component.id == "stop":
-                await conf.edit(embed=emb,
+                await interaction.respond(type=7, embed=emb,
                     components=[
                         Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
                     )
@@ -488,6 +495,7 @@ class Commands(Cog):
                 return
 
             else:
+                await interaction.respond(type=6)
                 interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed)
                 await interactive.start(ctx)
     
@@ -497,7 +505,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def popular(self, ctx):
         lolicon_allowed = False
@@ -569,10 +576,8 @@ class Commands(Cog):
             return
 
         else:
-            await interaction.respond(type=6)
-
             if interaction.component.id == "stop":
-                await conf.edit(embed=emb,
+                await interaction.respond(type=7, embed=emb,
                     components=[
                         Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
                     )
@@ -580,6 +585,7 @@ class Commands(Cog):
                 return
 
             else:
+                await interaction.respond(type=6)
                 interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed)
                 await interactive.start(ctx)
     
@@ -589,7 +595,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def whitelist(self, ctx, mode=None):
         if not ctx.guild:
@@ -654,12 +659,10 @@ class Commands(Cog):
                 return
 
             else:
-                await interaction.respond(type=6)
-                
                 if interaction.component.id == "button1":
                     if ctx.guild.id not in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].append(ctx.guild.id)
-                    await conf.edit(embed=Embed(
+                    await interaction.respond(type=7, embed=Embed(
                         title="Server Whitelisting",
                         description="✅ This server can now access doujins that contain underage characters."),
                         components=[
@@ -667,7 +670,7 @@ class Commands(Cog):
                              Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
                 
                 if interaction.component.id == "button2":
-                    await conf.edit(embed=Embed(
+                    await interaction.respond(type=7, embed=Embed(
                         title="Server Whitelisting",
                         description="❌ Operation cancelled."),
                         components=[
@@ -684,7 +687,7 @@ class Commands(Cog):
             else:
                 await ctx.send(embed=Embed(
                     title="Server Whitelisting",
-                    description="❌ This server is not already in the whitelist."))
+                    description="❌ This server is not in the whitelist."))
         
         else:
             await ctx.send(embed=Embed(
@@ -700,7 +703,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def lists(self, ctx, name=None, mode=None, code=None):
         if not ctx.guild:
@@ -824,10 +826,8 @@ class Commands(Cog):
                 return
 
             else:
-                await interaction.respond(type=6)
-
                 if interaction.component.id == "stop":
-                    await edit.edit(embed=emb,
+                    await interaction.respond(type=7, embed=emb,
                         components=[
                             Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
                         )
@@ -835,6 +835,7 @@ class Commands(Cog):
                     return
 
                 else:
+                    await interaction.respond(type=6)
                     interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, lolicon_allowed=lolicon_allowed)
                     await interactive.start(ctx)
 
@@ -1014,12 +1015,13 @@ class Commands(Cog):
                             Button(label="Cancel", style=1, id="button2", disabled=True)]])
                         
                 else:
-                    await interaction.respond(type=6)
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                        await conf.edit(embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                    
                     elif interaction.component.id == "button2":
-                        await conf.edit(embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+
                 return
 
         elif name in ["Read Later", "rl"]:
@@ -1099,12 +1101,13 @@ class Commands(Cog):
                             Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                 else:
-                    await interaction.respond(type=6)
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                        await conf.edit(embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+
                     elif interaction.component.id == "button2":
-                        await conf.edit(embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+
                 return
 
         elif name in ["Bookmarks", "bm"]:
@@ -1150,12 +1153,13 @@ class Commands(Cog):
                             Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                 else:
-                    await interaction.respond(type=6)
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"0": 0}
-                        await conf.edit(embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+
                     elif interaction.component.id == "button2":
-                        await conf.edit(embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+
                 return
 
         elif name in ["History", "his"]:
@@ -1201,12 +1205,13 @@ class Commands(Cog):
                             Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                 else:
-                    await interaction.respond(type=6)
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name]["list"] = ["0"]
-                        await conf.edit(embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+
                     elif interaction.component.id == "button2":
-                        await conf.edit(embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+
                 return
         
             elif mode in ["toggle", "t"]:
@@ -1352,12 +1357,13 @@ class Commands(Cog):
                                 Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                     else:
-                        await interaction.respond(type=6)
                         if interaction.component.id == "button1":
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                            await conf.edit(embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                            await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+
                         elif interaction.component.id == "button2":
-                            await conf.edit(embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                            await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+
                     return
 
                 elif mode in ["delete", "del"]:
@@ -1392,16 +1398,15 @@ class Commands(Cog):
                             return
         
                         else:
-                            await interaction.respond(type=6)
                             if interaction.component.id == "button1":
                                 self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
                                 emb.description = f"✅ Deleted list `{list_name}` (disbanded {len(target_list)-1} doujins)."
-                                await conf.edit(embed=emb, components=[])
+                                await interaction.respond(type=7, embed=emb, components=[])
             
                             
                             elif interaction.component.id == "button2":
                                 emb.description = f"❌ Operation cancelled."
-                                await conf.edit(embed=emb, components=[])
+                                await interaction.respond(type=7, embed=emb, components=[])
                     return
 
                 elif not mode:
@@ -1418,7 +1423,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def search_appendage(self, ctx, *, appendage=""):
         if appendage and appendage != "clear_appendage":
@@ -1449,11 +1453,9 @@ class Commands(Cog):
                 return
 
             else:
-                await interaction.respond(type=6)
-
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = appendage
                 
-                await conf.edit(embed=Embed(
+                await interaction.respond(type=7, embed=Embed(
                     title = "Search Appendage Updated",
                     description = f"✅ The following string will now be appended to all of your searches:\n"
                                   f"```{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}```\n"
@@ -1497,12 +1499,10 @@ class Commands(Cog):
                 return
 
             else:
-                await interaction.respond(type=6)
-
                 old = deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"])
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = ""
                 
-                await conf.edit(embed=Embed(
+                await interaction.respond(type=7, embed=Embed(
                     title = "Search Appendage Erased",
                     description = f"✅ Nothing will be added to your searches.\n"
                                   f"```diff\n"
@@ -1538,7 +1538,6 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def recall(self, ctx):
         if not ctx.guild:
@@ -1611,7 +1610,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @cooldown(1, 2, BucketType.user)
     @max_concurrency(1, BucketType.user)
     async def urban_dictionary(self, ctx, *, word):
         edit = await ctx.send(embed=Embed(
@@ -1664,25 +1662,48 @@ class Commands(Cog):
         for ind, example in enumerate(response[current_def].example_lines):
             examples_part.append(f"> *{example}*")
 
-        await edit.edit(
-            embed=Embed(
-                color=0x1d2439,
-                title=response[current_def].word,
-                description=f"{response[current_def].definition}\n"
-                            f"\n"
-                            f"{newline.join(examples_part)}\n"
-                            f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                            f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
-            ).set_author(
-                name="Urban Dictionary",
-                url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
+        if len(response) > 1:
+            await edit.edit(
+                embed=Embed(
+                    color=0x1d2439,
+                    title=response[current_def].word,
+                    description=f"{response[current_def].definition}\n"
+                                f"\n"
+                                f"{newline.join(examples_part)}\n"
+                                f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
+                                f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+                ).set_author(
+                    name="Urban Dictionary",
+                    url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
+                    icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
             
-            components=[[
-                Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
-                Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]]
-        )
+                components=[[
+                    Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
+                    Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
+                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False),
+                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
+            )
+
+        else:
+            await edit.edit(
+                embed=Embed(
+                    color=0x1d2439,
+                    title=response[current_def].word,
+                    description=f"{response[current_def].definition}\n"
+                                f"\n"
+                                f"{newline.join(examples_part)}\n"
+                                f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
+                                f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+                ).set_author(
+                    name="Urban Dictionary",
+                    url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
+                    icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
+            
+                components=[[
+                    Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
+                    Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
+                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]]
+            )
 
         while len(response) > 1:
             try:
@@ -1709,13 +1730,15 @@ class Commands(Cog):
                         icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
             
                     components=[[
-                        Button(label="Timeout", style=2, emoji="◀️", id="button1", disabled=True),
+                        Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True),
                         Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Timeout", style=2, emoji="▶️", id="button2", disabled=True)]]
+                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]]
                 )
-            else:
-                await interaction.respond(type=6)
 
+            except BotInteractionCooldown:
+                continue
+
+            else:
                 if interaction.component.id == "button1":
                     if current_def == 0:
                         current_def = len(response)-1
@@ -1728,11 +1751,37 @@ class Commands(Cog):
                     else:
                         current_def = current_def + 1
 
+                elif interaction.component.id == "stop":
+                    examples_part = []
+                    for example in response[current_def].example_lines:
+                        examples_part.append(f"> *{example}*")
+
+                    await interaction.respond(type=7, 
+                        embed=Embed(
+                            color=0x1d2439,
+                            title=response[current_def].word,
+                            description=f"{response[current_def].definition}\n"
+                                        f"\n"
+                                        f"{newline.join(examples_part)}\n"
+                                        f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
+                                        f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+                        ).set_author(
+                            name="Urban Dictionary",
+                            url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
+                            icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
+            
+                        components=[[
+                            Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True),
+                            Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
+                            Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]]
+                    )
+                    return
+
                 examples_part = []
                 for example in response[current_def].example_lines:
                     examples_part.append(f"> *{example}*")
 
-                await edit.edit(
+                await interaction.respond(type=7, 
                     embed=Embed(
                         color=0x1d2439,
                         title=response[current_def].word,
@@ -1747,9 +1796,10 @@ class Commands(Cog):
                         icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
             
                     components=[[
-                        Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=False),
+                        Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
                         Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=False)]]
+                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False),
+                        Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
                 )
 
                 continue
