@@ -374,7 +374,7 @@ class ImagePageReader:
         self.am_embed = Embed(
             description=f"Waiting.")
         self.am_embed.set_author(
-            name=self.name,
+            name=f"{self.code} [*n*] {self.name}",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
         self.am_embed.set_footer(
             text=f"Page [0/{len(self.images)}]: Press ▶ Start to start reading.")
@@ -388,7 +388,8 @@ class ImagePageReader:
         await edit.edit(
             content=conf.channel.mention, 
             embed=Embed(
-                description="Click/Tap the mention above to jump to your reader."
+                description=f"Click/Tap the mention above to jump to your reader."
+                            f"You opened `{self.code}`: `{self.name}`"
                 ).set_author(
                     name=self.bot.user.name,
                     icon_url=self.bot.user.avatar_url),
@@ -695,6 +696,14 @@ class ImagePageReader:
                                 ).set_footer(text="You may dismiss this message."))
                                 continue
 
+                            if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Bookmarks|*n*|bm"]) >= 25: 
+                                await interaction.respond(
+                                    color=0xff0000, 
+                                    embed=Embed(
+                                        description="❌ Your Bookmarks list is full. Please remove something from it to perform this action."
+                                    ).set_footer(text="You may dismiss this message."))
+                                continue
+
                             self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code] = self.current_page
                             self.on_bookmarked_page = True
                         
@@ -711,6 +720,14 @@ class ImagePageReader:
                         await self.active_message.edit(embed=self.am_embed)
 
                     elif interaction.component.id == "fav":  # Add to favorites
+                        if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Bookmarks|*n*|bm"]) >= 25: 
+                            await interaction.respond(
+                                color=0xff0000, 
+                                embed=Embed(
+                                    description="❌ Your Favorites list is full. Please remove something from it to perform this action."
+                                ).set_footer(text="You may dismiss this message."))
+                            continue
+
                         if self.code not in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav']:
                             self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].append(self.code)
 
@@ -1052,7 +1069,7 @@ class SearchResultsBrowser:
                         else:
                             page = 1
 
-                        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty}", str(doujin.id), starting_page=page)
+                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), starting_page=page)
                         response = await session.setup()
                         if response:
                             await session.start()
@@ -1073,6 +1090,13 @@ class SearchResultsBrowser:
                         await self.active_message.edit(embed=self.am_embed)
 
                     elif interaction.component.id == "readlater":
+                        if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]) >= 25: 
+                            await interaction.respond(
+                                color=0xff0000, 
+                                embed=Embed(
+                                    description="❌ Your Read Later list is full. Please remove something from it to perform this action."
+                                ).set_footer(text="You may dismiss this message."))
+
                         if str(self.doujins[self.index].id) not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.doujins[self.index].id))
                             await interaction.respond(
@@ -1085,6 +1109,8 @@ class SearchResultsBrowser:
                                 embed=Embed(
                                     description=f"✅ Removed `{self.doujins[self.index].id}` from your Read Later list."
                                 ).set_footer(text="You may dismiss this message."))
+
+
                     
                     # Respond if not already
                     try: await interaction.respond(type=6)
