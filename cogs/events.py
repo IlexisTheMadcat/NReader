@@ -5,12 +5,13 @@ from contextlib import suppress
 
 from discord.message import Message
 from discord.errors import Forbidden, NotFound, HTTPException
-from discord.ext.commands.cog import Cog
-from discord.ext.commands.context import Context
+from discord.ext.commands import Cog, Context
+from discord.ext.commands.cooldowns import BucketType
 from discord.ext.commands.errors import (
     BotMissingPermissions,
     CommandNotFound,
     CommandOnCooldown,
+    MaxConcurrencyReached,
     MissingPermissions,
     MissingRequiredArgument,
     NotOwner, BadArgument,
@@ -116,18 +117,37 @@ class Events(Cog):
             elif isinstance(error, CommandNotFound):
                 supposed_command = msg.content.split()[0]
                 try:
-                    code = int(supposed_command.strip("n!"))
-                    msg.content = f"n!code {code}"
-                    await self.bot.process_commands(msg)
-                    return
+                    if supposed_command.startswith("n!") and \
+                    not supposed_command.startswith("n!T"):  # stable
+                        code = int(supposed_command.strip("n!"))
+                        msg.content = f"n!code {code}"
+                        await self.bot.process_commands(msg)
+                        return
+                    elif supposed_command.startswith("n!T"):  # experimental
+                        code = int(supposed_command.strip("n!T"))
+                        msg.content = f"n!Tcode {code}"
+                        await self.bot.process_commands(msg)
+                        return
                 except ValueError:
                     return
             
             elif isinstance(error, CommandOnCooldown):
-                await msg.author.send(embed=Embed(
-                    description=f"That command is on a {round(error.cooldown.per)} second cooldown.\n"
-                                f"Retry in {round(error.retry_after)} seconds."))
+                em.description = f"That command is on a {round(error.cooldown.per)} second cooldown.\n" \
+                                 f"Retry in {round(error.retry_after)} seconds."
             
+            elif isinstance(error, MaxConcurrencyReached):
+                to_str = {
+                    BucketType.user: "user",
+                    BucketType.guild: "server",
+                    BucketType.channel: "channel",
+                    BucketType.channel: "member",
+                    BucketType.channel: "category",
+                    BucketType.channel: "role",
+                }
+
+                em.description = f"That command can only have up to {error.number} instances per {to_str[error.per]}.\n" \
+                                 f"Look for and click the {self.bot.get_emoji(853668227175546952)} (STOP) icon to stop the command, or let it time out, before executing it again."
+
             elif isinstance(error, CheckFailure):
                 return
 
