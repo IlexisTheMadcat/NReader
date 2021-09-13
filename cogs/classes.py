@@ -388,7 +388,7 @@ class ImagePageReader:
         await edit.edit(
             content=conf.channel.mention, 
             embed=Embed(
-                description=f"Click/Tap the mention above to jump to your reader."
+                description=f"Click/Tap the mention above to jump to your reader.\n"
                             f"You opened `{self.code}`: `{self.name}`"
                 ).set_author(
                     name=self.bot.user.name,
@@ -802,10 +802,15 @@ class SearchResultsBrowser:
                     f"{language_to_flag(dj.languages)} | "
                     f"{shorten(dj.title.pretty, width=40, placeholder='...')}"
                     f"{'**' if ind == self.index else ''}")
-
-        self.am_embed = Embed(
-            title=self.name,
-            description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
+                
+        if not self.am_embed:
+            self.am_embed = Embed(
+                title=self.name,
+                description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
+        else:
+            self.am_embed.clear_fields()
+            self.am_embed.title = self.name
+            self.am_embed.description = f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░"
 
         nhentai = NHentai()
         doujin = self.doujins[self.index]
@@ -879,18 +884,21 @@ class SearchResultsBrowser:
                 icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
             self.am_embed.set_thumbnail(url=doujin.cover.src)
             
-        previous_emb = deepcopy(self.active_message.embeds[0])
-        if previous_emb.image:
+        previous_emb = deepcopy(self.am_embed)
+        if previous_emb.image.url != Embed.Empty:
             self.am_embed.set_image(url=doujin.cover.src)
             self.am_embed.set_thumbnail(url=Embed.Empty)
-        elif previous_emb.thumbnail:
+        elif previous_emb.thumbnail != Embed.Empty:
             self.am_embed.set_thumbnail(url=doujin.cover.src)
             self.am_embed.set_image(url=Embed.Empty)
         else:  # Image wasn't set yet
             self.am_embed.set_thumbnail(url=doujin.cover.src)
 
+        self.active_message.embeds[0] = self.am_embed
+
         if self.active_message:
-            await self.active_message.edit(embed=self.am_embed,
+            await self.active_message.edit(
+                embed=self.am_embed,
                 components=[
                     [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
                     Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
@@ -901,7 +909,8 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
                     Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
         else:
-            self.active_message = await self.ctx.send(embed=self.am_embed,
+            self.active_message = await self.ctx.send(
+                embed=self.am_embed,
                 components=[
                     [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
                     Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
