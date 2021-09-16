@@ -19,10 +19,10 @@ from utils.classes import (
 from cogs.Tclasses import (
     ImagePageReader,
     SearchResultsBrowser)
-from utils.Tmisc import language_to_flag, restricted_tags, render_date
+from utils.misc import language_to_flag, restricted_tags, render_date
 
 newline = "\n"
-experimental_prefix = ""
+experimental_prefix = "T"
 
 class Commands(Cog):
     def __init__(self, bot):
@@ -74,7 +74,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @max_concurrency(1, BucketType.user)
     async def doujin_info(self, ctx, code="random", interface="new"):
         lolicon_allowed = False
         try:
@@ -202,8 +201,7 @@ class Commands(Cog):
 
             # Doujin count for tags
             tags_list = []
-            for tag in doujin.tags:
-                if tag.type != "tag": continue
+            for tag in [tag for tag in doujin.tags if tag.type == "tag"]:
                 count = tag.count
                 parse_count = list(str(count))
                 if len(parse_count) < 4:
@@ -218,7 +216,7 @@ class Commands(Cog):
             emb.add_field(
                 inline=False,
                 name="Content tags",
-                value=f"```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
+                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1024, placeholder='...')}```"
             )
 
             emb.set_author(
@@ -352,7 +350,6 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    @max_concurrency(1, BucketType.user)
     async def search_doujins(self, ctx, *, query: str = ""):
         lolicon_allowed = False
         try:
@@ -505,7 +502,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @max_concurrency(1, BucketType.user)
     async def popular(self, ctx):
         lolicon_allowed = False
         try:
@@ -595,7 +591,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @max_concurrency(1, BucketType.user)
     async def whitelist(self, ctx, mode=None):
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -703,7 +698,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
-    @max_concurrency(1, BucketType.user)
     async def lists(self, ctx, name=None, mode=None, code=None):
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -767,7 +761,7 @@ class Commands(Cog):
                 if isinstance(list_items, dict):  # Is the Bookmarks list
                     bookmark_page = list_items[code]
 
-                if code == "placeholder":
+                if code == "placeholder" or 0:
                     passed_placeholder = True
                     continue
 
@@ -1423,7 +1417,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
-    @max_concurrency(1, BucketType.user)
     async def search_appendage(self, ctx, *, appendage=""):
         if appendage and appendage != "clear_appendage":
             emb = embed=Embed(
@@ -1538,7 +1531,6 @@ class Commands(Cog):
         manage_messages=True, 
         manage_channels=True, 
         manage_roles=True)
-    @max_concurrency(1, BucketType.user)
     async def recall(self, ctx):
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -1588,7 +1580,7 @@ class Commands(Cog):
             await edit.edit(embed=Embed(
                 description="⚠️⛔ You can't recall your doujin here. Did you think you could wormhole like that?"))
 
-        session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty}", str(doujin.id), starting_page=int(page))
+        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), starting_page=int(page))
         response = await session.setup()
         if response:
             self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
@@ -1610,7 +1602,6 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @max_concurrency(1, BucketType.user)
     async def urban_dictionary(self, ctx, *, word):
         edit = await ctx.send(embed=Embed(
             color=0x1d2439,
