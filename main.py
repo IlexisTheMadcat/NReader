@@ -1,7 +1,7 @@
 # IMPORTS
 from os import walk, remove
 from os.path import exists, join
-from json import load
+from json import load, dump
 from sys import exc_info
 from copy import deepcopy
 
@@ -111,20 +111,32 @@ INIT_EXTENSIONS = [
     #"web",
 ]
 
-if exists("Workspace/Files/ServiceAccountKey.json"):
-    key = load(open("Workspace/Files/ServiceAccountKey.json", "r"))
-else:  # If it doesn't exists assume running on replit
-    try:
-        from replit import db
-        key = dict(db["SAK"])
-    except Exception:
-        raise FileNotFoundError("Could not find ServiceAccountKey.json.")
+# 0 = use JSON
+# 1 = use Firebase
+DATA_CLOUD = 0
 
-db = FirebaseDB(
-    "https://nreader-database-default-rtdb.firebaseio.com/", 
-    fp_accountkey_json=key)
+if DATA_CLOUD:
+    if exists("Workspace/Files/ServiceAccountKey.json"):
+        key = load(open("Workspace/Files/ServiceAccountKey.json", "r"))
+    else:  # If it doesn't exists assume running on replit
+        try:
+            from replit import db
+            key = dict(db["SAK"])
+        except Exception:
+            raise FileNotFoundError("Could not find ServiceAccountKey.json.")
 
-user_data = db.copy()
+    db = FirebaseDB(
+        "https://nreader-database-default-rtdb.firebaseio.com/", 
+        fp_accountkey_json=key)
+
+    user_data = db.copy()
+
+else:
+    with open("Workspace/Files/user_data.json", "r") as f:
+        db = None
+        user_data = load(f)
+
+
 # Check the database
 for key in DATA_DEFAULTS:
     if key not in user_data:
@@ -154,7 +166,11 @@ for key in found_data:
               f"Removed key from file.")
 del found_data  # Remove variable from namespace
 
-db.update(user_data)
+if DATA_CLOUD:
+    db.update(user_data)
+else:
+    with open("Workspace/Files/user_data.json", "w") as f:
+        dump(user_data, f)
 
 intents = Intents.default()
 
@@ -169,7 +185,8 @@ bot = Bot(
     database=db,
     user_data=user_data,   
     defaults=DATA_DEFAULTS,
-    auth=db["Tokens"],
+    auth=user_data["Tokens"],
+    use_firebase=DATA_CLOUD
 )
 
 # If a custom help command is created:

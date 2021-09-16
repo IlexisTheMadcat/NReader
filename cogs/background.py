@@ -1,4 +1,4 @@
-import json
+from json import dump, dumps
 from asyncio import sleep
 from aiohttp import ClientSession
 from datetime import datetime
@@ -43,18 +43,23 @@ class BackgroundTasks(Cog):
 
         await self.bot.change_presence(status=status, activity=activity)
 
-    @loop(seconds=57.5)
+    @loop(seconds=297.5)
     async def save_data(self):
-        # If the repl is exited while saving, data may be corrupted or reset.
         print("[HRB: ... Saving, do not quit...", end="\r")
         await sleep(2)
         print("[HRB: !!! Saving, do not quit...", end="\r")
-        time = datetime.now().strftime("%H:%M, %m/%d/%Y")
 
-        self.bot.database.update(self.bot.user_data)
+        if self.bot.use_firebase:
+            self.bot.database.update(self.bot.user_data)
+
+        else:
+            with open("Workspace/Files/user_data.json", "w") as f:
+                user_data = dump(self.bot.user_data, f)
 
         self.bot.inactive = self.bot.inactive + 1
+        time = datetime.now().strftime("%H:%M, %m/%d/%Y")
         print(f"[HRB: {time}] Running.")
+
     
     @loop(minutes=30)
     async def del_update_stats(self):
@@ -64,7 +69,7 @@ class BackgroundTasks(Cog):
             async with session.post(f'https://api.discordextremelist.xyz/v2/bot/{self.bot.user.id}/stats',
                 headers={'Authorization': self.bot.auth['DEL_TOKEN'],
                 "Content-Type": 'application/json'},
-                data=json.dumps({'guildCount': len(self.bot.guilds)})
+                data=dumps({'guildCount': len(self.bot.guilds)})
             ) as r:
                 js = await r.json()
                 if js['error'] == True:

@@ -124,6 +124,7 @@ class Bot(DiscordBot):
         self.defaults = kwargs.pop("defaults")
         
         # Database
+        self.use_firebase = kwargs.pop("use_firebase")
         self.database = kwargs.pop("database")  # Online
         self.user_data = kwargs.pop("user_data") # Local
         self.config = self.user_data["config"]  # Shortcut for user_data['config']
