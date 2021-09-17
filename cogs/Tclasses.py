@@ -639,7 +639,7 @@ class SearchResultsBrowser:
                             await self.update_browser(self.ctx)
                     
                     elif interaction.component.id == "select":
-                        conf = await self.am_channel.send(embed=Embed(
+                        conf = await self.ctx.send(embed=Embed(
                             description="Enter a result number within 15 seconds, or type `n-cancel` to cancel.\n"
                                         "Your message will be deleted to keep clean."))
 
