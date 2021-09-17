@@ -218,6 +218,9 @@ class ImagePageReader:
             
             else:
                 try:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
                     if isinstance(interaction.component, list):
                         delay = await self.am_channel.send("Returned unexpected datatype. Please try again. If that fails, let the doujin time out and try again later.")
                         await delay.delete(delay=5)
@@ -242,14 +245,9 @@ class ImagePageReader:
                             
                             break
                         else:
-                            pass
-                        
-                        await self.update_reader()
+                            await self.update_reader()
 
                     elif interaction.component.id == "previous":  # Previous page
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
-
                         if self.current_page == 0:  # Not allowed to go behind zero
                             continue
                         else:
@@ -258,9 +256,6 @@ class ImagePageReader:
                         await self.update_reader()
                     
                     elif interaction.component.id == "select":  # Select page
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
-
                         bm_page = None
                         if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
                             bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]
@@ -297,12 +292,9 @@ class ImagePageReader:
                                     continue
                     
                     elif interaction.component.id == "pause":  # Pause and send to recall
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
-
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.description = f"You paused this doujin on page [{self.current_page+1}/{len(self.images)}]."
+                        self.am_embed.description = f"You paused this doujin."
                         
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
@@ -322,12 +314,9 @@ class ImagePageReader:
                         break
 
                     elif interaction.component.id == "stop":  # Stop entirely
-                        try: await interaction.respond(type=6)
-                        except NotFound: continue
-
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.description = f"You stopped this doujin on page [{self.current_page+1}/{len(self.images)}]."
+                        self.am_embed.description = f"You stopped this doujin."
                         
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
@@ -342,18 +331,21 @@ class ImagePageReader:
                     elif interaction.component.id == "bookmark":  # Set/Remove bookmark
                         if not self.on_bookmarked_page:
                             if self.current_page == 0:
-                                await interaction.respond(embed=Embed(
-                                    color=0xFF0000,
-                                    description="You cannot bookmark the first page. Use favorites instead!"
-                                ).set_footer(text="You may dismiss this message."))
+                                await self.am_channel.send(
+                                    embed=Embed(
+                                        color=0xFF0000,
+                                        description="You cannot bookmark the first page. Use favorites instead!"
+                                    ).set_footer(text="You may dismiss this message."),
+                                    delete_after=5)
                                 continue
 
                             if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Bookmarks|*n*|bm"]) >= 25: 
-                                await interaction.respond(
+                                await self.am_channel.send(
                                     color=0xff0000, 
                                     embed=Embed(
                                         description="❌ Your Bookmarks list is full. Please remove something from it to perform this action."
-                                    ).set_footer(text="You may dismiss this message."))
+                                    ).set_footer(text="You may dismiss this message."),
+                                    delete_after=5)
                                 continue
 
                             self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code] = self.current_page
@@ -368,29 +360,30 @@ class ImagePageReader:
 
                     elif interaction.component.id == "favorite":  # Add to favorites
                         if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Bookmarks|*n*|bm"]) >= 25: 
-                            await interaction.respond(
+                            await self.am_channel.send(
                                 color=0xff0000, 
                                 embed=Embed(
                                     description="❌ Your Favorites list is full. Please remove something from it to perform this action."
-                                ).set_footer(text="You may dismiss this message."))
+                                ).set_footer(text="You may dismiss this message."),
+                                delete_after=5)
                             continue
 
                         if self.code not in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav']:
                             self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].append(self.code)
 
-                            await interaction.respond(embed=Embed(
-                                description=f"✅ Added `{self.code}` to your favorites."
-                            ).set_footer(text="You may dismiss this message."))
+                            await self.am_channel.send(
+                                embed=Embed(
+                                    description=f"✅ Added `{self.code}` to your favorites."
+                                ).set_footer(text="You may dismiss this message."),
+                                delete_after=5)
                         else:
                             self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].remove(self.code)
 
-                            await interaction.respond(embed=Embed(
-                                description=f"✅ Removed `{self.code}` from your favorites."
-                            ).set_footer(text="You may dismiss this message."))
-
-                    # Respond if not already
-                    try: await interaction.respond(type=6)
-                    except Exception: continue
+                            await self.am_channel.send(
+                                embed=Embed(
+                                    description=f"✅ Removed `{self.code}` from your favorites."
+                                ).set_footer(text="You may dismiss this message."),
+                                delete_after=5)
 
                 except Exception:
                     error = exc_info()
@@ -654,6 +647,7 @@ class SearchResultsBrowser:
                             else:
                                 await m.delete()
                                 if m.content == "n-cancel":
+                                    await conf.delete()
                                     break
                                 
                                 if is_int(m.content) and (int(m.content)-1) in range(0, len(self.doujins)):
@@ -751,37 +745,39 @@ class SearchResultsBrowser:
 
                     elif interaction.component.id == "readlater":
                         if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]) >= 25: 
-                            await interaction.respond(
+                            await self.ctx.send(
                                 embed=Embed(
                                     color=0xff0000, 
                                     description="❌ Your Read Later list is full. Please remove something from it to perform this action."
-                                ).set_footer(text="You may dismiss this message."))
+                                ).set_footer(text="You may dismiss this message."),
+                                delete_after=5)
                             continue
 
                         if str(self.doujins[self.index].id) not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.doujins[self.index].id))
-                            await interaction.respond(
+                            await self.ctx.send(
                                 embed=Embed(
                                     description=f"✅ Added `{self.doujins[self.index].id}` to your Read Later list."
-                                ).set_footer(text="You may dismiss this message."))
+                                ).set_footer(text="You may dismiss this message."),
+                                delete_after=5)
                         else:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.doujins[self.index].id))
-                            await interaction.respond(
+                            await self.ctx.send(
                                 embed=Embed(
                                     description=f"✅ Removed `{self.doujins[self.index].id}` from your Read Later list."
-                                ).set_footer(text="You may dismiss this message."))
+                                ).set_footer(text="You may dismiss this message."),
+                                delete_after=5)
             
                 except Exception:
                     error = exc_info()
-                    temp = await self.ctx.send(embed=Embed(
-                        color=0xFF0000,
-                        description="An unhandled error occured; Please try again.\n"
-                                    "If the issue persists, please try searching again.\n"
-                                    "If searching again doesn't work, click the `Support Server` button."
+                    temp = await self.ctx.send(
+                        embed=Embed(
+                            color=0xFF0000,
+                            description="An unhandled error occured; Please try again.\n"
+                                        "If the issue persists, please try searching again.\n"
+                                        "If searching again doesn't work, click the `Support Server` button."
                         ).set_footer(text="This message will disappear in 10 seconds."),
                         delete_after=10)
-                    
-                    await temp.delete(delay=10)
                         
                     await self.bot.errorlog.send(error, ctx=self.ctx, event="SearchResultsBrowser")
                     
