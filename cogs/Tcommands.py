@@ -216,7 +216,7 @@ class Commands(Cog):
             emb.add_field(
                 inline=False,
                 name="Content tags",
-                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1024, placeholder='...')}```"
+                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1018, placeholder='...')}```"
             )
 
             emb.set_author(
