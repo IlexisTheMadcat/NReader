@@ -16,13 +16,13 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.classes import (
+from cogs.Tclasses import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.misc import language_to_flag, restricted_tags, render_date
 
 newline = "\n"
-experimental_prefix = ""
+experimental_prefix = "T"
 
 class Commands(Cog):
     def __init__(self, bot):
@@ -216,7 +216,7 @@ class Commands(Cog):
             emb.add_field(
                 inline=False,
                 name="Content tags",
-                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1024, placeholder='...')}```"
+                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1018, placeholder='...')}```"
             )
 
             emb.set_author(

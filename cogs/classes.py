@@ -66,8 +66,8 @@ class ImagePageReader:
 
         self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                    f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}\n" \
-                                    f"{self.bot.get_emoji(887808800525004810)} Ready when *green*." 
+                                    f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}\n" 
+
         self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)                
         self.am_embed.set_image(url=self.images[self.current_page].src)
         self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
@@ -525,8 +525,7 @@ class SearchResultsBrowser:
             self.am_embed.add_field(
                 inline=False,
                 name="Content tags",
-                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1024, placeholder='...')}```\n"
-                      f"{self.bot.get_emoji(887808800525004810)} Ready when *green*."
+                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1018, placeholder='...')}```\n"
             )
 
             self.am_embed.set_author(
