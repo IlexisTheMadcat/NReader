@@ -16,13 +16,13 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.Tclasses import (
+from cogs.classes import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.misc import language_to_flag, restricted_tags, render_date
 
 newline = "\n"
-experimental_prefix = "T"
+experimental_prefix = ""
 
 class Commands(Cog):
     def __init__(self, bot):
