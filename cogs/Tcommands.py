@@ -233,15 +233,13 @@ class Commands(Cog):
             await edit.edit(content="", embed=emb,
                 components=[
                     [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
+                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                 ])
         else:
             await edit.edit(content="", embed=emb,
                 components=[
                     [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
+                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                 ])
 
         while True:
@@ -313,31 +311,16 @@ class Commands(Cog):
                         await interaction.respond(type=7, content="", embed=emb,
                             components=[
                                 [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
-                                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
+                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                             ])
                     else:
                         await interaction.respond(type=7, content="", embed=emb,
                             components=[
                                 [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2"),
-                                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]
+                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                             ])
 
                     continue
-
-                if interaction.component.id == "stop":
-                    emb.set_thumbnail(url=doujin.images[0].src)
-                    emb.set_image(url=Embed.Empty)
-                
-                    with suppress(NotFound):
-                        await interaction.respond(type=7, embed=emb, 
-                            components=[
-                                [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                                Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
-                            ])
-                
-                    return
     
     @command(
         name=f"{experimental_prefix}search_doujins",
@@ -462,9 +445,8 @@ class Commands(Cog):
         
         await conf.edit(embed=emb,
             components=[
-                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1"),
-                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
-            )
+                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
+            ])
         
         try:
             interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
@@ -473,8 +455,8 @@ class Commands(Cog):
         except TimeoutError:
             await conf.edit(embed=emb,
                 components=[
-                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-                )
+                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)
+                ])
             
             return
 
@@ -551,9 +533,8 @@ class Commands(Cog):
         
         await conf.edit(embed=emb,
             components=[
-                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1"),
-                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
-            )
+                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
+            ])
         
         try:
             interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
@@ -799,9 +780,8 @@ class Commands(Cog):
                 
             await edit.edit(embed=emb,
                 components=[
-                    [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
-                )
+                    [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
+                ])
         
             try:
                 interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
@@ -1641,9 +1621,8 @@ class Commands(Cog):
                 components=[[
                     Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
                     Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
-            )
+                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]
+                ])
 
         else:
             await edit.edit(
@@ -1663,8 +1642,8 @@ class Commands(Cog):
                 components=[[
                     Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
                     Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]]
-            )
+                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]
+                ])
 
         while len(response) > 1:
             try:
@@ -1693,8 +1672,8 @@ class Commands(Cog):
                     components=[[
                         Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True),
                         Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]]
-                )
+                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]
+                    ])
 
             except BotInteractionCooldown:
                 continue
@@ -1734,8 +1713,9 @@ class Commands(Cog):
                         components=[[
                             Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True),
                             Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                            Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]]
-                    )
+                            Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]
+                        ])
+
                     return
 
                 examples_part = []
@@ -1759,9 +1739,8 @@ class Commands(Cog):
                     components=[[
                         Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
                         Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False),
-                        Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop")]]
-                )
+                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]
+                   ])
 
                 continue
 
