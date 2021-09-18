@@ -16,13 +16,13 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.classes import (
+from cogs.Tclasses import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.misc import language_to_flag, restricted_tags, render_date
 
 newline = "\n"
-experimental_prefix = ""
+experimental_prefix = "T"
 
 class Commands(Cog):
     def __init__(self, bot):
@@ -123,7 +123,6 @@ class Commands(Cog):
             # Get a random doujin
             while True:
                 doujin = await nhentai_api.get_random()
-                self.bot.doujin_cache[str(doujin.id)] = doujin
                 if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
                     await edit.edit(embed=Embed(
                         description=f"{self.bot.get_emoji(810936543401213953)} Retrying..."))
@@ -422,9 +421,6 @@ class Commands(Cog):
         results = await nhentai_api.search(query=query+f"{appendage}", sort=sort, page=page)
 
         if isinstance(results, Doujin):
-            if results.id not in self.bot.doujin_cache:
-                self.bot.doujin_cache[results.id] = results
-            
             await conf.delete()
             ctx.message.content = f"n!code {results.id}"
             await self.bot.process_commands(ctx.message)
@@ -717,6 +713,9 @@ class Commands(Cog):
             return
 
         async def load_list(list_items):
+            if "0" not in list_items:
+                list_items.append("0")
+
             if not len(list_items)-1:
                 emb = Embed(
                     title=f"{list_name}",
@@ -744,16 +743,11 @@ class Commands(Cog):
 
             message_part = list()
             remove_queue = list()  # It is very rare that a doujin would get deleted from NHentai
-
-            is_loading = False
-            for code in list_items:
-                if code not in self.bot.doujin_cache and code != "0":
-                    is_loading = True
-                    break
             
             doujins = []
             passed_placeholder = False
             for ind, code in enumerate(list_items):
+                print(f"doujin: {code}")
                 if passed_placeholder:
                     ind -= 1
 
@@ -761,12 +755,14 @@ class Commands(Cog):
                 if isinstance(list_items, dict):  # Is the Bookmarks list
                     bookmark_page = list_items[code]
 
-                if code == "placeholder" or 0:
+                if code == "placeholder" or code == 0 or code == "0":
+                    print(code)
                     passed_placeholder = True
                     continue
 
                 doujin = await nhentai_api.get_doujin(code)
                 if not doujin:
+                    print(code)
                     remove_queue.append(code)
                     continue
 
@@ -897,8 +893,8 @@ class Commands(Cog):
         sys_category = None
         target_list = None
         if mode not in ["create", "cr"]:
-            for _sys_category, _lists in self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"].items():
-                for ind, (_list_full_name, contents) in enumerate(_lists.items()):
+            for _sys_category, _lists in deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]).items():
+                for _list_full_name in deepcopy(_lists).keys():
                     if "|*n*|" in _list_full_name:
                         parts = _list_full_name.split("|*n*|")
                         _list_name = parts[0]
@@ -958,16 +954,11 @@ class Commands(Cog):
                     return
 
                 nhentai_api = NHentai()
-                if code not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
-                else:
-                    doujin = self.bot.doujin_cache[code]
+                doujin = await nhentai_api.get_doujin(code)
 
                 if not doujin:
                     await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
                     return
-
-                self.bot.doujin_cache[code] = doujin
 
                 if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
                     await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
@@ -1044,16 +1035,11 @@ class Commands(Cog):
                     return
 
                 nhentai_api = NHentai()
-                if code not in self.bot.doujin_cache:
-                    doujin = await nhentai_api.get_doujin(code)
-                else:
-                    doujin = self.bot.doujin_cache[code]
+                doujin = await nhentai_api.get_doujin(code)
 
                 if not doujin:
                     await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
                     return
-
-                self.bot.doujin_cache[code] = doujin
 
                 if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
                     await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
@@ -1231,8 +1217,8 @@ class Commands(Cog):
                         return
 
                     # Check for existing lists and aliases
-                    for _sys_category, _lists in self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"].items():
-                        for ind, (_list_full_name, contents) in enumerate(_lists.items()):
+                    for _lists in deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]).values():
+                        for _list_full_name in deepcopy(_lists).keys():
                             if "|*n*|" in _list_full_name:
                                 parts = _list_full_name.split("|*n*|")
                                 _list_name = parts[0]
@@ -1262,16 +1248,11 @@ class Commands(Cog):
                             return
 
                         nhentai_api = NHentai()
-                        if code not in self.bot.doujin_cache:
-                            doujin = await nhentai_api.get_doujin(code)
-                        else:
-                            doujin = self.bot.doujin_cache[code]
+                        doujin = await nhentai_api.get_doujin(code)
 
                         if not doujin:
                             await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
                             return
-
-                        self.bot.doujin_cache[code] = doujin
 
                         if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
                             await ctx.send(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
@@ -1300,16 +1281,11 @@ class Commands(Cog):
 
                     edit = await ctx.send(embed=Embed(description="<a:nreader_loading:810936543401213953>"))
                     nhentai_api = NHentai()
-                    if code not in self.bot.doujin_cache:
-                        doujin = await nhentai_api.get_doujin(code)
-                    else:
-                        doujin = self.bot.doujin_cache[code]
+                    doujin = await nhentai_api.get_doujin(code)
 
                     if not doujin:
                         await edit.edit(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
                         return
-
-                    self.bot.doujin_cache[code] = doujin
 
                     if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
                         await edit.edit(content="⚠❌ This doujin contains lolicon/shotacon content and cannot be shown publically.")
@@ -1325,7 +1301,7 @@ class Commands(Cog):
                         return
 
                     target_list.remove(code)
-                    await ctx.edit(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                    await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
                     return
 
                 elif mode in ["clear", "c"]:
@@ -1561,10 +1537,7 @@ class Commands(Cog):
         edit = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)} Recalling..."))
 
         nhentai_api = NHentai()
-        if code not in self.bot.doujin_cache:
-            doujin = await nhentai_api.get_doujin(code)
-        else:
-            doujin = self.bot.doujin_cache[code]
+        doujin = await nhentai_api.get_doujin(code)
         
         if not doujin:
             await ctx.send(embed=Embed(
@@ -1572,9 +1545,6 @@ class Commands(Cog):
             
             self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
             return
-
-        else:
-            self.bot.doujin_cache[code] = doujin
         
         if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
             await edit.edit(embed=Embed(
