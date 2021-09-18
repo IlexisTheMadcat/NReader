@@ -695,7 +695,10 @@ class Commands(Cog):
 
         async def load_list(list_items):
             if "0" not in list_items:
-                list_items.append("0")
+                if isinstance(list_items, list):
+                    list_items.append("0")
+                elif isinstance(list_items, dict):
+                    list_items.update({"placeholder":"1"})
 
             if not len(list_items)-1:
                 emb = Embed(
