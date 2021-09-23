@@ -335,7 +335,7 @@ class ImagePageReader:
                                     embed=Embed(
                                         color=0xFF0000,
                                         description="You cannot bookmark the first page. Use favorites instead!"
-                                    ).set_footer(text="You may dismiss this message."),
+                                    ),
                                     delete_after=5)
                                 continue
 
@@ -344,7 +344,7 @@ class ImagePageReader:
                                     color=0xff0000, 
                                     embed=Embed(
                                         description="❌ Your Bookmarks list is full. Please remove something from it to perform this action."
-                                    ).set_footer(text="You may dismiss this message."),
+                                    ),
                                     delete_after=5)
                                 continue
 
@@ -364,7 +364,7 @@ class ImagePageReader:
                                 color=0xff0000, 
                                 embed=Embed(
                                     description="❌ Your Favorites list is full. Please remove something from it to perform this action."
-                                ).set_footer(text="You may dismiss this message."),
+                                ),
                                 delete_after=5)
                             continue
 
@@ -374,7 +374,7 @@ class ImagePageReader:
                             await self.am_channel.send(
                                 embed=Embed(
                                     description=f"✅ Added `{self.code}` to your favorites."
-                                ).set_footer(text="You may dismiss this message."),
+                                ),
                                 delete_after=5)
                         else:
                             self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].remove(self.code)
@@ -382,7 +382,7 @@ class ImagePageReader:
                             await self.am_channel.send(
                                 embed=Embed(
                                     description=f"✅ Removed `{self.code}` from your favorites."
-                                ).set_footer(text="You may dismiss this message."),
+                                ),
                                 delete_after=5)
 
                 except Exception:
@@ -749,7 +749,7 @@ class SearchResultsBrowser:
                                 embed=Embed(
                                     color=0xff0000, 
                                     description="❌ Your Read Later list is full. Please remove something from it to perform this action."
-                                ).set_footer(text="You may dismiss this message."),
+                                ),
                                 delete_after=5)
                             continue
 
@@ -758,14 +758,14 @@ class SearchResultsBrowser:
                             await self.ctx.send(
                                 embed=Embed(
                                     description=f"✅ Added `{self.doujins[self.index].id}` to your Read Later list."
-                                ).set_footer(text="You may dismiss this message."),
+                                ),
                                 delete_after=5)
                         else:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.doujins[self.index].id))
                             await self.ctx.send(
                                 embed=Embed(
                                     description=f"✅ Removed `{self.doujins[self.index].id}` from your Read Later list."
-                                ).set_footer(text="You may dismiss this message."),
+                                ),
                                 delete_after=5)
             
                 except Exception:
