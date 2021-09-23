@@ -731,7 +731,6 @@ class Commands(Cog):
             doujins = []
             passed_placeholder = False
             for ind, code in enumerate(list_items):
-                print(f"doujin: {code}")
                 if passed_placeholder:
                     ind -= 1
 
@@ -740,13 +739,11 @@ class Commands(Cog):
                     bookmark_page = list_items[code]
 
                 if code == "placeholder" or code == 0 or code == "0":
-                    print(code)
                     passed_placeholder = True
                     continue
 
                 doujin = await nhentai_api.get_doujin(code)
                 if not doujin:
-                    print(code)
                     remove_queue.append(code)
                     continue
 
@@ -837,7 +834,6 @@ class Commands(Cog):
                         if list_name == "Bookmarks": 
                             length = len(contents)
                             list_name = "🔖 Bookmarks"
-                            print(contents)
                         if list_name == "History": 
                             length = len(contents["list"])
                             list_name = "🕑 History"
