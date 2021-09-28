@@ -77,7 +77,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
-        if ctx.guild and ctx.channel.is_nsfw():
+        if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
                 description="❌ This command cannot be used in a non-NSFW channel."))
 
