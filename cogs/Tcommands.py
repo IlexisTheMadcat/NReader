@@ -29,7 +29,9 @@ class Commands(Cog):
         self.bot = bot
     
     @command(name=f"{experimental_prefix}test")
-    @bot_has_permissions(send_messages=True, embed_links=True)
+    @bot_has_permissions(
+        send_messages=True, 
+        embed_links=True)
     async def test(self, ctx):
         try:
             await ctx.send("Done (1/3).")
@@ -75,19 +77,18 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
+        if ctx.guild and ctx.channel.is_nsfw():
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-        
-        # Must use in an NSFW channel
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description="❌ This command cannot be used in a non-NSFW channel."))
-
-            return
         
         # Verify that `code` is a number
         try:
@@ -151,19 +152,22 @@ class Commands(Cog):
 
             emb = Embed(
                 description=f"Doujin ID: __`{doujin.id}`__\n"
-                            f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
+                            f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`\n"
                             f"Pages: `{len(doujin.images)}`\n"
-                            f"Artist(s): `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
-                            f"Character(s): `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
-                            f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
-                            f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```")
-            
-            emb.set_author(
+                            f"Artist(s): `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`\n"
+                            f"Character(s): `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`\n"
+                            f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`\n"
+                            f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
+            ).set_author(
                 name=doujin.title.pretty,
                 url=f"https://nhentai.net/g/{doujin.id}/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.set_thumbnail(
-                url=doujin.images[0])
+                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
+            ).set_thumbnail(
+                url=doujin.images[0].src
+            ).set_footer(
+                text=f"⭐ {doujin.total_favorites}"
+            )
+
         else:
             emb = Embed()
             emb.add_field(
@@ -328,26 +332,17 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @bot_has_guild_permissions(
-        manage_messages=True, 
-        manage_channels=True, 
-        manage_roles=True)
     async def search_doujins(self, ctx, *, query: str = ""):
-        lolicon_allowed = False
-        try:
-            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
-                lolicon_allowed = True
-        except KeyError:
-            pass
-        
         if not ctx.channel.is_nsfw():
-            await ctx.send("❌ This command cannot be used in a non-NSFW channel.")
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
             return
+
+        lolicon_allowed = False
         
         conf = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)}"))
-    
         nhentai_api = NHentai()
-
         if "--noappend" in query:
             query = query.replace("--noappend", "")
             appendage = ""
@@ -481,18 +476,18 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def popular(self, ctx):
+        if ctx.guild and not ctx.channel.is_nsfw():
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-        
-        if not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description="❌ This command cannot be used in a non-NSFW channel."))
-
-            return
         
         conf = await ctx.send(embed=Embed(
             description=f"{self.bot.get_emoji(810936543401213953)} Loading..."
@@ -571,7 +566,7 @@ class Commands(Cog):
     async def whitelist(self, ctx, mode=None):
         if not ctx.guild:
             await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
+                description=":x: This command must be run in a server. Consider making a private one."))
 
             return
 
@@ -676,9 +671,9 @@ class Commands(Cog):
         send_messages=True,
         embed_links=True)
     async def lists(self, ctx, name=None, mode=None, code=None):
-        if not ctx.guild:
+        if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
-                description="❌ These commands must be run in a server. Consider making a private one."))
+                description="❌ This command cannot be used in a non-NSFW channel."))
 
             return
 
@@ -688,10 +683,6 @@ class Commands(Cog):
                 lolicon_allowed = True
         except KeyError:
             pass
-
-        if not ctx.channel.is_nsfw():
-            await ctx.send("❌ This command cannot be used in a non-NSFW channel.")
-            return
 
         async def load_list(list_items):
             if "0" not in list_items:
@@ -962,12 +953,12 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: {len(target_list)-1}")
+                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)-1}`")
                 conf = await ctx.send(embed=emb,
                     components=[
                         [Button(label="Continue", style=4, id="button1"),
-                        Button(label="Cancel", style=1, id="button2")]])
+                        Button(label="Cancel", style=2, id="button2")]])
                 try:
                     interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
                         check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
@@ -976,13 +967,13 @@ class Commands(Cog):
                     await conf.edit(embed=emb,
                         components=[
                             [Button(label="Continue", style=4, id="button1", disabled=True),
-                            Button(label="Cancel", style=1, id="button2", disabled=True)]])
+                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
                         
                 else:
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
-                    
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
+
                     elif interaction.component.id == "button2":
                         await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
 
@@ -1043,8 +1034,8 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: {len(target_list)-1}")
+                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)-1}`")
                 conf = await ctx.send(embed=emb,
                     components=[
                         [Button(label="Continue", style=4, id="button1"),
@@ -1062,7 +1053,7 @@ class Commands(Cog):
                 else:
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
 
                     elif interaction.component.id == "button2":
                         await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
@@ -1095,8 +1086,8 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: {len(target_list)-1}")
+                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)-1}`")
                 conf = await ctx.send(embed=emb,
                     components=[
                         [Button(label="Continue", style=4, id="button1"),
@@ -1114,7 +1105,7 @@ class Commands(Cog):
                 else:
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"0": 0}
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
 
                     elif interaction.component.id == "button2":
                         await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
@@ -1147,8 +1138,8 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: {len(target_list)-1}")
+                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)-1}`")
                 conf = await ctx.send(embed=emb,
                     components=[
                         [Button(label="Continue", style=4, id="button1"),
@@ -1166,7 +1157,7 @@ class Commands(Cog):
                 else:
                     if interaction.component.id == "button1":
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name]["list"] = ["0"]
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
 
                     elif interaction.component.id == "button2":
                         await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
@@ -1179,8 +1170,16 @@ class Commands(Cog):
                 return
 
         else:  # Queried list is custom
-            if mode in ["add", "a", "+", "remove", "r", "-", "clear", "c", "delete", "del", "create", "cr", None]:
-                if mode in ["create", "cr"]:
+            if mode in [
+                "create", "cr", "!", 
+                "rename", "rn", ">", 
+                "delete", "del", 
+                "add", "a", "+", 
+                "remove", "r", "-", 
+                "clear", "c", 
+                None
+            ]:
+                if mode in ["create", "cr", "!"]:
                     if len(self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"]) > 25:
                         await ctx.send(embed=Embed(description="❌ You cannot create more than 25 custom lists."))
                         return
@@ -1207,16 +1206,16 @@ class Commands(Cog):
                                 _alias = None
 
                             if input_aliases[0] in [_list_name, _alias]:
-                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias `{input_aliases[0]}` already exists."))
+                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias **`{input_aliases[0]}`** already exists."))
                                 return
                             elif len(input_aliases) == 2 and input_aliases[1] in [_list_name, _alias]:
-                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias `{input_aliases[1]}` already exists."))
+                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias **`{input_aliases[1]}`** already exists."))
                                 return
 
                     sys_name = "|*n*|".join(input_aliases)
 
                     self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][sys_name] = ["0"]
-                    await ctx.send(embed=Embed(description=f"✅ Created a new list named `{input_aliases[0]}`{' with the alias `'+input_aliases[1]+'`' if len(input_aliases)==2 else ''}."))
+                    await ctx.send(embed=Embed(description=f"✅ Created a new list named **`{input_aliases[0]}`**{' with the alias **`'+input_aliases[1]+'`**' if len(input_aliases)==2 else ''}."))
                 
                     if code:
                         try:
@@ -1238,8 +1237,89 @@ class Commands(Cog):
                             return
 
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][sys_name].append(code)
-                        await ctx.send(embed=Embed(description=f"✅ Added `{code}` to `{input_aliases[0]}`."))
+                        await ctx.send(embed=Embed(description=f"✅ Added **`{code}`** to **`{input_aliases[0]}`**."))
                 
+                    return
+
+                elif mode in ["rename", "rn", ">"]:
+                    saved_list = deepcopy(target_list)
+
+                    input_aliases = code.split("//")
+                    if len(input_aliases[0]) > 25 or \
+                        (len(input_aliases)==2 and len(input_aliases[1]) > 25):
+                        await ctx.send(embed=Embed(description="❌ Your list name or alias cannot exceed 25 characters long."))
+                        return
+
+                    if len(input_aliases) > 2:
+                        await ctx.send(embed=Embed(description="❌ You can only give your list one alias."))
+                        return
+
+                    # Check for existing lists and aliases
+                    for _lists in deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]).values():
+                        for _list_full_name in deepcopy(_lists).keys():
+                            if "|*n*|" in _list_full_name:
+                                parts = _list_full_name.split("|*n*|")
+                                _list_name = parts[0]
+                                _alias = parts[1]
+                            else:
+                                _list_name = _list_full_name
+                                _alias = None
+
+                            if input_aliases[0] in [_list_name, _alias] and _list_full_name != full_name:
+                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias **`{input_aliases[0]}`** already exists."))
+                                return
+                            elif len(input_aliases) == 2 and input_aliases[1] in [_list_name, _alias] and _list_full_name != full_name:
+                                await ctx.send(embed=Embed(description=f"❌ A list with the name or alias **`{input_aliases[1]}`** already exists."))
+                                return
+
+                    sys_name = "|*n*|".join(input_aliases)
+                    self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
+                    self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"][sys_name] = saved_list
+                    await ctx.send(embed=Embed(description=f"✅ Renamed list **`{list_name}`** to **`{input_aliases[0]}`**{' with the alias **`'+input_aliases[1]+'`**' if len(input_aliases)==2 else ''}."))
+                
+                    return
+
+                elif mode in ["delete", "del"]:
+                    if not len(target_list)-1:
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
+                        await ctx.send(embed=Embed(description=f"✅ Deleted list **`{list_name}`** (empty list)."))
+
+                    else:
+                        emb = Embed(
+                            title="Deleting An Occupied List",
+                            description=f"Are you sure you want to delete this list?\n"
+                                        f"\n"
+                                        f"**Name**: **`{list_name}`**\n"
+                                        f"{'**Alias**: **`'+alias_name+'`**'+newline if alias_name else ''}"
+                                        f"**Number of doujins inside**: **`{len(target_list)-1}`**")
+
+                        conf = await ctx.send(embed=emb,
+                            components=[
+                                [Button(label="Continue", style=4, id="button1"),
+                                Button(label="Cancel", style=2, id="button2")]])
+        
+                        try:
+                            interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
+                                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+        
+                        except TimeoutError:
+                            await conf.edit(embed=emb,
+                                components=[
+                                    [Button(label="Continue", style=4, id="button1", disabled=True),
+                                    Button(label="Cancel", style=2, id="button2", disabled=True)]])
+            
+                            return
+        
+                        else:
+                            if interaction.component.id == "button1":
+                                self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
+                                emb.description = f"✅ Deleted list **`{list_name}`** (disbanded **`{len(target_list)-1}`** doujins)."
+                                await interaction.respond(type=7, embed=emb, components=[])
+            
+                            
+                            elif interaction.component.id == "button2":
+                                emb.description = f"❌ Operation cancelled."
+                                await interaction.respond(type=7, embed=emb, components=[])
                     return
 
                 elif mode in ["add", "a", "+"]:
@@ -1271,7 +1351,7 @@ class Commands(Cog):
                         return
 
                     target_list.append(code)
-                    await edit.edit(embed=Embed(description=f"✅ Added `{code}` to `{list_name}`."))
+                    await edit.edit(embed=Embed(description=f"✅ Added **`{code}`** to **`{list_name}`**."))
                     return
 
                 elif mode in ["remove", "r", "-"]:
@@ -1280,7 +1360,7 @@ class Commands(Cog):
                         return
 
                     target_list.remove(code)
-                    await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
+                    await ctx.send(embed=Embed(description=f"✅ Removed **`{code}`** from **`{list_name}`**."))
                     return
 
                 elif mode in ["clear", "c"]:
@@ -1288,9 +1368,9 @@ class Commands(Cog):
                         title="Clearing An Occupied List",
                         description=f"Are you sure you want to clear this list?\n"
                                     f"\n"
-                                    f"**Name**: {list_name}\n"
-                                    f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
-                                    f"**Number of doujins inside**: {len(target_list)-1}")
+                                    f"**Name**: **{list_name}**\n"
+                                    f"{'**Alias**: **`'+alias_name+'`**'+newline if alias_name else ''}"
+                                    f"**Number of doujins inside**: **`{len(target_list)-1}`**")
                     conf = await ctx.send(embed=emb,
                         components=[
                             [Button(label="Continue", style=4, id="button1"),
@@ -1308,54 +1388,11 @@ class Commands(Cog):
                     else:
                         if interaction.component.id == "button1":
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                            await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset `{list_name}` (removed {len(target_list)-1} doujins)."), components=[])
+                            await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
 
                         elif interaction.component.id == "button2":
                             await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
 
-                    return
-
-                elif mode in ["delete", "del"]:
-                    if not len(target_list)-1:
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
-                        await ctx.send(embed=Embed(description=f"✅ Deleted list `{list_name}` (empty list)."))
-
-                    else:
-                        emb = Embed(
-                            title="Deleting An Occupied List",
-                            description=f"Are you sure you want to delete this list?\n"
-                                        f"\n"
-                                        f"**Name**: {list_name}\n"
-                                        f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
-                                        f"**Number of doujins inside**: {len(target_list)-1}")
-
-                        conf = await ctx.send(embed=emb,
-                            components=[
-                                [Button(label="Continue", style=4, id="button1"),
-                                Button(label="Cancel", style=2, id="button2")]])
-        
-                        try:
-                            interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
-                                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-        
-                        except TimeoutError:
-                            await conf.edit(embed=emb,
-                                components=[
-                                    [Button(label="Continue", style=4, id="button1", disabled=True),
-                                    Button(label="Cancel", style=2, id="button2", disabled=True)]])
-            
-                            return
-        
-                        else:
-                            if interaction.component.id == "button1":
-                                self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
-                                emb.description = f"✅ Deleted list `{list_name}` (disbanded {len(target_list)-1} doujins)."
-                                await interaction.respond(type=7, embed=emb, components=[])
-            
-                            
-                            elif interaction.component.id == "button2":
-                                emb.description = f"❌ Operation cancelled."
-                                await interaction.respond(type=7, embed=emb, components=[])
                     return
 
                 elif not mode:
@@ -1493,16 +1530,18 @@ class Commands(Cog):
 
             return
 
+        if not ctx.channel.is_nsfw():
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-
-        if not ctx.channel.is_nsfw():
-            await ctx.send("❌ This command cannot be used in a non-NSFW channel.")
-            return
         
         recall_id = self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"]
         if recall_id == "N/A":

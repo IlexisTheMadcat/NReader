@@ -165,8 +165,7 @@ class ImagePageReader:
                 await self.update_reader()
 
                 await sleep(0.2)
-                with suppress(NotFound):
-                    await edit.delete()
+                await edit.delete()
 
                 return True
 
@@ -274,7 +273,9 @@ class ImagePageReader:
                                 break
 
                             else:
-                                await m.delete()
+                                with suppress(Forbidden):
+                                    await m.delete()
+                                
                                 if m.content == "n-cancel":
                                     await conf.delete()
                                     break
@@ -288,7 +289,9 @@ class ImagePageReader:
                                     break
                                 
                                 else:
-                                    await m.delete()
+                                    with suppress(Forbidden):
+                                        await m.delete()
+
                                     continue
                     
                     elif interaction.component.id == "pause":  # Pause and send to recall
@@ -539,7 +542,13 @@ class SearchResultsBrowser:
 
         self.active_message.embeds[0] = self.am_embed
 
-        if self.active_message:
+        if not self.active_message:
+            self.active_message = await self.ctx.send("...")
+
+        if not self.ctx.guild or (self.ctx.guild and not all([
+            ctx.guild.me.guild_permissions.manage_channels, 
+            ctx.guild.me.guild_permissions.manage_roles, 
+            ctx.guild.me.guild_permissions.manage_messages])):
             await self.active_message.edit(
                 embed=self.am_embed,
                 components=[
@@ -547,12 +556,13 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
                     Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
                     Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
+                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read", disabled=True)],
                     [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
                     Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
                     Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
+
         else:
-            self.active_message = await self.ctx.send(
+            await self.active_message.edit(
                 embed=self.am_embed,
                 components=[
                     [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
@@ -633,8 +643,7 @@ class SearchResultsBrowser:
                     
                     elif interaction.component.id == "select":
                         conf = await self.ctx.send(embed=Embed(
-                            description="Enter a result number within 15 seconds, or type `n-cancel` to cancel.\n"
-                                        "Your message will be deleted to keep clean."))
+                            description="Enter a result number within 15 seconds, or type `n-cancel` to cancel.\n"))
 
                         while True:
                             try:
@@ -645,7 +654,9 @@ class SearchResultsBrowser:
                                 break
 
                             else:
-                                await m.delete()
+                                with suppress(Forbidden):
+                                    await m.delete()
+                                
                                 if m.content == "n-cancel":
                                     await conf.delete()
                                     break

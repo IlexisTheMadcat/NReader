@@ -29,7 +29,9 @@ class Commands(Cog):
         self.bot = bot
     
     @command(name=f"{experimental_prefix}test")
-    @bot_has_permissions(send_messages=True, embed_links=True)
+    @bot_has_permissions(
+        send_messages=True, 
+        embed_links=True)
     async def test(self, ctx):
         try:
             await ctx.send("Done (1/3).")
@@ -75,19 +77,18 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
+        if ctx.guild and ctx.channel.is_nsfw():
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-        
-        # Must use in an NSFW channel
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description="❌ This command cannot be used in a non-NSFW channel."))
-
-            return
         
         # Verify that `code` is a number
         try:
@@ -151,19 +152,22 @@ class Commands(Cog):
 
             emb = Embed(
                 description=f"Doujin ID: __`{doujin.id}`__\n"
-                            f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
+                            f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`\n"
                             f"Pages: `{len(doujin.images)}`\n"
-                            f"Artist(s): `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
-                            f"Character(s): `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
-                            f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
-                            f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```")
-            
-            emb.set_author(
+                            f"Artist(s): `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`\n"
+                            f"Character(s): `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`\n"
+                            f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`\n"
+                            f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
+            ).set_author(
                 name=doujin.title.pretty,
                 url=f"https://nhentai.net/g/{doujin.id}/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.set_thumbnail(
-                url=doujin.images[0])
+                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
+            ).set_thumbnail(
+                url=doujin.images[0].src
+            ).set_footer(
+                text=f"⭐ {doujin.total_favorites}"
+            )
+
         else:
             emb = Embed()
             emb.add_field(
@@ -328,26 +332,17 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    @bot_has_guild_permissions(
-        manage_messages=True, 
-        manage_channels=True, 
-        manage_roles=True)
     async def search_doujins(self, ctx, *, query: str = ""):
-        lolicon_allowed = False
-        try:
-            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
-                lolicon_allowed = True
-        except KeyError:
-            pass
-        
         if not ctx.channel.is_nsfw():
-            await ctx.send("❌ This command cannot be used in a non-NSFW channel.")
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
             return
+
+        lolicon_allowed = False
         
         conf = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)}"))
-    
         nhentai_api = NHentai()
-
         if "--noappend" in query:
             query = query.replace("--noappend", "")
             appendage = ""
@@ -481,18 +476,18 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def popular(self, ctx):
+        if ctx.guild and not ctx.channel.is_nsfw():
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-        
-        if not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description="❌ This command cannot be used in a non-NSFW channel."))
-
-            return
         
         conf = await ctx.send(embed=Embed(
             description=f"{self.bot.get_emoji(810936543401213953)} Loading..."
@@ -571,7 +566,7 @@ class Commands(Cog):
     async def whitelist(self, ctx, mode=None):
         if not ctx.guild:
             await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
+                description=":x: This command must be run in a server. Consider making a private one."))
 
             return
 
@@ -676,9 +671,9 @@ class Commands(Cog):
         send_messages=True,
         embed_links=True)
     async def lists(self, ctx, name=None, mode=None, code=None):
-        if not ctx.guild:
+        if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
-                description="❌ These commands must be run in a server. Consider making a private one."))
+                description="❌ This command cannot be used in a non-NSFW channel."))
 
             return
 
@@ -688,10 +683,6 @@ class Commands(Cog):
                 lolicon_allowed = True
         except KeyError:
             pass
-
-        if not ctx.channel.is_nsfw():
-            await ctx.send("❌ This command cannot be used in a non-NSFW channel.")
-            return
 
         async def load_list(list_items):
             if "0" not in list_items:
@@ -1539,16 +1530,18 @@ class Commands(Cog):
 
             return
 
+        if not ctx.channel.is_nsfw():
+            await ctx.send(embed=Embed(
+                description="❌ This command cannot be used in a non-NSFW channel."))
+
+            return
+
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
                 lolicon_allowed = True
         except KeyError:
             pass
-
-        if not ctx.channel.is_nsfw():
-            await ctx.send("❌ This command cannot be used in a non-NSFW channel.")
-            return
         
         recall_id = self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"]
         if recall_id == "N/A":
