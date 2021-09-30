@@ -464,9 +464,12 @@ class SearchResultsBrowser:
         tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
         if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.lolicon_allowed:
             self.am_embed.add_field(
-                name="Main Title",
+                name="Forbidden",
                 inline=False,
-                value="⚠️❌ This doujin cannot be viewed in this server.")
+                value="⚠️❌ This doujin cannot be viewed in this server."
+            ).set_footer(
+                text=f"⭐ N/A"
+            )
             
             doujin.cover.src = str(self.bot.user.avatar_url)
         

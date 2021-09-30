@@ -16,13 +16,13 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.classes import (
+from cogs.Tclasses import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.misc import language_to_flag, restricted_tags, render_date
 
 newline = "\n"
-experimental_prefix = ""
+experimental_prefix = "T"
 
 class Commands(Cog):
     def __init__(self, bot):
@@ -340,6 +340,11 @@ class Commands(Cog):
             return
 
         lolicon_allowed = False
+        try:
+            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
+                lolicon_allowed = True
+        except KeyError:
+            pass
         
         conf = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)}"))
         nhentai_api = NHentai()

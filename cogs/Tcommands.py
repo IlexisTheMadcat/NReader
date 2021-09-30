@@ -340,6 +340,11 @@ class Commands(Cog):
             return
 
         lolicon_allowed = False
+        try:
+            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
+                lolicon_allowed = True
+        except KeyError:
+            pass
         
         conf = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)}"))
         nhentai_api = NHentai()
