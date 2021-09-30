@@ -333,7 +333,7 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def search_doujins(self, ctx, *, query: str = ""):
-        if not ctx.channel.is_nsfw():
+        if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
                 description="❌ This command cannot be used in a non-NSFW channel."))
 
@@ -1526,7 +1526,7 @@ class Commands(Cog):
     async def recall(self, ctx):
         if not ctx.guild:
             await ctx.send(embed=Embed(
-                description=":x: These commands must be run in a server. Consider making a private one."))
+                description=":x: This command must be run in a server. Consider making a private one."))
 
             return
 
