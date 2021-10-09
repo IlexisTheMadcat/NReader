@@ -92,3 +92,16 @@ def render_date(datetime):
 
     return f"On {months[datetime.month]} {datetime.day}{suffixs[int(day[-1])]}, {datetime.year} at {hour}:{datetime.minute} {'PM' if is_noon else 'AM'}"
 
+def show_values(obj, value_width=200, value_oversize_placeholder="...", include_methods=True):
+    from inspect import is_callable
+
+    items = {}
+    for i in dir(obj):
+        if not include_methods and is_callable(getattr(obj, i)):
+            continue 
+
+        items.update({f"{type(obj).__name__}.{i}": "{shorten(str(getattr(interaction, i)), width=value_width, placeholder=value_oversize_placeholder)}"})
+
+    return '\n'.join(items)
+                
+                
