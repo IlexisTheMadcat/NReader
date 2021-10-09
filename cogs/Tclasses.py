@@ -149,10 +149,14 @@ class ImagePageReader:
                         i.user.id == self.ctx.author.id)
         
             except TimeoutError:
-                await conf.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...")
+                with suppress(NotFound):
+                    await conf.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
             
                 await sleep(1)
-                await conf.channel.delete()
+                
+                with suppress(NotFound):
+                    await conf.channel.delete()
+                
                 return False
         
             else:
@@ -165,7 +169,6 @@ class ImagePageReader:
                 await self.update_reader()
 
                 await sleep(0.2)
-                await edit.delete()
 
                 return True
 
@@ -205,7 +208,9 @@ class ImagePageReader:
                     await temp.delete(delay=1)
         
                     await sleep(10)
-                    await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
+
+                    with suppress(NotFound):
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
 
                     await sleep(1)
                     await self.am_channel.delete()
@@ -237,7 +242,7 @@ class ImagePageReader:
                                 self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl'].remove(self.code)
                             
                             await sleep(2)
-                            await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
+                            await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
 
                             await sleep(1)
                             await self.am_channel.delete()
@@ -302,7 +307,7 @@ class ImagePageReader:
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
                         await sleep(2)
-                        await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
                         
                         await sleep(1)
                         await self.am_channel.delete()
@@ -324,7 +329,7 @@ class ImagePageReader:
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
                         await sleep(2)
-                        await self.active_message.edit(content="<a:nreader_loading:810936543401213953> Closing...", embed=None)
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
                         
                         await sleep(1)
                         await self.am_channel.delete()
