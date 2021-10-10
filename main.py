@@ -39,22 +39,6 @@ DATA_DEFAULTS = {
                 }  # dict of str:bool
             },
 
-            # User favorites including bookmarks
-            "nFavorites": {  
-                "Doujins": [0],  # [int(code)]
-                "Bookmarks": {"placeholder": 0}  # {str(code):int(page)}
-            },
-
-            "History": [
-                True, 
-                [0]
-            ],
-
-            # Users may wish to add search results to a `To Read` list.
-            "ToRead": [0],  # [int(code)]
-
-            "Recall": "N/A",
-
             # User collections
             # Dev note: When editing keys, also use the CTRL+SHIFT+F to replace respective keys in the project.
             "Lists": {
