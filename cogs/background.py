@@ -31,15 +31,9 @@ class BackgroundTasks(Cog):
         else:
             status = Status.online
 
-        if self.bot.config['debug_mode']:
-            activity = Activity(
-                type=ActivityType.playing,
-                name="in DEBUG MODE")
-
-        else:
-            activity = Activity(
-                type=ActivityType.watching,
-                name=f"{time}/UTC | {self.bot.command_prefix} | {len(self.bot.guilds)}")
+        activity = Activity(
+            type=ActivityType.watching,
+            name=f"{time}/UTC | {self.bot.command_prefix} | {len(self.bot.guilds)}")
 
         await self.bot.change_presence(status=status, activity=activity)
 
