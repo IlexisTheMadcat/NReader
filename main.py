@@ -114,8 +114,8 @@ INIT_EXTENSIONS = [
 DATA_CLOUD = 0
 
 if DATA_CLOUD:
-    if exists("Workspace/Files/ServiceAccountKey.json"):
-        key = load(open("Workspace/Files/ServiceAccountKey.json", "r"))
+    if exists("Files/ServiceAccountKey.json"):
+        key = load(open("Files/ServiceAccountKey.json", "r"))
     else:  # If it doesn't exists assume running on replit
         try:
             from replit import db
@@ -130,7 +130,7 @@ if DATA_CLOUD:
     user_data = db.copy()
 
 else:
-    with open("Workspace/Files/user_data.json", "r") as f:
+    with open("Files/user_data.json", "r") as f:
         db = None
         user_data = load(f)
 
@@ -167,7 +167,7 @@ del found_data  # Remove variable from namespace
 if DATA_CLOUD:
     db.update(user_data)
 else:
-    with open("Workspace/Files/user_data.json", "w") as f:
+    with open("Files/user_data.json", "w") as f:
         dump(user_data, f)
 
 intents = Intents.default()

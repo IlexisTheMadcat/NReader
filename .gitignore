@@ -2,5 +2,5 @@
 .vs
 Storage
 Workspace
-!Workspace/Files
+user_data.json
 *ServiceAccountKey.json*

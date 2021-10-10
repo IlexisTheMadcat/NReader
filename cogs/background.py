@@ -53,7 +53,7 @@ class BackgroundTasks(Cog):
             self.bot.database.update(self.bot.user_data)
 
         else:
-            with open("Workspace/Files/user_data.json", "w") as f:
+            with open("Files/user_data.json", "w") as f:
                 user_data = dump(self.bot.user_data, f)
 
         self.bot.inactive = self.bot.inactive + 1
