@@ -230,7 +230,10 @@ class ErrorLog:
                       f"Channel: `{ctx.channel}` ({ctx.channel.id})\n"
                       f"Message: `{ctx.message.content if ctx.message.content else 'No Content'}`\n"
                       f"**Copy this message ID and access `bot.error_contexts[<id>]` for Context.**")
-        else:
+        
+        try:
+            em.set_footer(text=f"This event was caused by user {ctx.author} ({ctx.author.id})")
+        except AttributeError:
             em.set_footer(text=f"This event was caused by an element in the source code.")
 
         for field in tb_fields:
