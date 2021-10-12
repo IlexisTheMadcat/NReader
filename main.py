@@ -23,6 +23,8 @@ DATA_DEFAULTS = {
     "UserData": {
         "UID": {  
             "Settings": {  
+                "Language": "eng",
+
                 # Listings that are normally blocked for legal reasons in servers show in these servers.
                 # Only the owner of the server can add its ID to this list.
                 "UnrestrictedServers": [0],  # [int(serverID)]
@@ -64,19 +66,6 @@ DATA_DEFAULTS = {
 
         "error_log_channel": 734499801697091654,
         # The channel that errors are sent to.
-
-        "first_time_tip": "👋 It appears to be your first time using this bot!\n"
-                          "⚠️ This bot is to be used by mature users only and in NSFW channels.\n"
-                          "ℹ️ For more information and help, please use the `n!help` command.\n"
-                          "ℹ️ For brief legal information, please use the `n!legal` command.\n"
-                          "ℹ️ MechHub highly recommends you join the support server: **[MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n"
-                          "||(If you are receiving this notification again, a portion of your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||", 
-        
-        "lolicon_viewing_tip": "Tip: To view lolicon/shotacon doujins on Discord, you need to invite me to a server that you "
-                               "own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
-                               "This will allow all users in your server to open lolicon/shotacon doujins.\n"
-                               "This command is not in the help menu.\n"
-                               "Lolicon/shotacon doujins are __only__ reflected on your history, favorites, bookmarks, or searches __**in whitelisted servers**__.",
     }
 }
 

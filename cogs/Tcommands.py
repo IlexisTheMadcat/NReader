@@ -19,7 +19,8 @@ from utils.classes import (
 from cogs.Tclasses import (
     ImagePageReader,
     SearchResultsBrowser)
-from utils.misc import language_to_flag, restricted_tags, render_date
+from utils.Tmisc import language_to_flag, restricted_tags, render_date
+from cogs.localization import *
 
 newline = "\n"
 experimental_prefix = "T"
@@ -77,10 +78,34 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description="❌ This command cannot be used in a non-NSFW channel."))
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
 
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
+        if ctx.guild and not ctx.channel.is_nsfw():
+            await ctx.send(embed=Embed(description=localization[user_language]["doujin_info"]["not_nsfw"]))
             return
 
         lolicon_allowed = False
@@ -96,7 +121,7 @@ class Commands(Cog):
                 code = int(code)
                 code = str(code)
         except ValueError:
-            await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
+            await ctx.send(embed=Embed(description=localization[user_language]["doujin_info"]["not_a_valid_id"]))
             return
         
         nhentai_api = NHentai()
@@ -106,15 +131,15 @@ class Commands(Cog):
             # Lookup
             doujin = await nhentai_api.get_doujin(code)
             if not doujin:
-                return await edit.edit(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
+                return await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["not_found"]))
 
             # Stop if it is a sensitive doujin and notify user of workaround
             if not lolicon_allowed and any([tag.name in restricted_tags for tag in doujin.tags]):
-                await edit.edit(embed=Embed(description="⚠️⛔ This doujin contains lolicon/shotacon content and cannot be displayed publically."))
+                await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["is_lolicon"]))
 
                 if not self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["NotificationsDue"]["LoliconViewingTip"]:
                     with suppress(Forbidden):
-                        await ctx.author.send(self.bot.config["lolicon_viewing_tip"])
+                        await ctx.author.send(localization[user_language]["notifications_due"]["lolicon_viewing_tip"])
                     
                     self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["NotificationsDue"]["LoliconViewingTip"] = True
 
@@ -134,99 +159,64 @@ class Commands(Cog):
                 else:
                     break
         
-        if interface in ["compact", "comp", "c"]:
-            # Doujin count for tags
-            tags_list = []
-            for tag in doujin.tags:
-                if tag.type != "tag": continue
-                count = tag.count
-                parse_count = list(str(count))
-                if len(parse_count) < 4:
-                    tags_list.append(f"{tag.name}[{count}]")
-                elif len(parse_count) >= 4 and len(parse_count) <= 6:
-                    count = count/1000
-                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
-                elif len(parse_count) > 7:
-                    count = count/1000000
-                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
+        emb = Embed()
+        emb.add_field(
+            name=localization[user_language]['doujin_info']['fields']['title'],
+            inline=False,
+            value=f"`{shorten(doujin.title.pretty, width=256, placeholder='...')}`"
+        ).add_field(
+            inline=False,
+            name=localization[user_language]['doujin_info']['fields']['id/pages'],
+            value=f"`{doujin.id}` - `{doujin.total_pages}`"
+        ).add_field(
+            inline=False,
+            name=localization[user_language]['doujin_info']['fields']['date_uploaded'],
+            value=f"`{render_date(doujin.upload_at, user_language)}`"
+        ).add_field(
+            inline=False,
+            name=localization[user_language]['doujin_info']['fields']['languages'],
+            value=f"{language_to_flag(doujin.languages)} `{', '.join([localization[user_language]['doujin_info']['fields']['language_names'][tag.name] for tag in doujin.languages]) if doujin.languages else localization[user_language]['doujin_info']['fields']['not_provided']}`"
+        ).add_field(
+            inline=False,
+            name=localization[user_language]['doujin_info']['fields']['artists'],
+            value=f"`{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else localization[user_language]['doujin_info']['fields']['not_provided']}`"
+        ).add_field(
+            inline=False,
+            name=localization[user_language]['doujin_info']['fields']['characters'],
+            value=f"`{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else localization[user_language]['doujin_info']['fields']['original']}`"
+        ).add_field(
+            inline=False,
+            name=localization[user_language]['doujin_info']['fields']['parodies'],
+            value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else localization[user_language]['doujin_info']['fields']['original']}`"
+        ).set_footer(
+            text=f"⭐ {doujin.total_favorites}"
+        )
 
-            emb = Embed(
-                description=f"Doujin ID: __`{doujin.id}`__\n"
-                            f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`\n"
-                            f"Pages: `{len(doujin.images)}`\n"
-                            f"Artist(s): `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`\n"
-                            f"Character(s): `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`\n"
-                            f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`\n"
-                            f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
-            ).set_author(
-                name=doujin.title.pretty,
-                url=f"https://nhentai.net/g/{doujin.id}/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
-            ).set_thumbnail(
-                url=doujin.images[0].src
-            ).set_footer(
-                text=f"⭐ {doujin.total_favorites}"
-            )
+        # Doujin count for tags
+        tags_list = []
+        for tag in [tag for tag in doujin.tags if tag.type == "tag"]:
+            count = tag.count
+            parse_count = list(str(count))
+            if len(parse_count) < 4:
+                tags_list.append(f"{localization[user_language]['fields']['tag_names'][tag.name] if tag.name in localization[user_language]['doujin_info']['fields']['tag_names'] else tag.name}[{count}]")
+            elif len(parse_count) >= 4 and len(parse_count) <= 6:
+                count = count/1000
+                tags_list.append(f"{localization[user_language]['fields']['tag_names'][tag.name] if tag.name in localization[user_language]['doujin_info']['fields']['tag_names'] else tag.name}[{round(count, 1)}k]")
+            elif len(parse_count) > 7:
+                count = count/1000000
+                tags_list.append(f"{localization[user_language]['fields']['tag_names'][tag.name] if tag.name in localization[user_language]['doujin_info']['fields']['tag_names'] else tag.name}[{round(count, 2)}m]")
 
-        else:
-            emb = Embed()
-            emb.add_field(
-                name=f"Title",
-                inline=False,
-                value=f"{shorten(doujin.title.pretty, width=256, placeholder='...')}"
-            ).add_field(
-                inline=False,
-                name="ID || Pages",
-                value=f"`{doujin.id}` - `{doujin.total_pages}`"
-            ).add_field(
-                inline=False,
-                name="Date Uploaded",
-                value=f"`{render_date(doujin.upload_at)}`"
-            ).add_field(
-                inline=False,
-                name="Language(s) in this work",
-                value=f"{language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Featured artist(s)",
-                value=f"`{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Character(s) in this work",
-                value=f"`{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
-            ).add_field(
-                inline=False,
-                name="A parody of",
-                value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
-            ).set_footer(
-                text=f"⭐ {doujin.total_favorites}"
-            )
+        emb.add_field(
+            inline=False,
+            name=localization[user_language]["doujin_info"]["fields"]["tags"],
+            value=f"```{shorten(str(', '.join(tags_list) if tags_list else localization[user_language]['doujin_info']['fields']['not_provided']), width=1018, placeholder='...')}```"
+        )
 
-            # Doujin count for tags
-            tags_list = []
-            for tag in [tag for tag in doujin.tags if tag.type == "tag"]:
-                count = tag.count
-                parse_count = list(str(count))
-                if len(parse_count) < 4:
-                    tags_list.append(f"{tag.name}[{count}]")
-                elif len(parse_count) >= 4 and len(parse_count) <= 6:
-                    count = count/1000
-                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
-                elif len(parse_count) > 7:
-                    count = count/1000000
-                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
-
-            emb.add_field(
-                inline=False,
-                name="Content tags",
-                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1018, placeholder='...')}```"
-            )
-
-            emb.set_author(
-                name=f"NHentai",
-                url=f"https://nhentai.net/g/{doujin.id}/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            emb.set_thumbnail(url=doujin.images[0].src)
+        emb.set_author(
+            name=f"NHentai",
+            url=f"https://nhentai.net/g/{doujin.id}/",
+            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+        emb.set_thumbnail(url=doujin.images[0].src)
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
@@ -236,14 +226,14 @@ class Commands(Cog):
             ctx.guild.me.guild_permissions.manage_messages])):
             await edit.edit(content="", embed=emb,
                 components=[
-                    [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                    [Button(label=localization[user_language]["doujin_info"]["need_permissions"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
+                    Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                 ])
         else:
             await edit.edit(content="", embed=emb,
                 components=[
-                    [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                    Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                    [Button(label=localization[user_language]["doujin_info"]["read"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
+                    Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                 ])
 
         while True:
@@ -258,8 +248,8 @@ class Commands(Cog):
                 with suppress(NotFound):
                     await edit.edit(embed=emb, 
                         components=[
-                            [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                            Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
+                            [Button(label=localization[user_language]["doujin_info"]["read"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
+                            Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
                         ])
                 
                 return
@@ -277,16 +267,17 @@ class Commands(Cog):
                         ctx.guild.me.guild_permissions.manage_channels, 
                         ctx.guild.me.guild_permissions.manage_roles, 
                         ctx.guild.me.guild_permissions.manage_messages])):
-                        await ctx.send(embed=Embed(description="❌ Unexpected loss of required permissions."), delete_after=5)
+                        await ctx.send(embed=Embed(description=localization[user_language]["doujin_info"]["unexpected_loss"]), delete_after=5)
                         continue
+
                     else:
                         emb.set_thumbnail(
                             url=doujin.images[0].src)
                         emb.set_image(url=Embed.Empty)
                         await interaction.respond(type=7, content="", embed=emb,
                             components=[
-                                [Button(label="Opened", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                                Button(label="Expand Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
+                                [Button(label=localization[user_language]["doujin_info"]["opened"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
+                                Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
                             ])
 
                         session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id))
@@ -301,12 +292,12 @@ class Commands(Cog):
                     if not emb.image:
                         emb.set_image(url=emb.thumbnail.url)
                         emb.set_thumbnail(url=Embed.Empty)
-                        word = "Minimize"
+                        thumbnail_size = localization[user_language]["doujin_info"]["minimize_thumbnail"]
 
                     elif not emb.thumbnail:
                         emb.set_thumbnail(url=emb.image.url)
                         emb.set_image(url=Embed.Empty)
-                        word = "Expand"
+                        thumbnail_size = localization[user_language]["doujin_info"]["expand_thumbnail"]
                     
                     if not ctx.guild or (ctx.guild and not all([
                         ctx.guild.me.guild_permissions.manage_channels, 
@@ -314,14 +305,14 @@ class Commands(Cog):
                         ctx.guild.me.guild_permissions.manage_messages])):
                         await interaction.respond(type=7, content="", embed=emb,
                             components=[
-                                [Button(label="Need Permissions", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                                [Button(label=localization[user_language]["doujin_info"]["need_permissions"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
+                                Button(label=f"{thumbnail_size}", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                             ])
                     else:
                         await interaction.respond(type=7, content="", embed=emb,
                             components=[
-                                [Button(label="Read", style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                                Button(label=f"{word} Thumbnail", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
+                                [Button(label=localization[user_language]["doujin_info"]["read"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
+                                Button(label=f"{thumbnail_size}", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
                             ])
 
                     continue
@@ -333,6 +324,32 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def search_doujins(self, ctx, *, query: str = ""):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
         if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
                 description="❌ This command cannot be used in a non-NSFW channel."))
@@ -481,6 +498,32 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def popular(self, ctx):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
         if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
                 description="❌ This command cannot be used in a non-NSFW channel."))
@@ -569,6 +612,32 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def whitelist(self, ctx, mode=None):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
         if not ctx.guild:
             await ctx.send(embed=Embed(
                 description=":x: This command must be run in a server. Consider making a private one."))
@@ -676,6 +745,32 @@ class Commands(Cog):
         send_messages=True,
         embed_links=True)
     async def lists(self, ctx, name=None, mode=None, code=None):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
         if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
                 description="❌ This command cannot be used in a non-NSFW channel."))
@@ -1415,6 +1510,32 @@ class Commands(Cog):
         send_messages=True,
         embed_links=True)
     async def search_appendage(self, ctx, *, appendage=""):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
         if appendage and appendage != "clear_appendage":
             emb = embed=Embed(
                 title = "Confirm Search Appendage Update",
@@ -1529,6 +1650,32 @@ class Commands(Cog):
         manage_channels=True, 
         manage_roles=True)
     async def recall(self, ctx):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
         if not ctx.guild:
             await ctx.send(embed=Embed(
                 description=":x: This command must be run in a server. Consider making a private one."))
@@ -1596,6 +1743,32 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def urban_dictionary(self, ctx, *, word):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
         edit = await ctx.send(embed=Embed(
             color=0x1d2439,
             description=f"{self.bot.get_emoji(813237675553062954)}"))

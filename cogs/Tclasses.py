@@ -21,6 +21,7 @@ from utils.misc import (
     render_date, 
     is_int, is_float,
     restricted_tags)
+from cogs.localization import *
 
 newline = "\n"
 
@@ -57,6 +58,8 @@ class ImagePageReader:
         self.is_paused: bool = False
         self.on_bookmarked_page: bool = False
 
+        self.language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+
     async def update_reader(self):
         if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
             self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
@@ -64,13 +67,13 @@ class ImagePageReader:
         else:
             self.on_bookmarked_page = False
 
-        self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} Previous|{'__**Finish**__' if self.current_page == (len(self.images)-1) else 'Next'}\n" \
-                                    f"<:nsele:853668227212902410><:nstop:853668227175546952> Select|Stop\n" \
-                                    f"<:npaus:853668227234529300><:nbook:853668227205038090> Pause|{'Bookmark' if not self.on_bookmarked_page else 'Unbookmark'}\n" 
+        self.am_embed.description = f"<:nprev:853668227124953159>{'<:nfini:853670159310913576>' if self.current_page == (len(self.images)-1) else '<:nnext:853668227207790602>'} {localization[self.language]['page_reader']['description']['previous']} | {localization[self.language]['page_reader']['description']['finish'] if self.current_page == (len(self.images)-1) else localization[self.language]['page_reader']['description']['next']}\n" \
+                                    f"<:nsele:853668227212902410><:nstop:853668227175546952> {localization[self.language]['page_reader']['description']['select']} | {localization[self.language]['page_reader']['description']['stop']}\n" \
+                                    f"<:npaus:853668227234529300><:nbook:853668227205038090> {localization[self.language]['page_reader']['description']['pause']} | {localization[self.language]['page_reader']['description']['bookmark'] if not self.on_bookmarked_page else localization[self.language]['page_reader']['description']['unbookmark']}\n" 
 
         self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)                
         self.am_embed.set_image(url=self.images[self.current_page].src)
-        self.am_embed.set_footer(text=f"Page [{self.current_page+1}/{len(self.images)}] {'🔖' if self.on_bookmarked_page else ''}")
+        self.am_embed.set_footer(text=localization[self.language]['page_reader']['footer'].format(current=self.current_page+1, total=len(self.images), bookmark='🔖' if self.on_bookmarked_page else ''))
 
         if self.active_message:
             await self.active_message.edit(embed=self.am_embed,
@@ -82,7 +85,7 @@ class ImagePageReader:
                     Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="pause")],
                     [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="bookmark"),
                     Button(emoji="⭐", style=2, id="favorite"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]])
+                    Button(label=localization[self.language]['page_reader']['redirect_button'], style=5, url="https://discord.gg/DJ4wdsRYy2")]])
         else:
             await self.ctx.send(embed=self.am_embed,
             components=[
@@ -93,7 +96,7 @@ class ImagePageReader:
                 Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="pause")],
                 [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="bookmark"),
                 Button(emoji="⭐", style=2, id="favorite"),
-                Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]])
+                Button(label=localization[self.language]['page_reader']['redirect_button'], style=5, url="https://discord.gg/DJ4wdsRYy2")]])
 
     async def setup(self):
         edit = await self.ctx.send(embed=Embed(
@@ -118,12 +121,12 @@ class ImagePageReader:
         await channel.set_permissions(self.ctx.author, read_messages=True)
 
         self.am_embed = Embed(
-            description=f"Waiting.")
+            description=localization[self.language]['page_reader']['init']['description'])
         self.am_embed.set_author(
             name=f"{self.code} [*n*] {self.name}",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
         self.am_embed.set_footer(
-            text=f"Page [0/{len(self.images)}]: Press ▶ Start to start reading.")
+            text=localization[self.language]['page_reader']['init']['footer'].format(total=len(self.images)))
         
         # Reader message
         conf = await channel.send( 
@@ -134,8 +137,7 @@ class ImagePageReader:
         await edit.edit(
             content=conf.channel.mention, 
             embed=Embed(
-                description=f"Click/Tap the mention above to jump to your reader.\n"
-                            f"You opened `{self.code}`: `{self.name}`"
+                description=localization[self.language]['page_reader']['portal'].format(code=self.code, name=self.name)
                 ).set_author(
                     name=self.bot.user.name,
                     icon_url=self.bot.user.avatar_url),
@@ -150,7 +152,7 @@ class ImagePageReader:
         
             except TimeoutError:
                 with suppress(NotFound):
-                    await conf.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
+                    await conf.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
             
                 await sleep(1)
                 
@@ -201,16 +203,16 @@ class ImagePageReader:
                 with suppress(NotFound):
                     self.am_embed.set_image(url=Embed.Empty)
                     self.am_embed.set_thumbnail(url=Embed.Empty)
-                    self.am_embed.description = f"You timed out on page [{self.current_page+1}/{len(self.images)}].\n"
+                    self.am_embed.description=localization[self.language]['page_reader']['timeout'].format(current=self.current_page+1, total=len(self.images))
 
                     await self.active_message.edit(embed=self.am_embed, components=[])
-                    temp = await self.am_channel.send(content=f"{self.ctx.author.mention}, you timed out in your doujin. Forgot to press pause?", delete_after=1)
+                    temp = await self.am_channel.send(content=localization[self.language]['page_reader']['timeout'].format(mention=self.ctx.author.mention, delete_after=1))
                     await temp.delete(delay=1)
         
                     await sleep(10)
 
                     with suppress(NotFound):
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
 
                     await sleep(1)
                     await self.am_channel.delete()
@@ -225,24 +227,20 @@ class ImagePageReader:
                     try: await interaction.respond(type=6)
                     except NotFound: continue
 
-                    if isinstance(interaction.component, list):
-                        delay = await self.am_channel.send("Returned unexpected datatype. Please try again. If that fails, let the doujin time out and try again later.")
-                        await delay.delete(delay=5)
-
                     self.bot.inactive = 0
                     if interaction.component.id == "next":  # Next page
                         self.current_page = self.current_page + 1
                         if self.current_page > (len(self.images)-1):  # Finish the doujin if at last page
                             self.am_embed.set_image(url=Embed.Empty)
                             self.am_embed.set_thumbnail(url=Embed.Empty)
-                            self.am_embed.description = "You finished this doujin."
+                            self.am_embed.description=localization[self.language]['page_reader']['finished']
 
                             await self.active_message.edit(embed=self.am_embed, components=[])
                             if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl']:
                                 self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl'].remove(self.code)
                             
                             await sleep(2)
-                            await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
+                            await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
 
                             await sleep(1)
                             await self.am_channel.delete()
@@ -265,9 +263,10 @@ class ImagePageReader:
                             bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]
                         
                         conf = await self.am_channel.send(embed=Embed(
-                            description=f"Enter a page number within 15 seconds, or type `n-cancel` to cancel."
-                                        f"{newline+'Bookmarked page: '+str(bm_page+1) if bm_page else ''}"))
-
+                            description=localization[self.language]['page_reader']['select_inquiry']['description']
+                        ).set_footer(
+                            text=localization[self.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=f"**{bm_page+1}**" if bm_page else 'N/A')))
+                        
                         while True:
                             try:
                                 m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
@@ -302,12 +301,12 @@ class ImagePageReader:
                     elif interaction.component.id == "pause":  # Pause and send to recall
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.description = f"You paused this doujin."
+                        self.am_embed.description=localization[self.language]['page_reader']['paused']
                         
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
                         await sleep(2)
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closed']}", embed=None)
                         
                         await sleep(1)
                         await self.am_channel.delete()
@@ -315,21 +314,20 @@ class ImagePageReader:
                         await sleep(1)
                         self.bot.user_data["UserData"][str(self.ctx.author.id)]["Recall"] = f"{self.code}*n*{self.current_page}"
                         await self.ctx.author.send(embed=Embed(
-                            title="Recall saved.",
-                            description=f"Doujin `{self.code}` saved to recall to page [{self.current_page+1}/{len(self.images)}].\n"
-                                        f"To get back to this page, run the `n!recall` command to instantly open a new reader starting on that page."))
+                            title=localization[self.language]['page_reader']['recall_saved']['title'],
+                            description=localization[self.language]['page_reader']['recalled']['description'].footer(code=self.code, current=self.current_page+1, total=len(self.images))))
 
                         break
 
                     elif interaction.component.id == "stop":  # Stop entirely
                         self.am_embed.set_image(url=Embed.Empty)
                         self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.description = f"You stopped this doujin."
+                        self.am_embed.description=localization[self.language]['page_reader']['stopped']
                         
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
                         await sleep(2)
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} Closing...", embed=None)
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} localization[self.language]['page_reader']['closed']", embed=None)
                         
                         await sleep(1)
                         await self.am_channel.delete()
@@ -342,7 +340,7 @@ class ImagePageReader:
                                 await self.am_channel.send(
                                     embed=Embed(
                                         color=0xFF0000,
-                                        description="You cannot bookmark the first page. Use favorites instead!"
+                                        description=localization[self.language]['page_reader']['cannot_bookmark_first_page']
                                     ),
                                     delete_after=5)
                                 continue
@@ -351,7 +349,7 @@ class ImagePageReader:
                                 await self.am_channel.send(
                                     color=0xff0000, 
                                     embed=Embed(
-                                        description="❌ Your Bookmarks list is full. Please remove something from it to perform this action."
+                                        description=localization[self.language]['page_reader']['bookmarks_full']
                                     ),
                                     delete_after=5)
                                 continue
@@ -371,7 +369,7 @@ class ImagePageReader:
                             await self.am_channel.send(
                                 color=0xff0000, 
                                 embed=Embed(
-                                    description="❌ Your Favorites list is full. Please remove something from it to perform this action."
+                                    description=localization[self.language]['page_reader']['favorites_full']
                                 ),
                                 delete_after=5)
                             continue
@@ -381,7 +379,7 @@ class ImagePageReader:
 
                             await self.am_channel.send(
                                 embed=Embed(
-                                    description=f"✅ Added `{self.code}` to your favorites."
+                                    description=localization[self.language]['page_reader']['added_to_favorites']
                                 ),
                                 delete_after=5)
                         else:
@@ -389,18 +387,14 @@ class ImagePageReader:
 
                             await self.am_channel.send(
                                 embed=Embed(
-                                    description=f"✅ Removed `{self.code}` from your favorites."
-                                ),
+                                    description=localization[self.language]['page_reader']['removed_from_favorites']),
                                 delete_after=5)
 
                 except Exception:
                     error = exc_info()
                     temp = await self.am_channel.send(embed=Embed(
                         color=0xFF0000,
-                        description="An unhandled error occured; Please try again.\n"
-                                    "If the issue persists, please try reopening the doujin.\n"
-                                    "If reopening doesn't work, click the `Support Server` button."
-                        ).set_footer(text="This message will disappear in 10 seconds."),
+                        description=localization[self.language]['page_reader']['error']),
                         delete_after=10)
                     
                     await temp.delete(delay=10)

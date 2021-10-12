@@ -19,6 +19,7 @@ from discord.ext.commands.errors import (
 )
 
 from utils.classes import Embed
+from cogs.localization import *
 
 class Events(Cog):
     def __init__(self, bot):
@@ -60,12 +61,14 @@ class Events(Cog):
         if msg.content.startswith(self.bot.command_prefix) and not msg.content.startswith(self.bot.command_prefix+" "):
             if str(msg.author.id) not in self.bot.user_data["UserData"]:
                 self.bot.user_data["UserData"][str(msg.author.id)] = deepcopy(self.bot.defaults["UserData"]["UID"])
+
+            user_language = self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["Language"]
             
             if not self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"]:
                 with suppress(Forbidden):
                     await msg.author.send(embed=Embed(
-                        title="First Time Interaction Notification",
-                        description=self.bot.config["first_time_tip"]))
+                        title=localization[user_language]["notifications_due"]["first_time_tip"]["title"],
+                        description=localization[user_language]["notifications_due"]["first_time_tip"]["description"]))
                 
                 self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"] = True
 
