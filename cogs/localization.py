@@ -246,7 +246,7 @@ localization = {
 				"**Discordで同人誌を検索、概要、読みます。**\n" 
 				"**サポートギルド: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n" 
 				"\n" 
-				"すべての情報については、この[Googleドキュメント](https://docs.google.com/document/d/e/2PACX-1vQAJRI5B8x0CP3ZCHjK9iZ8KQq3AGHEMwiBQL72Mwf1Zu6N2THedbAi1ThuB9iiuzcBv8ipt5_XfQf4/pub)にアクセスしてください .\n"
+				"すべての情報については、この[Googleドキュメント](https://docs.google.com/document/d/e/2PACX-1vSZkUzrO5sbwWJJPdejrn_Kl_HEsEqBjzTotcTmEI7bfcS8NDB4FDJnhEO2-avYCVuSMHThozw3H81b/pub)にアクセスしてください .\n"
 				"\n"
 				"ボットの言語を変更すると、初回の通知もリセットされます。",
 			"footer": 
