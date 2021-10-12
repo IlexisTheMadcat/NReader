@@ -70,7 +70,7 @@ class MiscCommands(Cog):
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def bhelp(self, ctx):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name not in localization[user_language]:
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -82,7 +82,7 @@ class MiscCommands(Cog):
                 except TimeoutError:
                     await conf.edit(
                         embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=1, emoji="▶️", id="continue", disabled=True)])
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
                 
                     return
             
@@ -157,26 +157,30 @@ class MiscCommands(Cog):
         embed_links=True)
     async def legal(self, ctx):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name not in localization[user_language]:
+        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["message"]),
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
 
-            try:
-                interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                    check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-            except TimeoutError:
-                await conf.edit(
-                    embed=Embed(description=localization[user_language]["language_not_available"]["message"]),
-                    components=[Button(label=localization[user_language]["language_not_available"]["button"], style=1, emoji="▶️", id="continue", disabled=True)])
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
                 
-                return
-            
-            else:
-                if interaction.component.id == "continue":
-                    user_language = "eng"
-                else:
                     return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
 
         # Fetch document from one location
         channel = await self.bot.fetch_channel(815473015394926602)
