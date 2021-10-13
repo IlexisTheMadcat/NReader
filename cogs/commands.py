@@ -20,6 +20,7 @@ from cogs.classes import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.misc import language_to_flag, restricted_tags, render_date
+from cogs.localization import *
 
 newline = "\n"
 experimental_prefix = ""
@@ -114,7 +115,7 @@ class Commands(Cog):
 
                 if not self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["NotificationsDue"]["LoliconViewingTip"]:
                     with suppress(Forbidden):
-                        await ctx.author.send(self.bot.config["lolicon_viewing_tip"])
+                        await ctx.author.send(localization["eng"]["notifications_due"]["lolicon_viewing_tip"])
                     
                     self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["NotificationsDue"]["LoliconViewingTip"] = True
 
