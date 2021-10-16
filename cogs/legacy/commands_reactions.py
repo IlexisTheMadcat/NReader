@@ -19,6 +19,7 @@ from cogs.legacy.classes_reactions import (
     ImagePageReader,
     SearchResultsBrowser)
 from utils.misc import language_to_flag
+from cogs.localization import *
 
 
 class Commands(Cog):
@@ -97,7 +98,7 @@ class Commands(Cog):
 
                 if not self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["NotificationsDue"]["LoliconViewingTip"]:
                     with suppress(Forbidden):
-                        await ctx.author.send(self.bot.config["lolicon_viewing_tip"])
+                        await ctx.author.send(localization["eng"]["notifications_due"]["lolicon_viewing_tip"])
                     
                     self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["NotificationsDue"]["LoliconViewingTip"] = True
 
@@ -108,9 +109,6 @@ class Commands(Cog):
                 doujin = await nhentai_api.get_random()
                 self.bot.doujin_cache[doujin.id] = doujin
                 if ("lolicon" in doujin.tags or "shotacon" in doujin.tags) and ctx.guild and not lolicon_allowed:
-                    await edit.edit(embed=Embed(
-                        description="<a:nreader_loading:810936543401213953> Retrying..."))
-                        
                     await sleep(0.5)
                     continue
 
@@ -120,53 +118,50 @@ class Commands(Cog):
         if interface == "old":
             emb = Embed(
                 description=f"Doujin ID: __`{doujin.id}`__\n"
-                            f"Secondary Title: `{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`\n"
-                            f"Language(s): {language_to_flag(doujin.languages)}`{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`\n"
+                            f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`\n"
                             f"Pages: `{len(doujin.images)}`\n"
-                            f"Artist(s): `{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`\n"
-                            f"Character(s): `{', '.join(doujin.characters) if doujin.characters else 'Original'}`\n"
-                            f"Parody of: `{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`\n"
-                            f"Tags: ```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```\n")
+                            f"Artist(s): `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`\n"
+                            f"Character(s): `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`\n"
+                            f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`\n"
+                            f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```")
         else:
             emb = Embed()
             emb.add_field(
                 inline=False,
-                name="Secondary Title",
-                value=f"`{doujin.secondary_title if doujin.secondary_title else 'Not provided'}`"
+                name="Title",
+                value=f"`{shorten(doujin.title.pretty, width=256, placeholder='...') if doujin.title.pretty else 'Not provided'}`"
             ).add_field(
                 inline=False,
-                name="Doujin ID ー Pages",
-                value=f"`{doujin.id} ー {len(doujin.images)} pages`"
+                name="ID ー Pages",
+                value=f"`{doujin.id} ー {len(doujin.images)}`"
             ).add_field(
                 inline=False,
                 name="Language(s)",
-                value=f"{language_to_flag(doujin.languages)} `{', '.join(doujin.languages) if doujin.languages else 'Not provided'}`"
+                value=f"{language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
             ).add_field(
                 inline=False,
                 name="Artist(s)",
-                value=f"`{', '.join(doujin.artists) if doujin.artists else 'Not provided'}`"
+                value=f"`{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
             ).add_field(
                 inline=False,
                 name="Character(s)",
-                value=f"`{', '.join(doujin.characters) if doujin.characters else 'Original'}`"
+                value=f"`{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
             ).add_field(
                 inline=False,
                 name="Parody Of",
-                value=f"`{', '.join(doujin.parodies) if doujin.parodies else 'Original'}`"
+                value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
             ).add_field(
                 inline=False,
                 name="Tags",
-                value=f"```{', '.join(doujin.tags) if doujin.tags != [] else 'None provided'}```"
+                value=f"```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
             )
 
         emb.set_author(
-            name=f"{shorten(doujin.title, width=120, placeholder='...')}",
+            name=f"{shorten(doujin.title.pretty, width=120, placeholder='...') if doujin.title.pretty else 'Not provided'}",
             url=f"https://nhentai.net/g/{doujin.id}/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
         emb.set_thumbnail(
             url=doujin.images[0])
-        emb.set_footer(
-            text="Would you like to read this doujin on Discord?")
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
@@ -210,7 +205,7 @@ class Commands(Cog):
                         url=Embed.Empty)
                     await edit.edit(embed=emb, components=[])
 
-                    session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title}")
+                    session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty if doujin.title.pretty else 'Not provided'}")
                     response = await session.setup()
                     if response:
                         print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")

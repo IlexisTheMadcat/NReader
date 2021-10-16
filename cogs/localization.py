@@ -30,7 +30,7 @@ localization = {
 			},
 
 			"lolicon_viewing_tip": 
-				"Tip: To view restricted doujins on Discord, you need to invite me to a server that you  own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
+				"Tip: To view restricted doujins on Discord, you need to invite me to a server that you own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
 				"This will allow all users in your server to open restricted doujins.\n"
 				"Restricted doujins are __only__ reflected on your history, favorites, bookmarks, or searches **in whitelisted servers**, but numerical statistics *may not* hide these ouside those domains."
 		},
@@ -246,7 +246,7 @@ localization = {
 				"**Discordで同人誌を検索、概要、読みます。**\n" 
 				"**サポートギルド: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n" 
 				"\n" 
-				"すべての情報については、この[Googleドキュメント](https://docs.google.com/document/d/e/2PACX-1vSZkUzrO5sbwWJJPdejrn_Kl_HEsEqBjzTotcTmEI7bfcS8NDB4FDJnhEO2-avYCVuSMHThozw3H81b/pub)にアクセスしてください .\n"
+				"すべての情報については、この[Googleドキュメント](https://docs.google.com/document/d/e/2PACX-1vSZkUzrO5sbwWJJPdejrn_Kl_HEsEqBjzTotcTmEI7bfcS8NDB4FDJnhEO2-avYCVuSMHThozw3H81b/pub)にアクセスしてください。\n"
 				"\n"
 				"ボットの言語を変更すると、初回の通知もリセットされます。",
 			"footer": 
@@ -438,7 +438,7 @@ localization = {
 			},
 
 			"lolicon_viewing_tip": 
-				"提示：要在 Discord 上查看受限制的成人粉絲雜誌，您需要邀請我加入您擁有的服務器並運行 「`n!whitelist <'add' or'remove'>`」 命令。\n"
+				"提示：要在 Discord 上查看受限制的漫畫，您需要邀請我加入您擁有的服務器並運行 「`n!whitelist <'add' or'remove'>`」 命令。\n"
 				"這將允許您服務器上的所有用戶打開受限的同人圈。\n"
 				"受限制的同人__僅__反映在您在**白名單服務器**上的歷史記錄、收藏夾、書籤或搜索中，但統計數據**可能不會**從這些域中隱藏此內容。"
 		},
@@ -447,14 +447,14 @@ localization = {
 			"title": 
 				"<:info:818664266390700074> 幫助",
 			"description": 
-				"**在 Discord 中搜索、概述和閱讀成人同人雜誌。**\n" 
+				"**在 Discord 中搜索、概覽和閱讀同人。**\n" 
 				"**支持公會: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n" 
 				"\n" 
-				"如需完整信息表，請訪問 [此 Google 文檔頁面](https://docs.google.com/document/d/e/2PACX-1vQAJRI5B8x0CP3ZCHjK9iZ8KQq3AGHEMwiBQL72Mwf1Zu6N2THedbAi1ThuB9iiuzcBv8ipt4_pubx-1vQAJRI5B8x0CP3ZCHjK9iZ8KQq3AGHEMwiBQL72Mwf1Zu6N2THedbAi1ThuB9iiuzcBv8ipt4_pub)。\n"
+				"如需完整信息表，請訪問 [此 Google 文檔頁面](https://docs.google.com/document/d/e/2PACX-1vTszuOx36UbKmAhyX2sQ4jEJymmkyzf6oz-JduErnFxbWhoXoHeFEd0ZPv-VnKiUMFV4a_H8WjU1iPE/pub)。\n"
 				"\n"
 				"更改機器人語言也將重置首次通知。",
 			"footer": 
-				"MechHub 為您提供"
+				"由 MechHub 提供"
 		},
 
 		"invite": {
@@ -463,7 +463,7 @@ localization = {
 			"description": 
 				"[點擊這裡]({url})邀請這個機器人加入你的公會。",
 			"footer": 
-				"MechHub 為您提供"
+				"由 MechHub 提供"
 		},
 
 		"doujin_info": {
@@ -472,9 +472,9 @@ localization = {
 			"not_a_valid_id": 
 				"❌ 標識無效。 只有數字！",
 			"doujin_not_found": 
-				"🔎❌ 那個成人粉絲雜誌不存在。",
+				"🔎❌ 那個漫畫不存在。",
 			"is_lolicon":
-				"⚠️⛔ 這本成人粉絲雜誌包含不允許的標籤。",
+				"⚠️⛔ 這本漫畫包含不允許的標籤。",
 			"fields": {
 				"not_provided":
 					"無法使用",
@@ -579,7 +579,7 @@ localization = {
 			"timeout_notification":
 				"{mention}, 您在閱讀器中超時。忘記按暫停？",
 			"finished":
-				"你完成了這本成人粉絲雜誌。",
+				"你完成了這本漫畫。",
 			"select_inquiry": {
 				"description":
 					"在 15 秒內輸入頁碼，或輸入「`n-cancel`」取消。",
@@ -587,16 +587,16 @@ localization = {
 					"書籤頁面：{bookmarked_page}",
 			},
 			"paused":
-				"你暫停了這本成人粉絲雜誌。",
+				"你暫停了這本漫畫。",
 			"recall_saved": {
 				"title":
 					"召回已保存。",
 				"description": 
-					"保存了代碼「`{code}`」的成人粉絲雜誌，以回憶頁面 [{current}/{total}]。\n"
+					"保存了代碼「`{code}`」的漫畫，以回憶頁面 [{current}/{total}]。\n"
 					"要返回此頁面，請運行「`n!recall`」命令以立即打開從該頁面開始的新閱讀器。",
 			},
 			"stopped":
-				"你已經停止閱讀這本成人粉絲雜誌了。",
+				"你已經停止閱讀這本漫畫了。",
 			"cannot_bookmark_first_page":
 				"您不能為第一頁添加書籤。請改用收藏夾！",
 			"bookmarks_full":
@@ -609,18 +609,13 @@ localization = {
 				"✅ 您的收藏夾中刪除了「`{code}`」。",
 			"error":
 				"發生未處理的錯誤；請重試。\n"
-				"如果問題仍然存在，請嘗試重新打開成人粉絲雜誌。\n"
+				"如果問題仍然存在，請嘗試重新打開漫畫。\n"
 				"如果重新打開不起作用，請單擊「支持公會」按鈕。"
 		}
 	}
 }
 
 from discord.ext.commands.cog import Cog
-from discord.ext.commands.core import (
-    has_permissions, 
-    bot_has_permissions, 
-    command
-)
 
 class Commands(Cog):
     def __init__(self, bot):

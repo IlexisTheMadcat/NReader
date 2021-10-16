@@ -1,3 +1,4 @@
+from sys import exc_info
 from re import search, findall
 from asyncio import sleep, TimeoutError
 from textwrap import shorten
@@ -135,22 +136,22 @@ class Commands(Cog):
                 else:
                     break
         
-        if interface in ["compact", "comp", "c"]:
-            # Doujin count for tags
-            tags_list = []
-            for tag in doujin.tags:
-                if tag.type != "tag": continue
-                count = tag.count
-                parse_count = list(str(count))
-                if len(parse_count) < 4:
-                    tags_list.append(f"{tag.name}[{count}]")
-                elif len(parse_count) >= 4 and len(parse_count) <= 6:
-                    count = count/1000
-                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
-                elif len(parse_count) > 7:
-                    count = count/1000000
-                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
+        # Doujin count for tags
+        tags_list = []
+        for tag in doujin.tags:
+            if tag.type != "tag": continue
+            count = tag.count
+            parse_count = list(str(count))
+            if len(parse_count) < 4:
+                tags_list.append(f"{tag.name}[{count}]")
+            elif len(parse_count) >= 4 and len(parse_count) <= 6:
+                count = count/1000
+                tags_list.append(f"{tag.name}[{round(count, 1)}k]")
+            elif len(parse_count) > 7:
+                count = count/1000000
+                tags_list.append(f"{tag.name}[{round(count, 2)}m]")
 
+        if interface in ["compact", "comp", "c"]:
             emb = Embed(
                 description=f"Doujin ID: __`{doujin.id}`__\n"
                             f"Languages: {language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`\n"
@@ -160,7 +161,7 @@ class Commands(Cog):
                             f"Parody of: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`\n"
                             f"Tags: ```{', '.join(tags_list) if doujin.tags else 'None provided'}```"
             ).set_author(
-                name=doujin.title.pretty,
+                name=shorten(doujin.title.pretty, width=256, placeholder='...') if doujin.title.pretty else 'Not provided',
                 url=f"https://nhentai.net/g/{doujin.id}/",
                 icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
             ).set_thumbnail(
@@ -174,7 +175,7 @@ class Commands(Cog):
             emb.add_field(
                 name=f"Title",
                 inline=False,
-                value=f"{shorten(doujin.title.pretty, width=256, placeholder='...')}"
+                value=f"{shorten(doujin.title.pretty, width=256, placeholder='...') if doujin.title.pretty else 'Not provided'}"
             ).add_field(
                 inline=False,
                 name="ID || Pages",
@@ -201,23 +202,7 @@ class Commands(Cog):
                 value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
             ).set_footer(
                 text=f"⭐ {doujin.total_favorites}"
-            )
-
-            # Doujin count for tags
-            tags_list = []
-            for tag in [tag for tag in doujin.tags if tag.type == "tag"]:
-                count = tag.count
-                parse_count = list(str(count))
-                if len(parse_count) < 4:
-                    tags_list.append(f"{tag.name}[{count}]")
-                elif len(parse_count) >= 4 and len(parse_count) <= 6:
-                    count = count/1000
-                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
-                elif len(parse_count) > 7:
-                    count = count/1000000
-                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
-
-            emb.add_field(
+            ).add_field(
                 inline=False,
                 name="Content tags",
                 value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1018, placeholder='...')}```"
@@ -402,7 +387,13 @@ class Commands(Cog):
             
             return
 
-        results = await nhentai_api.search(query=query+f"{appendage}", sort=sort, page=page)
+        try:
+            results = await nhentai_api.search(query=f"{query} {appendage}", sort=sort, page=page)
+        except Exception:
+            await conf.edit(embed=Embed(description="❌ There was an unexpected error in your search. Typically, retrying doesn't work, so please try another search."))
+            error = exc_info()
+            await self.bot.errorlog.send(error, ctx=ctx, event="Doujin Search")
+            return
 
         if isinstance(results, Doujin):
             await conf.delete()

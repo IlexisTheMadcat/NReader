@@ -1,4 +1,3 @@
-# IMPORTS
 from sys import exc_info
 from copy import deepcopy
 from textwrap import shorten
@@ -476,7 +475,7 @@ class SearchResultsBrowser:
             self.am_embed.add_field(
                 name=f"Title",
                 inline=False,
-                value=f"{shorten(doujin.title.pretty, width=256, placeholder='...')}"
+                value=f"{shorten(doujin.title.pretty, width=256, placeholder='...') if doujin.title.pretty else 'Not provided'}"
             ).add_field(
                 inline=False,
                 name="ID || Pages",

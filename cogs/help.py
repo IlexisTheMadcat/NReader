@@ -17,7 +17,12 @@ class MiscCommands(Cog):
         self.bot = bot
 
     # ------------------------------------------------------------------------------------------------------------------
-    @command()
+    @command(
+        name="invite",
+        aliases=[
+            "インヴァイト",  # JP alias
+            "邀請"  # CN alias
+        ])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def invite(self, ctx: Context):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
@@ -66,11 +71,16 @@ class MiscCommands(Cog):
         
         await ctx.send(embed=emb)
 
-    @command(name="help")
+    @command(
+        name="help",
+        aliases=[
+            "ヘルプ",  # JP alias
+            "信息"  # CN alias
+        ])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def bhelp(self, ctx):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -151,7 +161,13 @@ class MiscCommands(Cog):
                            SelectOption(label=f"{localization[user_language]['language_options']['chinese']}/中文", emoji="🇨🇳", value="cn", description="❌這還沒有準備好。")  # GT - "This is not ready yet."
                         ])])
     
-    @command(name="privacy", aliases=["pcpl", "terms", "tos", "legal"])
+    @command(
+        name="privacy", 
+        aliases=[
+            "pcpl", "terms", "tos", "legal",
+            "リーガル",  # JP alias
+            "合法的"  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)

@@ -1,3 +1,4 @@
+from sys import exc_info
 from re import search, findall
 from asyncio import sleep, TimeoutError
 from textwrap import shorten
@@ -73,7 +74,11 @@ class Commands(Cog):
        
     @command(
         name=f"{experimental_prefix}doujin_info", 
-        aliases=[f"{experimental_prefix}code"])
+        aliases=[
+            f"{experimental_prefix}code",
+            f"{experimental_prefix}コード",  # JP alias
+            f"{experimental_prefix}代碼"  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -150,9 +155,6 @@ class Commands(Cog):
             while True:
                 doujin = await nhentai_api.get_random()
                 if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
-                    await edit.edit(embed=Embed(
-                        description=f"{self.bot.get_emoji(810936543401213953)} Retrying..."))
-                        
                     await sleep(0.5)
                     continue
 
@@ -319,7 +321,11 @@ class Commands(Cog):
     
     @command(
         name=f"{experimental_prefix}search_doujins",
-        aliases=[f"{experimental_prefix}search"])
+        aliases=[
+            f"{experimental_prefix}search",
+            f"{experimental_prefix}サーチ",  # JP alias
+            f"{experimental_prefix}搜索",  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -418,7 +424,13 @@ class Commands(Cog):
             
             return
 
-        results = await nhentai_api.search(query=query+f"{appendage}", sort=sort, page=page)
+        try:
+            results = await nhentai_api.search(query=f"{query} {appendage}", sort=sort, page=page)
+        except Exception:
+            await ctx.send(embed=Embed(description="❌ There was an unexpected error in your search. Typically, retrying doesn't work, so please try another search."))
+            error = exc_info()
+            await self.bot.errorlog.send(error, ctx=ctx, event="Doujin Search")
+            return
 
         if isinstance(results, Doujin):
             await conf.delete()
@@ -493,7 +505,11 @@ class Commands(Cog):
     
     @command(
         name=f"{experimental_prefix}popular",
-        aliases=[f"{experimental_prefix}pop"])
+        aliases=[
+            f"{experimental_prefix}pop",
+            f"{experimental_prefix}ポップ",  # JP alias
+            f"{experimental_prefix}人氣",  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -607,7 +623,11 @@ class Commands(Cog):
     
     @command(
         name=f"{experimental_prefix}whitelist",
-        aliases=[f"{experimental_prefix}whl"])
+        aliases=[
+            f"{experimental_prefix}whl",
+            f"{experimental_prefix}ホワイトリスト",  # JP alias
+            f"{experimental_prefix}白名單"  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
@@ -740,7 +760,10 @@ class Commands(Cog):
         aliases=[
             f"{experimental_prefix}library",
             f"{experimental_prefix}lib", 
-            f"{experimental_prefix}l"])
+            f"{experimental_prefix}l",
+            f"{experimental_prefix}リスト"  # JP alias
+            f"{experimental_prefix}列表"  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
@@ -1505,7 +1528,11 @@ class Commands(Cog):
 
     @command(
         name=f"{experimental_prefix}search_appendage",
-        aliases=[f"{experimental_prefix}append"])
+        aliases=[
+            f"{experimental_prefix}append",
+            f"{experimental_prefix}アッペンド",  # JP alias
+            f"{experimental_prefix}附加"  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True,
         embed_links=True)
@@ -1641,7 +1668,11 @@ class Commands(Cog):
 
     @command(
         name=f"{experimental_prefix}recall",
-        aliases=[f"{experimental_prefix}rc"])
+        aliases=[
+            f"{experimental_prefix}rc",
+            f"{experimental_prefix}リコール",  # JP alias
+            f"{experimental_prefix}記起",  # CN alias
+        ])
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
