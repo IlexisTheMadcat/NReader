@@ -100,11 +100,12 @@ localization = {
 					"Language(s) in this work",
 				"language_names": {
 					"translated": "Translated",
+					"rewrite": "Rewritten",
 					"japanese": "Japanese",
 					"english": "English",
 					"chinese": "Chinese",
 					"cebuano": "Cebuano",
-					"arabic": "Arabic"
+					"arabic": "Arabic",
 				},
 
 				"artists":
@@ -333,6 +334,7 @@ localization = {
 					"同人誌言語",
 				"language_names": {
 					"translated": "翻訳",
+					"rewrite": "リライト",
 					"japanese": "日本語",
 					"english": "英語",
 					"chinese": "中国語",
@@ -538,6 +540,7 @@ localization = {
 					"同人誌語言",
 				"language_names": {
 					"translated": "已翻譯",
+					"rewrite": "又寫了",
 					"japanese": "日語",
 					"english": "英語",
 					"chinese": "中文",

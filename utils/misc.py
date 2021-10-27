@@ -38,12 +38,13 @@ def language_to_flag(languages):
 
     if isinstance(languages, list):
         languages = deepcopy(languages)
-        if "translated" in [tag.name for tag in languages]:
+        if "translated" in [tag.name for tag in languages] or "rewrite" in [tag.name for tag in languages]:
             is_translated = True
-            [languages.remove(tag) for tag in languages if tag.name == "translated"]
+            [languages.remove(tag) for tag in languages if tag.name in ["translated", "rewrite"]]
             if not languages:
                 return "🏳❔"
 
+        [languages.remove(tag) for tag in languages if tag.name == "translated"]
         if "text cleaned" in [tag.name for tag in languages]:
             return "💬🧹"
 
@@ -126,3 +127,4 @@ def show_values(obj, value_width=200, value_oversize_placeholder="...", include_
         items.append(f"{type(obj).__name__}.{i}: {shorten(str(getattr(obj, i)), width=value_width, placeholder=value_oversize_placeholder)}")
 
     return items
+                
