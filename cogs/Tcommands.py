@@ -12,6 +12,7 @@ from discord.ext.commands import (
     bot_has_guild_permissions, 
     command, cooldown, max_concurrency)
 from discord.ext.commands.cooldowns import BucketType
+from discord.ext.commands.errors import ExtensionNotLoaded
 from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
 
@@ -109,10 +110,6 @@ class Commands(Cog):
                         await conf.delete()
                         break
 
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(description=localization[user_language]["doujin_info"]["not_nsfw"]))
-            return
-
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -154,13 +151,38 @@ class Commands(Cog):
             # Get a random doujin
             while True:
                 doujin = await nhentai_api.get_random()
-                if not lolicon_allowed and any([tag in restricted_tags for tag in doujin.tags]):
+                if not lolicon_allowed and any([tag.name in restricted_tags for tag in doujin.tags]):
                     await sleep(0.5)
                     continue
 
                 else:
                     break
+
+        minimal_details = False 
+        if ctx.guild and not ctx.channel.is_nsfw(): 
+            minimal_details = True
         
+        if minimal_details:
+            emb = Embed(
+                description=
+                    f"ID: `{doujin.id}`\n"
+                    f"{localization[user_language]['doujin_info']['fields']['title']}: {language_to_flag(doujin.languages)} `{shorten(doujin.title.pretty, width=256, placeholder='...')}`\n"
+                    f"{localization[user_language]['doujin_info']['fields']['artists']}: `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else localization[user_language]['doujin_info']['fields']['not_provided']}`\n"
+                    f"{localization[user_language]['doujin_info']['fields']['characters']}: `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else localization[user_language]['doujin_info']['fields']['original']}`\n"
+                    f"{localization[user_language]['doujin_info']['fields']['parodies']}: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else localization[user_language]['doujin_info']['fields']['original']}`\n"
+                    f"{localization[user_language]['doujin_info']['fields']['tags']}:\n||`{shorten(str(', '.join([tag.name for tag in doujin.tags if tag.type == 'tag']) if [tag.name for tag in doujin.tags if tag.type == 'tag'] else localization[user_language]['doujin_info']['fields']['not_provided']), width=950, placeholder='...')}`||"
+            ).set_footer(
+                text=f"{localization[user_language]['doujin_info']['sfw']}"
+            )
+
+            emb.set_author(
+                name=f"NHentai",
+                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+
+            await edit.edit(content="", embed=emb)
+
+            return
+
         emb = Embed()
         emb.add_field(
             name=localization[user_language]['doujin_info']['fields']['title'],
@@ -356,12 +378,6 @@ class Commands(Cog):
                         await conf.delete()
                         break
 
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description="❌ This command cannot be used in a non-NSFW channel."))
-
-            return
-
         lolicon_allowed = False
         try:
             if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
@@ -432,6 +448,10 @@ class Commands(Cog):
             await self.bot.errorlog.send(error, ctx=ctx, event="Doujin Search")
             return
 
+        minimal_details = False 
+        if ctx.guild and not ctx.channel.is_nsfw(): 
+            minimal_details = True
+
         if isinstance(results, Doujin):
             await conf.delete()
             ctx.message.content = f"n!code {results.id}"
@@ -500,7 +520,7 @@ class Commands(Cog):
 
             else:
                 await interaction.respond(type=6)
-                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed)
+                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details)
                 await interactive.start(ctx)
     
     @command(

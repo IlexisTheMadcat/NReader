@@ -1,6 +1,14 @@
 from copy import deepcopy
+from textwrap import shorten
 
-restricted_tags = ["lolicon", "shotacon"]
+from cogs.localization import *
+
+restricted_tags = [
+    "rape",
+    "lolicon", 
+    "shotacon",
+    "incest"
+]
 
 def is_int(s):
     try:
@@ -54,7 +62,7 @@ def language_to_flag(languages):
     else:
         return "🏳❔"
 
-def render_date(datetime):
+def render_date(datetime, user_language):
     """Turn a datetime into a word-friendly string"""
     months = {
         1: "January",
@@ -84,13 +92,30 @@ def render_date(datetime):
     }
 
     day = str(datetime.day)
-    hour = deepcopy(datetime.hour)
-    is_noon = False
-    if hour > 12:
-        hour -= 12
-        is_noon = True
+    hour = str(datetime.hour)
+    if int(hour) > 12:
+        hour = str(int(hour)-12)
+        is_afternoon = True
+    else:
+        if user_language != "eng":
+            hour = "0"+hour
+        is_afternoon = False
+    minute = str(datetime.minute)
+    if len(minute) == 1:
+        minute = "0"+minute
 
-    return f"On {months[datetime.month]} {datetime.day}{suffixs[int(day[-1])]}, {datetime.year} at {hour}:{datetime.minute} {'PM' if is_noon else 'AM'}"
+    # return f"On {months[datetime.month]} {datetime.day}{suffixs[int(day[-1])] if user_language=='eng' else ''}, {datetime.year} at {hour}:{datetime.minute} {'PM' if is_afternoon else 'AM'}"
+    return localization[user_language]["doujin_info"]["fields"]["date_uploaded_format"].format(
+        month_name=months[datetime.month] if user_language == "eng" else '',
+        month_numeral=str(datetime.month),
+        day=str(datetime.day)+(suffixs[int(day[-1])] if user_language=='eng' else ''),
+        weekday=localization[user_language]["doujin_info"]["fields"]["date_uploaded_weekdays"][datetime.weekday()],
+        year=str(datetime.year),
+        hour=str(hour) if user_language=="eng" else str(datetime.hour),
+        minute=str(minute),
+        am_pm="PM" if is_afternoon else "AM"
+    )
+
 
 def show_values(obj, value_width=200, value_oversize_placeholder="...", include_methods=True):
     items = []
@@ -98,8 +123,6 @@ def show_values(obj, value_width=200, value_oversize_placeholder="...", include_
         if not include_methods and callable(getattr(obj, i)):
             continue 
 
-        items.append(f"{type(obj).__name__}.{i}: {shorten(str(getattr(interaction, i)), width=value_width, placeholder=value_oversize_placeholder)}")
+        items.append(f"{type(obj).__name__}.{i}: {shorten(str(getattr(obj, i)), width=value_width, placeholder=value_oversize_placeholder)}")
 
     return items
-                
-                

@@ -306,8 +306,7 @@ class Commands(Cog):
                 f"{shorten(results.doujins[ind].title, width=50, placeholder='...')}")
 
         emb = Embed(
-            description=f"Showing page {page}/{results.total_pages}"
-                        f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
+            description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'}"
                         f"\n"+('\n'.join(message_part)))
         emb.set_author(
             name="NHentai Search Results",
@@ -367,8 +366,7 @@ class Commands(Cog):
                         f"{shorten(dj2.title, width=50, placeholder='...')}")
                     
                 emb2 = Embed(
-                    description=f"Showing page {page}/{results.total_pages}"
-                                f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
+                    description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'}:"
                                 f"\n"+('\n'.join(message_part2)))
                 emb2.set_author(
                     name="NHentai Search Results",
@@ -388,8 +386,7 @@ class Commands(Cog):
                 f"{shorten(doujin.title, width=50, placeholder='...')}")
         
         emb = Embed(
-            description=f"Showing page {page}/{results.total_pages}"
-                        f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
+            description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'}:"
                         f"\n"+('\n'.join(message_part)))
         emb.set_author(
             name="NHentai Search Results",

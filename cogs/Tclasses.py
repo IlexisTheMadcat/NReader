@@ -205,7 +205,7 @@ class ImagePageReader:
                     self.am_embed.description=localization[self.language]['page_reader']['timeout'].format(current=self.current_page+1, total=len(self.images))
 
                     await self.active_message.edit(embed=self.am_embed, components=[])
-                    temp = await self.am_channel.send(content=localization[self.language]['page_reader']['timeout'].format(mention=self.ctx.author.mention, delete_after=1))
+                    temp = await self.am_channel.send(content=localization[self.language]['page_reader']['timeout_notification'].format(mention=self.ctx.author.mention, delete_after=1))
                     await temp.delete(delay=1)
         
                     await sleep(10)
@@ -305,7 +305,7 @@ class ImagePageReader:
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
                         await sleep(2)
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closed']}", embed=None)
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
                         
                         await sleep(1)
                         await self.am_channel.delete()
@@ -326,7 +326,7 @@ class ImagePageReader:
                         await self.active_message.edit(embed=self.am_embed, components=[])
 
                         await sleep(2)
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} localization[self.language]['page_reader']['closed']", embed=None)
+                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
                         
                         await sleep(1)
                         await self.am_channel.delete()
@@ -415,11 +415,14 @@ class SearchResultsBrowser:
         self.ctx = ctx
         self.doujins = results
         self.index = 0
-        self.active_message: Message = kwargs.pop("msg", None)
         self.lolicon_allowed = kwargs.pop("lolicon_allowed", False)
+        self.minimal_details = kwargs.pop("minimal_details", True)
         self.name = kwargs.pop("name", "Search Results")
 
+        self.active_message: Message = kwargs.pop("msg", None)
         self.am_embed: Embed = None
+
+        self.language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
     
     async def update_browser(self, ctx):
         message_part = []
@@ -447,15 +450,10 @@ class SearchResultsBrowser:
                     f"{shorten(dj.title.pretty, width=40, placeholder='...')}"
                     f"{'**' if ind == self.index else ''}")
                 
-        if not self.am_embed:
-            self.am_embed = Embed(
-                title=self.name,
-                description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
-        else:
-            self.am_embed.clear_fields()
-            self.am_embed.title = self.name
-            self.am_embed.description = f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░"
-
+        self.am_embed = Embed(
+            title=self.name,
+            description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
+        
         nhentai = NHentai()
         doujin = self.doujins[self.index]
         
@@ -472,64 +470,84 @@ class SearchResultsBrowser:
             doujin.cover.src = str(self.bot.user.avatar_url)
         
         else:
-            self.am_embed.add_field(
-                name=f"Title",
-                inline=False,
-                value=f"{shorten(doujin.title.pretty, width=256, placeholder='...') if doujin.title.pretty else 'Not provided'}"
-            ).add_field(
-                inline=False,
-                name="ID || Pages",
-                value=f"`{doujin.id}` - `{doujin.total_pages}`"
-            ).add_field(
-                inline=False,
-                name="Date Uploaded",
-                value=f"`{render_date(doujin.upload_at)}`"
-            ).add_field(
-                inline=False,
-                name="Language(s) in this work",
-                value=f"{language_to_flag(doujin.languages)} `{', '.join([tag.name for tag in doujin.languages]) if doujin.languages else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Featured artist(s)",
-                value=f"`{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else 'Not provided'}`"
-            ).add_field(
-                inline=False,
-                name="Character(s) in this work",
-                value=f"`{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else 'Original'}`"
-            ).add_field(
-                inline=False,
-                name="A parody of",
-                value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else 'Original'}`"
-            ).set_footer(
-                text=f"⭐ {doujin.total_favorites}"
-            )
+            if self.minimal_details:
+                self.am_embed.add_field(
+                    name="Minimal Details",
+                    inline=False,
+                    value=
+                        f"ID: `{doujin.id}`\n"
+                        f"{localization[self.language]['doujin_info']['fields']['title']}: {language_to_flag(doujin.languages)} `{shorten(doujin.title.pretty, width=256, placeholder='...')}`\n"
+                        f"{localization[self.language]['doujin_info']['fields']['artists']}: `{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else localization[self.language]['doujin_info']['fields']['not_provided']}`\n"
+                        f"{localization[self.language]['doujin_info']['fields']['characters']}: `{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else localization[self.language]['doujin_info']['fields']['original']}`\n"
+                        f"{localization[self.language]['doujin_info']['fields']['parodies']}: `{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else localization[self.language]['doujin_info']['fields']['original']}`\n"
+                        f"{localization[self.language]['doujin_info']['fields']['tags']}:\n||`{shorten(str(', '.join([tag.name for tag in doujin.tags if tag.type == 'tag']) if [tag.name for tag in doujin.tags if tag.type == 'tag'] else localization[self.language]['doujin_info']['fields']['not_provided']), width=950, placeholder='...')}`||"
+                ).set_footer(
+                    text=f"{localization[self.language]['doujin_info']['sfw']}")
 
-            # add a count
-            tags_list = []
-            for tag in doujin.tags:
-                if tag.type != "tag": continue
-                count = tag.count
-                parse_count = list(str(tag.count))
-                if len(parse_count) < 4:
-                    tags_list.append(f"{tag.name}[{count}]")
-                elif len(parse_count) >= 4 and len(parse_count) <= 6:
-                    count = count/1000
-                    tags_list.append(f"{tag.name}[{round(count, 1)}k]")
-                elif len(parse_count) > 7:
-                    count = count/1000000
-                    tags_list.append(f"{tag.name}[{round(count, 2)}m]")
+                self.am_embed.set_author(
+                    name=f"NHentai",
+                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
 
-            self.am_embed.add_field(
-                inline=False,
-                name="Content tags",
-                value=f"```{shorten(str(', '.join(tags_list) if tags_list else 'None provided'), width=1018, placeholder='...')}```\n"
-            )
+                await self.active_message.edit(content="", embed=self.am_embed)
 
-            self.am_embed.set_author(
-                name=f"NHentai",
-                url=f"https://nhentai.net/g/{doujin.id}/",
-                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            self.am_embed.set_thumbnail(url=doujin.cover.src)
+            else:
+                self.am_embed.add_field(
+                    name=localization[self.language]['doujin_info']['fields']['title'],
+                    inline=False,
+                    value=f"`{shorten(doujin.title.pretty, width=256, placeholder='...')}`"
+                ).add_field(
+                    inline=False,
+                    name=localization[self.language]['doujin_info']['fields']['id/pages'],
+                    value=f"`{doujin.id}` - `{doujin.total_pages}`"
+                ).add_field(
+                    inline=False,
+                    name=localization[self.language]['doujin_info']['fields']['date_uploaded'],
+                    value=f"`{render_date(doujin.upload_at, self.language)}`"
+                ).add_field(
+                    inline=False,
+                    name=localization[self.language]['doujin_info']['fields']['languages'],
+                    value=f"{language_to_flag(doujin.languages)} `{', '.join([localization[self.language]['doujin_info']['fields']['language_names'][tag.name] for tag in doujin.languages]) if doujin.languages else localization[self.language]['doujin_info']['fields']['not_provided']}`"
+                ).add_field(
+                    inline=False,
+                    name=localization[self.language]['doujin_info']['fields']['artists'],
+                    value=f"`{', '.join([tag.name for tag in doujin.artists]) if doujin.artists else localization[self.language]['doujin_info']['fields']['not_provided']}`"
+                ).add_field(
+                    inline=False,
+                    name=localization[self.language]['doujin_info']['fields']['characters'],
+                    value=f"`{', '.join([tag.name for tag in doujin.characters]) if doujin.characters else localization[self.language]['doujin_info']['fields']['original']}`"
+                ).add_field(
+                    inline=False,
+                    name=localization[self.language]['doujin_info']['fields']['parodies'],
+                    value=f"`{', '.join([tag.name for tag in doujin.parodies]) if doujin.parodies else localization[self.language]['doujin_info']['fields']['original']}`"
+                ).set_footer(
+                    text=f"⭐ {doujin.total_favorites}"
+                )
+
+                # Doujin count for tags
+                tags_list = []
+                for tag in [tag for tag in doujin.tags if tag.type == "tag"]:
+                    count = tag.count
+                    parse_count = list(str(count))
+                    if len(parse_count) < 4:
+                        tags_list.append(f"{localization[self.language]['fields']['tag_names'][tag.name] if tag.name in localization[self.language]['doujin_info']['fields']['tag_names'] else tag.name}[{count}]")
+                    elif len(parse_count) >= 4 and len(parse_count) <= 6:
+                        count = count/1000
+                        tags_list.append(f"{localization[self.language]['fields']['tag_names'][tag.name] if tag.name in localization[self.language]['doujin_info']['fields']['tag_names'] else tag.name}[{round(count, 1)}k]")
+                    elif len(parse_count) > 7:
+                        count = count/1000000
+                        tags_list.append(f"{localization[self.language]['fields']['tag_names'][tag.name] if tag.name in localization[self.language]['doujin_info']['fields']['tag_names'] else tag.name}[{round(count, 2)}m]")
+
+                self.am_embed.add_field(
+                    inline=False,
+                    name=localization[self.language]["doujin_info"]["fields"]["tags"],
+                    value=f"```{shorten(str(', '.join(tags_list) if tags_list else localization[self.language]['doujin_info']['fields']['not_provided']), width=1018, placeholder='...')}```"
+                )
+
+                self.am_embed.set_author(
+                    name=f"NHentai",
+                    url=f"https://nhentai.net/g/{doujin.id}/",
+                    icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+                self.am_embed.set_thumbnail(url=doujin.images[0].src)
             
         previous_emb = deepcopy(self.am_embed)
         if previous_emb.image.url != Embed.Empty:
@@ -558,7 +576,7 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
                     Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
                     Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read", disabled=True)],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
+                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom", disabled=self.minimal_details),
                     Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
                     Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
 
@@ -570,8 +588,8 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
                     Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
                     Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read")],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom"),
+                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read", disabled=self.minimal_details)],
+                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom", disabled=self.minimal_details),
                     Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
                     Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
             

@@ -3,7 +3,12 @@ from textwrap import shorten
 
 from cogs.localization import *
 
-restricted_tags = ["lolicon", "shotacon"]
+restricted_tags = [
+    "rape",
+    "lolicon", 
+    "shotacon",
+    "incest"
+]
 
 def is_int(s):
     try:

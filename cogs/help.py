@@ -117,9 +117,9 @@ class MiscCommands(Cog):
             embed=emb,
             components=[
                 Select(id="languages", placeholder="🌐💬 Language / 言語 / 语", options=[
-                   SelectOption(label=f"{localization[user_language]['language_options']['english']}/English", emoji="🇬🇧", value="eng", description="NReader is written in American English and is the default."),
-                   SelectOption(label=f"{localization[user_language]['language_options']['japanese']}/日本語", emoji="🇯🇵", value="jp", description="❌これはまだ準備ができていません。"),  # GT - "This is not ready yet."
-                   SelectOption(label=f"{localization[user_language]['language_options']['chinese']}/中國人", emoji="🇨🇳", value="cn", description="❌這還沒有準備好。")  # GT - "This is not ready yet."
+                    SelectOption(label=f"{localization[user_language]['language_options']['english']}/English", emoji="🇬🇧", value="eng", description="NReader is written in American English and is the default."),
+                    SelectOption(label=f"{localization[user_language]['language_options']['japanese']}/日本語", emoji="🇯🇵", value="jp", description="部分的な機能。"),  # GT - "Partial functionality."
+                    SelectOption(label=f"{localization[user_language]['language_options']['chinese']}/中文", emoji="🇨🇳", value="cn", description="功能有限。")  # GT - "Limited functionality."
                 ])])
 
         while True:
@@ -156,9 +156,9 @@ class MiscCommands(Cog):
                     embed=emb,
                     components=[
                         Select(id="languages", placeholder="🌐💬 Language / 言語 / 语", options=[
-                           SelectOption(label=f"{localization[user_language]['language_options']['english']}/English", emoji="🇬🇧", value="eng", description="NReader is written in American English and is the default."),
-                           SelectOption(label=f"{localization[user_language]['language_options']['japanese']}/日本語", emoji="🇯🇵", value="jp", description="❌これはまだ準備ができていません。"),  # GT - "This is not ready yet."
-                           SelectOption(label=f"{localization[user_language]['language_options']['chinese']}/中文", emoji="🇨🇳", value="cn", description="❌這還沒有準備好。")  # GT - "This is not ready yet."
+                            SelectOption(label=f"{localization[user_language]['language_options']['english']}/English", emoji="🇬🇧", value="eng", description="NReader is written in American English and is the default."),
+                            SelectOption(label=f"{localization[user_language]['language_options']['japanese']}/日本語", emoji="🇯🇵", value="jp", description="部分的な機能。"),  # GT - "Partial functionality."
+                            SelectOption(label=f"{localization[user_language]['language_options']['chinese']}/中文", emoji="🇨🇳", value="cn", description="功能有限。")  # GT - "Limited functionality."
                         ])])
     
     @command(

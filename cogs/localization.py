@@ -16,6 +16,10 @@ localization = {
 			"chinese":
 				"Chinese"
 		},
+		"general": {
+			"not_nsfw": 
+				"❌ This command cannot be used in a non-NSFW channel.",
+		},
 
 		"notifications_due": {
 			"first_time_tip": {
@@ -58,9 +62,13 @@ localization = {
 				"Provided by MechHub"
 		},
 
+		"privacy": {
+			# English only
+		}, 
+
 		"doujin_info": {
-			"not_nsfw": 
-				"❌ This command cannot be used in a non-NSFW channel.",
+			"sfw":
+				"Showing minimal information. Use the command in an NSFW-marked channel for more details.",
 			"not_a_valid_id": 
 				"❌ You didn't type a proper ID. Come on, numbers!",
 			"doujin_not_found": 
@@ -200,7 +208,36 @@ localization = {
 				"An unhandled error occured; Please try again.\n"
 				"If the issue persists, please try reopening the doujin.\n"
 				"If reopening doesn't work, click the `Support Server` button."
+		},
+
+		"search_doujins": {
+			
+		},
+
+		"recall": {
+			
+		},
+
+		"popular": {
+			
+		},
+
+		"lists": {
+			
+		},
+
+		"search_appendage": {
+		
+		},
+
+		"whitelist": {
+			
+		},
+
+		"urban_dictionary": {
+			# English only
 		}
+
 	},
 
 	"jp": {
@@ -263,8 +300,8 @@ localization = {
 		},
 
 		"doujin_info": {
-			"not_nsfw": 
-				"❌ コマンドはNSFWチャンネルで使用する必要があります。",
+			"sfw":
+				"Showing minimal information. Use the command in an NSFW-marked channel for more details.",
 			"not_a_valid_id": 
 				"❌ 識別は番号ではありません。 数字のみ！",
 			"not_found": 
@@ -467,8 +504,9 @@ localization = {
 		},
 
 		"doujin_info": {
-			"not_nsfw": 
-				"❌ 該命令必須在 NSFW 通道中使用。",
+			"sfw": {
+				"Showing minimal information. Use the command in an NSFW-marked channel for more details."
+			},
 			"not_a_valid_id": 
 				"❌ 標識無效。 只有數字！",
 			"doujin_not_found": 
