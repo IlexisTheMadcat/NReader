@@ -70,23 +70,23 @@ class ImagePageReader:
                                     f"<:nsele:853668227212902410><:nstop:853668227175546952> {localization[self.language]['page_reader']['description']['select']} | {localization[self.language]['page_reader']['description']['stop']}\n" \
                                     f"<:npaus:853668227234529300><:nbook:853668227205038090> {localization[self.language]['page_reader']['description']['pause']} | {localization[self.language]['page_reader']['description']['bookmark'] if not self.on_bookmarked_page else localization[self.language]['page_reader']['description']['unbookmark']}\n" 
 
-        self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)                
         self.am_embed.set_image(url=self.images[self.current_page].src)
         self.am_embed.set_footer(text=localization[self.language]['page_reader']['footer'].format(current=self.current_page+1, total=len(self.images), bookmark='🔖' if self.on_bookmarked_page else ''))
 
-        if self.active_message:
-            await self.active_message.edit(embed=self.am_embed,
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="previous", disabled=self.current_page==0),
-                    Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="pause")],
-                    [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="bookmark"),
-                    Button(emoji="⭐", style=2, id="favorite"),
-                    Button(label=localization[self.language]['page_reader']['redirect_button'], style=5, url="https://discord.gg/DJ4wdsRYy2")]])
-        else:
-            await self.ctx.send(embed=self.am_embed,
+        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 0:
+            self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)                
+        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 1:
+            self.am_embed.set_thumbnail(url=self.images[self.current_page-1].src if (self.current_page-1) in range(0, len(self.images)) else Embed.Empty) 
+        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
+            self.am_embed.set_thumbnail(url=Embed.Empty)
+
+        thumbnail_buttons = {
+            0: self.bot.get_emoji(903121521571168276),
+            1: self.bot.get_emoji(903122915619373106),
+            2: self.bot.get_emoji(903121521621491732)
+        }
+
+        await self.active_message.edit(embed=self.am_embed,
             components=[
                 [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="previous", disabled=self.current_page==0),
                 Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
@@ -95,6 +95,7 @@ class ImagePageReader:
                 Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="pause")],
                 [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="bookmark"),
                 Button(emoji="⭐", style=2, id="favorite"),
+                Button(emoji=thumbnail_buttons[self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"]], style=2, id="thumbnail"),
                 Button(label=localization[self.language]['page_reader']['redirect_button'], style=5, url="https://discord.gg/DJ4wdsRYy2")]])
 
     async def setup(self):
@@ -388,6 +389,14 @@ class ImagePageReader:
                                 embed=Embed(
                                     description=localization[self.language]['page_reader']['removed_from_favorites']),
                                 delete_after=5)
+
+                    elif interaction.component.id == "thumbnail":
+                        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
+                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] = 0
+                        else:
+                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] += 1
+
+                        await self.update_reader()
 
                 except Exception:
                     error = exc_info()
