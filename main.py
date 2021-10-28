@@ -38,7 +38,11 @@ DATA_DEFAULTS = {
                 "NotificationsDue": {
                     "FirstTime": False,
                     "LoliconViewingTip": False
-                }  # dict of str:bool
+                },  # dict of str:bool
+
+                # Allow the user to change what is shown in the reader's thumbnail.
+                # 0 (default): Next page; 1: Previous page; 2: Disable
+                "ThumbnailPreference": 0
             },
 
             # User collections
