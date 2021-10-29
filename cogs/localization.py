@@ -106,6 +106,7 @@ localization = {
 					"chinese": "Chinese",
 					"cebuano": "Cebuano",
 					"arabic": "Arabic",
+					"javanese": "Javanese"
 				},
 
 				"artists":
@@ -339,7 +340,8 @@ localization = {
 					"english": "英語",
 					"chinese": "中国語",
 					"cebuano": "セブアノ語",
-					"arabic": "アラビア語"
+					"arabic": "アラビア語",
+					"javanese": "ジャワ語"
 				},
 
 				"artists":
@@ -545,7 +547,8 @@ localization = {
 					"english": "英語",
 					"chinese": "中文",
 					"cebuano": "宿務語",
-					"arabic": "阿拉伯語"
+					"arabic": "阿拉伯語",
+					"javanese": "爪哇語"
 				},
 
 				"artists":

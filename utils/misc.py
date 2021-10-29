@@ -34,6 +34,7 @@ def language_to_flag(languages):
         "chinese": "🇨🇳", 
         "arabic": "🇪🇬",
         "cebuano": "🇵🇭",
+        "javanese": "🇮🇩",
         "translated": "🔄"}
 
     if isinstance(languages, list):
