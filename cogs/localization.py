@@ -302,10 +302,10 @@ localization = {
 
 		"doujin_info": {
 			"sfw":
-				"Showing minimal information. Use the command in an NSFW-marked channel for more details.",
+				"最小限の情報を表示しています。 詳細については、NSFWでマークされたチャンネルでコマンドを使用してください。",
 			"not_a_valid_id": 
 				"❌ 識別は番号ではありません。 数字のみ！",
-			"not_found": 
+			"doujin_not_found": 
 				"🔎❌ ボットは、そのIDを持つ同人誌を見つけることができませんでした。",
 			"is_lolicon":
 				"⚠️⛔ この同人誌には許可されていないタグがあり、表示できません。",
@@ -507,7 +507,7 @@ localization = {
 
 		"doujin_info": {
 			"sfw": {
-				"Showing minimal information. Use the command in an NSFW-marked channel for more details."
+				"顯示最少的信息。 在 NSFW 標記的頻道中使用該命令以獲取更多詳細信息。"
 			},
 			"not_a_valid_id": 
 				"❌ 標識無效。 只有數字！",

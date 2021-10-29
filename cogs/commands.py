@@ -133,7 +133,7 @@ class Commands(Cog):
             # Lookup
             doujin = await nhentai_api.get_doujin(code)
             if not doujin:
-                return await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["not_found"]))
+                return await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["doujin_not_found"]))
 
             # Stop if it is a sensitive doujin and notify user of workaround
             if not lolicon_allowed and any([tag.name in restricted_tags for tag in doujin.tags]):
