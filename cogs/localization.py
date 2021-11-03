@@ -101,6 +101,7 @@ localization = {
 				"language_names": {
 					"translated": "Translated",
 					"rewrite": "Rewritten",
+					"speechless": "No dialogue",
 					"japanese": "Japanese",
 					"english": "English",
 					"chinese": "Chinese",
@@ -336,6 +337,7 @@ localization = {
 				"language_names": {
 					"translated": "翻訳",
 					"rewrite": "リライト",
+					"speechless": "対話なし",
 					"japanese": "日本語",
 					"english": "英語",
 					"chinese": "中国語",
@@ -543,6 +545,7 @@ localization = {
 				"language_names": {
 					"translated": "已翻譯",
 					"rewrite": "又寫了",
+					"speechless": "沒有對話",
 					"japanese": "日語",
 					"english": "英語",
 					"chinese": "中文",
