@@ -213,8 +213,80 @@ localization = {
 				"If reopening doesn't work, click the `Support Server` button."
 		},
 
-		"search_doujins": {
-			
+		"search_doujins": {  
+			"searching": 
+				"<a:nreader_loading:810936543401213953> Searching...\n"
+				"```\n"
+				"{query} {appendage}\n"
+				"```\n",
+
+			"invalid_page": {
+				"title":
+					"❌ Invalid page number.",
+				"description":
+					"`0` (zero) is not a valid page number. Page number must be greater than zero."
+			},
+			"invalid_sort": {
+				"title":
+					"❌ Invalid sort parameter.",
+				"description":
+					"That's not a method I can sort by. I can only support by popularity `today`, this `week`, this `month`, all time `popular` (default), or `recent`."
+			},
+			"too_broad": {
+				"title":
+					"❌ Search is too broad. Say something.",
+				"description":
+					"You need to tell me what to search, or update your search appendage (See `search_appendage` in `n!help`)."
+			},
+			"unexpected_error":
+				"❌ There was an unexpected error in your search. Typically, retrying doesn't work, so please try another search.",
+			"no_results": {
+				"title":
+					"🔎❌ I did not find anything. Check your keywords!",
+				"description": {
+					"appendage": 
+						"`*️⃣` This may be the cause of your search appendage. See `search_appendage` in `n!help`, or add `--noappend` to bypass it.",
+					"page":
+						"`*️⃣` You have added a page number to your search (`--page#`). Please check that your page is within the total page count (check by searching without a page).",
+					"restricted_tags":
+						"`*️⃣` You searched for restricted tags. Due to the way this bot works, restricted tags get cancelled out, resulting in a null search."
+				}
+			},
+
+			"search_results": {
+				"title":
+					"Search Results",
+				"description":
+					"Showing page {page}/{pages} (~{approximate} doujins):\n"
+					"{results}",
+			},
+			"contains_restricted_tags":
+				"__`       `__ | ⚠🚫 | Contains restricted tags.",
+			"start_interactive":
+				"Start Interactive"
+		},
+
+		"results_browser": { # Over half of what would be here actually uses the doujin_info material
+			"buttons": {
+				"select":
+					"Enter a result number within 15 seconds, or type `n-cancel` to cancel.",
+				"read_later_full":
+					"❌ Your Read Later list is full. Please remove something from it to perform this action.",
+				"add_to_read_later":
+					"✅ Added `{code}` to your Read Later list.",
+				"remove_from_read_later":
+					"✅ Removed `{code}` from your Read Later list.",
+				"support_server":
+					"Support Server"
+			},
+			"forbidden": {
+				"title":
+					"Forbidden",
+				"description":
+					"⚠️❌ This doujin cannot be viewed in this server."
+			},
+			"minimal_details": 
+				"Minimal Details"
 		},
 
 		"recall": {
@@ -226,6 +298,10 @@ localization = {
 		},
 
 		"lists": {
+			
+		},
+
+		"recommend": {
 			
 		},
 
