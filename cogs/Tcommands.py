@@ -304,7 +304,7 @@ class Commands(Cog):
                                 Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
                             ])
 
-                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), user_language=useruser_language)
+                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), user_language=user_language)
                         response = await session.setup()
                         if response:
                             print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
@@ -493,7 +493,7 @@ class Commands(Cog):
             name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
-        ).set_thumbnail(url=thumbnail_url)
+        ).set_thumbnail(url=thumbnail_url if not minimal_details else Embed.Empty)
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         

@@ -57,7 +57,7 @@ class ImagePageReader:
         self.is_paused: bool = False
         self.on_bookmarked_page: bool = False
 
-        self.language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        self.language = kwargs.pop("user_language", "eng")
 
     async def update_reader(self):
         if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
@@ -265,7 +265,7 @@ class ImagePageReader:
                         conf = await self.am_channel.send(embed=Embed(
                             description=localization[self.language]['page_reader']['select_inquiry']['description']
                         ).set_footer(
-                            text=localization[self.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=f"**{bm_page+1}**" if bm_page else 'N/A')))
+                            text=localization[self.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')))
                         
                         while True:
                             try:
@@ -315,7 +315,7 @@ class ImagePageReader:
                         self.bot.user_data["UserData"][str(self.ctx.author.id)]["Recall"] = f"{self.code}*n*{self.current_page}"
                         await self.ctx.author.send(embed=Embed(
                             title=localization[self.language]['page_reader']['recall_saved']['title'],
-                            description=localization[self.language]['page_reader']['recalled']['description'].footer(code=self.code, current=self.current_page+1, total=len(self.images))))
+                            description=localization[self.language]['page_reader']['recall_saved']['description'].format(code=self.code, current=self.current_page+1, total=len(self.images))))
 
                         break
 
@@ -379,7 +379,7 @@ class ImagePageReader:
 
                             await self.am_channel.send(
                                 embed=Embed(
-                                    description=localization[self.language]['page_reader']['added_to_favorites']
+                                    description=localization[self.language]['page_reader']['added_to_favorites'].format(code=self.code)
                                 ),
                                 delete_after=5)
                         else:
@@ -387,7 +387,8 @@ class ImagePageReader:
 
                             await self.am_channel.send(
                                 embed=Embed(
-                                    description=localization[self.language]['page_reader']['removed_from_favorites']),
+                                    description=localization[self.language]['page_reader']['removed_from_favorites'].format(code=self.code)
+                                ),
                                 delete_after=5)
 
                     elif interaction.component.id == "thumbnail":
@@ -429,9 +430,9 @@ class SearchResultsBrowser:
         self.name = kwargs.pop("name", "Search Results")
 
         self.active_message: Message = kwargs.pop("msg", None)
-        self.am_embed: Embed = None
+        self.am_embed: Embed = Embed()
 
-        self.language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        self.language = kwargs.pop("user_language", "eng")
     
     async def update_browser(self, ctx):
         message_part = []
@@ -448,7 +449,7 @@ class SearchResultsBrowser:
             if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
                 message_part.append(
                     f"{'**' if ind == self.index else ''}"
-                    f"`{symbol} {str(ind+1).ljust(2)}` | __`       `__ | ⚠🚫 | Contains restricted tags."
+                    f"`{symbol} {str(ind+1).ljust(2)}` | {localization[self.language]['search_doujins']['search_results']['contains_restricted_tags']}"
                     f"{'**' if ind == self.index else ''}")
             else:
                 message_part.append(
@@ -458,20 +459,32 @@ class SearchResultsBrowser:
                     f"{language_to_flag(dj.languages)} | "
                     f"{shorten(dj.title.pretty, width=40, placeholder='...')}"
                     f"{'**' if ind == self.index else ''}")
-                
+
+        doujin = self.doujins[self.index]
+        previous_emb = deepcopy(self.am_embed)
+        #self.active_message.embeds[0] = self.am_embed
+
         self.am_embed = Embed(
             title=self.name,
             description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
-        
+        self.am_embed.set_thumbnail(url=doujin.cover.src)
+
+        if not self.minimal_details:
+            if previous_emb.image.url != Embed.Empty:
+                self.am_embed.set_image(url=doujin.cover.src)
+                self.am_embed.set_thumbnail(url=Embed.Empty)
+            elif previous_emb.thumbnail.url != Embed.Empty:
+                self.am_embed.set_thumbnail(url=doujin.cover.src)
+                self.am_embed.set_image(url=Embed.Empty)        
+
         nhentai = NHentai()
-        doujin = self.doujins[self.index]
         
         tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
         if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.lolicon_allowed:
             self.am_embed.add_field(
-                name="Forbidden",
+                name=localization[self.language]['results_browser']['forbidden']['title'],
                 inline=False,
-                value="⚠️❌ This doujin cannot be viewed in this server."
+                value=localization[self.language]['results_browser']['forbidden']['description']
             ).set_footer(
                 text=f"⭐ N/A"
             )
@@ -481,7 +494,7 @@ class SearchResultsBrowser:
         else:
             if self.minimal_details:
                 self.am_embed.add_field(
-                    name="Minimal Details",
+                    name=localization[self.language]['results_browser']['minimal_details'],
                     inline=False,
                     value=
                         f"ID: `{doujin.id}`\n"
@@ -556,19 +569,7 @@ class SearchResultsBrowser:
                     name=f"NHentai",
                     url=f"https://nhentai.net/g/{doujin.id}/",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                self.am_embed.set_thumbnail(url=doujin.images[0].src)
-            
-        previous_emb = deepcopy(self.am_embed)
-        if previous_emb.image.url != Embed.Empty:
-            self.am_embed.set_image(url=doujin.cover.src)
-            self.am_embed.set_thumbnail(url=Embed.Empty)
-        elif previous_emb.thumbnail != Embed.Empty:
-            self.am_embed.set_thumbnail(url=doujin.cover.src)
-            self.am_embed.set_image(url=Embed.Empty)
-        else:  # Image wasn't set yet
-            self.am_embed.set_thumbnail(url=doujin.cover.src)
 
-        self.active_message.embeds[0] = self.am_embed
 
         if not self.active_message:
             self.active_message = await self.ctx.send("...")
@@ -587,7 +588,7 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read", disabled=True)],
                     [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom", disabled=self.minimal_details),
                     Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
+                    Button(label=localization[self.language]['results_browser']['buttons']['support_server'], style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
 
         else:
             await self.active_message.edit(
@@ -600,7 +601,7 @@ class SearchResultsBrowser:
                     Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read", disabled=self.minimal_details)],
                     [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom", disabled=self.minimal_details),
                     Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
-                    Button(label="Support Server", style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
+                    Button(label=localization[self.language]['results_browser']['buttons']['support_server'], style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
             
             await sleep(0.5)
     
@@ -620,7 +621,7 @@ class SearchResultsBrowser:
                 for ind, dj in enumerate(self.doujins):
                     tags = [tag.name for tag in dj.tags if tag.type == "tag"]
                     if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
-                        message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
+                        message_part.append(localization[self.language]['search_doujins']['search_results']['contains_restricted_tags'])
                     else:
                         message_part.append(
                             f"__`{str(dj.id).ljust(7)}`__ | "
@@ -671,7 +672,7 @@ class SearchResultsBrowser:
                     
                     elif interaction.component.id == "select":
                         conf = await self.ctx.send(embed=Embed(
-                            description="Enter a result number within 15 seconds, or type `n-cancel` to cancel.\n"))
+                            description=localization[self.language]['results_browser']['buttons']['select']))
 
                         while True:
                             try:
@@ -679,6 +680,7 @@ class SearchResultsBrowser:
                                     check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id)
                             
                             except TimeoutError:
+                                await conf.delete()
                                 break
 
                             else:
@@ -703,7 +705,7 @@ class SearchResultsBrowser:
                         for ind, dj in enumerate(self.doujins):
                             tags = [tag.name for tag in dj.tags if tag.type == "tag"]
                             if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
-                                message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
+                                message_part.append(localization[self.language]['search_doujins']['search_results']['contains_restricted_tags'])
                             else:
                                 message_part.append(
                                     f"__`{str(dj.id).ljust(7)}`__ | "
@@ -734,7 +736,7 @@ class SearchResultsBrowser:
                         for ind, dj in enumerate(self.doujins):
                             tags = [tag.name for tag in dj.tags if tag.type == "tag"]
                             if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
-                                message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
+                                message_part.append(localization[self.language]['search_doujins']['search_results']['contains_restricted_tags'])
                             else:
                                 message_part.append(
                                     f"{'**' if ind == self.index else ''}"
@@ -772,12 +774,12 @@ class SearchResultsBrowser:
                         return
                     
                     elif interaction.component.id == "zoom":
-                        emb = deepcopy(self.am_embed)
-                        if not emb.image:
-                            self.am_embed.set_image(url=emb.thumbnail.url)
+                        doujin = self.doujins[self.index]
+                        if self.am_embed.image.url == Embed.Empty:
+                            self.am_embed.set_image(url=doujin.cover.src)
                             self.am_embed.set_thumbnail(url=Embed.Empty)
-                        elif not emb.thumbnail:
-                            self.am_embed.set_thumbnail(url=emb.image.url)
+                        elif self.am_embed.thumbnail.url == Embed.Empty:
+                            self.am_embed.set_thumbnail(url=doujin.cover.src)
                             self.am_embed.set_image(url=Embed.Empty)
                         
                         await self.active_message.edit(embed=self.am_embed)
@@ -787,7 +789,7 @@ class SearchResultsBrowser:
                             await self.ctx.send(
                                 embed=Embed(
                                     color=0xff0000, 
-                                    description="❌ Your Read Later list is full. Please remove something from it to perform this action."
+                                    description=localization[self.language]['results_browser']['buttons']['read_later_full']
                                 ),
                                 delete_after=5)
                             continue
@@ -796,14 +798,14 @@ class SearchResultsBrowser:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.doujins[self.index].id))
                             await self.ctx.send(
                                 embed=Embed(
-                                    description=f"✅ Added `{self.doujins[self.index].id}` to your Read Later list."
+                                    description=localization[self.language]['results_browser']['buttons']['add_to_read_later'].format(code=self.doujins[self.index].id)
                                 ),
                                 delete_after=5)
                         else:
                             self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.doujins[self.index].id))
                             await self.ctx.send(
                                 embed=Embed(
-                                    description=f"✅ Removed `{self.doujins[self.index].id}` from your Read Later list."
+                                    description=localization[self.language]['results_browser']['buttons']['remove_from_read_later'].format(code=self.doujins[self.index].id)
                                 ),
                                 delete_after=5)
             

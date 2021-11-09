@@ -265,7 +265,7 @@ class ImagePageReader:
                         conf = await self.am_channel.send(embed=Embed(
                             description=localization[self.language]['page_reader']['select_inquiry']['description']
                         ).set_footer(
-                            text=localization[self.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=f"**{bm_page+1}**" if bm_page else 'N/A')))
+                            text=localization[self.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')))
                         
                         while True:
                             try:
@@ -379,7 +379,7 @@ class ImagePageReader:
 
                             await self.am_channel.send(
                                 embed=Embed(
-                                    description=localization[self.language]['page_reader']['added_to_favorites']
+                                    description=localization[self.language]['page_reader']['added_to_favorites'].format(code=self.code)
                                 ),
                                 delete_after=5)
                         else:
@@ -387,7 +387,8 @@ class ImagePageReader:
 
                             await self.am_channel.send(
                                 embed=Embed(
-                                    description=localization[self.language]['page_reader']['removed_from_favorites']),
+                                    description=localization[self.language]['page_reader']['removed_from_favorites'].format(code=self.code)
+                                ),
                                 delete_after=5)
 
                     elif interaction.component.id == "thumbnail":
@@ -429,7 +430,7 @@ class SearchResultsBrowser:
         self.name = kwargs.pop("name", "Search Results")
 
         self.active_message: Message = kwargs.pop("msg", None)
-        self.am_embed: Embed = None
+        self.am_embed: Embed = Embed()
 
         self.language = kwargs.pop("user_language", "eng")
     
@@ -458,13 +459,25 @@ class SearchResultsBrowser:
                     f"{language_to_flag(dj.languages)} | "
                     f"{shorten(dj.title.pretty, width=40, placeholder='...')}"
                     f"{'**' if ind == self.index else ''}")
-                
+
+        doujin = self.doujins[self.index]
+        previous_emb = deepcopy(self.am_embed)
+        #self.active_message.embeds[0] = self.am_embed
+
         self.am_embed = Embed(
             title=self.name,
             description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
-        
+        self.am_embed.set_thumbnail(url=doujin.cover.src)
+
+        if not self.minimal_details:
+            if previous_emb.image.url != Embed.Empty:
+                self.am_embed.set_image(url=doujin.cover.src)
+                self.am_embed.set_thumbnail(url=Embed.Empty)
+            elif previous_emb.thumbnail.url != Embed.Empty:
+                self.am_embed.set_thumbnail(url=doujin.cover.src)
+                self.am_embed.set_image(url=Embed.Empty)        
+
         nhentai = NHentai()
-        doujin = self.doujins[self.index]
         
         tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
         if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.lolicon_allowed:
@@ -556,18 +569,7 @@ class SearchResultsBrowser:
                     name=f"NHentai",
                     url=f"https://nhentai.net/g/{doujin.id}/",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-            
-        previous_emb = deepcopy(self.am_embed)
-        if previous_emb.image.url != Embed.Empty:
-            self.am_embed.set_image(url=doujin.cover.src)
-            self.am_embed.set_thumbnail(url=Embed.Empty)
-        elif previous_emb.thumbnail != Embed.Empty:
-            self.am_embed.set_thumbnail(url=doujin.cover.src)
-            self.am_embed.set_image(url=Embed.Empty)
-        else:  # Image wasn't set yet
-            self.am_embed.set_thumbnail(url=doujin.cover.src)
 
-        self.active_message.embeds[0] = self.am_embed
 
         if not self.active_message:
             self.active_message = await self.ctx.send("...")
@@ -772,12 +774,12 @@ class SearchResultsBrowser:
                         return
                     
                     elif interaction.component.id == "zoom":
-                        emb = deepcopy(self.am_embed)
-                        if not emb.image:
-                            self.am_embed.set_image(url=emb.thumbnail.url)
+                        doujin = self.doujins[self.index]
+                        if self.am_embed.image.url == Embed.Empty:
+                            self.am_embed.set_image(url=doujin.cover.src)
                             self.am_embed.set_thumbnail(url=Embed.Empty)
-                        elif not emb.thumbnail:
-                            self.am_embed.set_thumbnail(url=emb.image.url)
+                        elif self.am_embed.thumbnail.url == Embed.Empty:
+                            self.am_embed.set_thumbnail(url=doujin.cover.src)
                             self.am_embed.set_image(url=Embed.Empty)
                         
                         await self.active_message.edit(embed=self.am_embed)

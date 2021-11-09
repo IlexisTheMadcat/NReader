@@ -304,7 +304,7 @@ class Commands(Cog):
                                 Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
                             ])
 
-                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id))
+                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), user_language=user_language)
                         response = await session.setup()
                         if response:
                             print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
@@ -385,26 +385,30 @@ class Commands(Cog):
         except KeyError:
             pass
         
-        conf = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)}"))
         nhentai_api = NHentai()
         if "--noappend" in query:
             query = query.replace("--noappend", "")
             appendage = ""
-        elif str(ctx.author.id) in self.bot.user_data["UserData"] and \
-            "Settings" in self.bot.user_data["UserData"][str(ctx.author.id)] and \
-            "SearchAppendage" in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"] and \
-            self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] != " ":
+        elif self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] != " ":
             appendage = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]
         else:
             appendage = ""
         
+        if "--showrestricted" in query:
+            query = query.replace("--showrestricted", "")
+        elif not lolicon_allowed:
+            appendage = appendage + " " + " ".join([f"-\"{tag}\"" for tag in restricted_tags])
+
+        conf = await ctx.send(embed=Embed(
+            description=localization[user_language]['search_doujins']['searching'].format(query=query, appendage=appendage)))
+
         page_raw = search(r"\-\-page=[0-9]+", query)
         if page_raw: 
             page = int(page_raw.group().split("=")[1])
             if not page:
                 return await conf.edit(content="", embed=Embed(
-                    title="❌ Invalid page number.",
-                    description="`0` (zero) is not a valid page number. Page number must be greater than zero."))
+                    title=localization[user_language]['search_doujins']['invalid_page']['title'],
+                    description=localization[user_language]['search_doujins']['invalid_page']['description']))
             else:
                 query = query.replace(page_raw.group(), '').strip(' ')
         else: 
@@ -415,8 +419,8 @@ class Commands(Cog):
             value = str(sort_raw.group().split("=")[1])
             if value not in ['today', 'week', 'month', 'popular', 'recent']:
                 return await conf.edit(content="", embed=Embed(
-                    title="❌ Invalid sort parameter.",
-                    description="That's not a method I can sort by. I can only support by popularity `today`, this `week`, this `month`, all time `popular` (default), or `recent`."))
+                    title=localization[user_language]['search_doujins']['invalid_sort']['title'],
+                    description=localization[user_language]['search_doujins']['invalid_sort']['description']))
             else:
                 query = query.replace(sort_raw.group(), '').strip(' ')
 
@@ -435,15 +439,15 @@ class Commands(Cog):
 
         if not query and not appendage:
             await conf.edit(content="", embed=Embed(
-                title="❌ Search is too broad. Say something.",
-                description="You need to tell me what to search, or update your search appendage (See `search_appendage` in `n!help`)."))
+                title=localization[user_language]['search_doujins']['too_broad']['title'],
+                description=localization[user_language]['search_doujins']['too_broad']['description']))
             
             return
 
         try:
             results = await nhentai_api.search(query=f"{query} {appendage}", sort=sort, page=page)
         except Exception:
-            await conf.edit(embed=Embed(description="❌ There was an unexpected error in your search. Typically, retrying doesn't work, so please try another search."))
+            await conf.edit(embed=Embed(description=localization[user_language]['search_doujins']['unexpected_error']))
             error = exc_info()
             await self.bot.errorlog.send(error, ctx=ctx, event="Doujin Search")
             return
@@ -461,9 +465,10 @@ class Commands(Cog):
         if not results.doujins:
             newline = "\n"
             await conf.edit(content='', embed=Embed(
-                title = "🔎❌ I did not find anything. Check your keywords!",
-                description = f"{newline+'`*️⃣` This may be the cause of your search appendage. See `search_appendage` in `n!help`, or add `--noappend` to bypass it.' if appendage else ''}"
-                              f'{newline+"`*️⃣` You have added a page number to your search (`--page#`). Please check that your page is within the total page count (check by searching without a page)." if page_raw else ""}'))
+                title = localization[user_language]['search_doujins']['no_results']['title'],
+                description = f"{newline+localization[user_language]['search_doujins']['no_results']['description']['appendage'] if appendage else ''}"
+                              f"{newline+localization[user_language]['search_doujins']['no_results']['description']['page'] if page_raw else ''}"
+                              f"{newline+localization[user_language]['search_doujins']['no_results']['description']['restricted_tags'] if any([tag in query for tag in restricted_tags]) and not lolicon_allowed else ''}"))
             return
         
         message_part = []
@@ -471,7 +476,7 @@ class Commands(Cog):
         thumbnail_url = self.bot.user.avatar_url
         for ind, dj in enumerate(results.doujins):
             if not lolicon_allowed and any([tag.name in restricted_tags for tag in dj.tags]):
-                message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
+                message_part.append(localization[user_language]['search_doujins']['contains_restricted_tags'])
             else:
                 message_part.append(
                     f"__`{str(dj.id).ljust(7)}`__ | "
@@ -481,20 +486,20 @@ class Commands(Cog):
                     thumbnail_url = dj.cover.src
             
         emb = Embed(
-            description=f"Showing page {page}/{results.total_pages if results.total_pages else '1'} ({results.total_results} doujins)"
-                        f"{'; illegal results are hidden:' if ctx.guild and not lolicon_allowed else ':'}"
-                        f"\n"+('\n'.join(message_part))
+            title=localization[user_language]['search_doujins']['search_results']['title'],
+            description=localization[user_language]['search_doujins']['search_results']['description'].format(
+                page=page, pages=results.total_pages if results.total_pages else 1, approximate=results.total_results, results='\n'.join(message_part))
         ).set_author(
             name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
-        ).set_thumbnail(url=thumbnail_url)
+        ).set_thumbnail(url=thumbnail_url if not minimal_details else Embed.Empty)
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         
         await conf.edit(embed=emb,
             components=[
-                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
+                [Button(label=localization[user_language]['search_doujins']['start_interactive'], style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
             ])
         
         try:
@@ -504,7 +509,7 @@ class Commands(Cog):
         except TimeoutError:
             await conf.edit(embed=emb,
                 components=[
-                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)
+                    Button(label=localization[user_language]['search_doujins']['start_interactive'], style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)
                 ])
             
             return
@@ -513,14 +518,14 @@ class Commands(Cog):
             if interaction.component.id == "stop":
                 await interaction.respond(type=7, embed=emb,
                     components=[
-                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                        Button(label=localization[user_language]['search_doujins']['start_interactive'], style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
                     )
             
                 return
 
             else:
                 await interaction.respond(type=6)
-                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details)
+                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
                 await interactive.start(ctx)
     
     @command(
@@ -814,11 +819,9 @@ class Commands(Cog):
                         await conf.delete()
                         break
 
-        if ctx.guild and not ctx.channel.is_nsfw():
-            await ctx.send(embed=Embed(
-                description="❌ This command cannot be used in a non-NSFW channel."))
-
-            return
+        minimal_details = False 
+        if ctx.guild and not ctx.channel.is_nsfw(): 
+            minimal_details = True
 
         lolicon_allowed = False
         try:
@@ -940,7 +943,7 @@ class Commands(Cog):
 
                 else:
                     await interaction.respond(type=6)
-                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, lolicon_allowed=lolicon_allowed)
+                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details)
                     await interactive.start(ctx)
 
             await edit.edit(embed=emb)
@@ -1545,6 +1548,217 @@ class Commands(Cog):
             else:
                 await ctx.send(embed=Embed(description="❌ Invalid mode passed. Valid modes are `add/a/+`, `remove/r/-`, `clear/c`, and `delete/del`."))
                 return
+
+    @command(
+        name=f"{experimental_prefix}recommend",
+        aliases=[
+            f"{experimental_prefix}rec",
+        ])
+    @bot_has_permissions(
+        send_messages=True,
+        embed_links=True)
+    async def recommended(self, ctx, query: str = ''):
+        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
+        if ctx.command.qualified_name not in localization[user_language]:
+            conf = await ctx.send(
+                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
+
+            while True:
+                try:
+                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
+                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+                except TimeoutError:
+                    await conf.edit(
+                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
+                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+                
+                    return
+            
+                else:
+                    try: await interaction.respond(type=6)
+                    except NotFound: continue
+
+                    if interaction.component.id == "continue":
+                        user_language = "eng"
+                        await conf.delete()
+                        break
+
+        lolicon_allowed = False
+        try:
+            if not ctx.guild or ctx.guild.id in self.bot.user_data["UserData"][str(ctx.guild.owner_id)]["Settings"]["UnrestrictedServers"]:
+                lolicon_allowed = True
+        except KeyError:
+            pass
+
+        if not self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["enabled"] or \
+            len(self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]) == 1:  # includes placeholder
+            emb = Embed(
+                title=f"History",
+                description="❌ You either do not have anything in your history, or you have it disabled. To toggle it, type and enter `n!l History toggle`."
+            ).set_author(
+                name="NHentai",
+                url="https://nhentai.net/",
+                icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+            
+            await ctx.send(embed=emb)
+            return
+
+        list_items = self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]
+        if "0" not in list_items:
+            if isinstance(list_items, list):
+                list_items.append("0")
+
+        nhentai_api = NHentai()
+        conf = await ctx.send(
+            embed=Embed(
+                description=f"Loading history... (1/2)"
+            ).set_author(
+                name="NHentai",
+                url=f"https://nhentai.net/",
+                icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
+            ).set_footer(
+                text=f"This part should take no more than 10 seconds."))
+
+        await sleep(1)
+
+        message_part = list()
+        remove_queue = list()  # It is very rare that a doujin would get deleted from NHentai
+            
+        doujins = list()
+        tally_tags = dict()
+        exclude_titles = list()
+        passed_placeholder = False
+        for ind, code in enumerate(list_items):
+            if passed_placeholder:
+                ind -= 1
+
+            bookmark_page = None
+            if isinstance(list_items, dict):  # Is the Bookmarks list
+                bookmark_page = list_items[code]
+
+            if code == "placeholder" or code == 0 or code == "0":
+                passed_placeholder = True
+                continue
+
+            doujin = await nhentai_api.get_doujin(code)
+            if not doujin:
+                remove_queue.append(code)
+                continue
+
+            tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
+            if any([tag in restricted_tags for tag in tags]): is_lolicon = True
+            else: is_lolicon = False
+            
+            for tag in tags:
+                if tag not in tally_tags: tally_tags.update({f"\"{tag}\"":1})
+                else: tally_tags.update({f"\"{tag}\"":tally_tags[tag]+1})
+
+            exclude_titles.append(f"-title:\"{doujin.title.english}\"")
+
+        [list_items.remove(code) for code in remove_queue]
+
+        tally_tags = sorted(tally_tags, key=lambda x: tally_tags[x])
+
+        minimal_details = False 
+        if ctx.guild and not ctx.channel.is_nsfw(): 
+            minimal_details = True
+
+        nhentai_api = NHentai()
+        if "--noappend" in query:
+            query = query.replace("--noappend", "")
+            appendage = ""
+        elif self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] != " ":
+            appendage = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]
+        else:
+            appendage = ""
+
+        if not lolicon_allowed:
+            appendage = appendage + " " + " ".join([f"-\"{tag}\"" for tag in restricted_tags])
+
+        await conf.edit(
+            embed=Embed(
+                description=f"Loading searches... (2/2)"
+            ).set_author(
+                name="NHentai",
+                url=f"https://nhentai.net/",
+                icon_url="https://cdn.discordapp.com/emojis/810936543401213953.gif?v=1"
+            ).set_footer(
+                text=f"This part should take no more than 10 seconds."))
+
+        successful_search_tries = 0
+        doujins = []
+        message_part = []
+        thumbnail_url = self.bot.user.avatar_url
+        for tag_str in tally_tags:
+            if successful_search_tries == 5:
+                break
+
+            try:
+                results = await nhentai_api.search(query=f"{tag_str} {appendage} {' '.join(exclude_titles)}")
+            except Exception:
+                continue
+
+            if not results.doujins:
+                continue
+
+            else:
+                doujins.append(results.doujins[0])
+                successful_search_tries += 1
+
+            dj = results.doujins[0]
+            quotemark = '"'
+            message_part.append(
+                f"**Because of your interest in __{tag_str.strip(quotemark)}__:**\n"
+                f"__`{str(dj.id).ljust(7)}`__ | {language_to_flag(dj.languages)} | {shorten(dj.title.pretty, width=50, placeholder='...')}\n")
+            if thumbnail_url == self.bot.user.avatar_url:
+                thumbnail_url = dj.cover.src
+
+            exclude_titles.append(f"-title:\"{dj.title.english}\"")
+
+            continue
+            
+        emb = Embed(
+            description=f"\n"+('\n'.join(message_part))
+        ).set_author(
+            name="NHentai",
+            url="https://nhentai.net/",
+            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
+        ).set_thumbnail(url=thumbnail_url)
+        
+        print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
+        
+        await conf.edit(embed=emb,
+            components=[
+                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
+            ])
+        
+        try:
+            interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
+                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
+
+        except TimeoutError:
+            await conf.edit(embed=emb,
+                components=[
+                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)
+                ])
+            
+            return
+
+        else:
+            if interaction.component.id == "stop":
+                await interaction.respond(type=7, embed=emb,
+                    components=[
+                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
+                    )
+            
+                return
+
+            else:
+                await interaction.respond(type=6)
+                interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details)
+                await interactive.start(ctx)
+
 
     @command(
         name=f"{experimental_prefix}search_appendage",
