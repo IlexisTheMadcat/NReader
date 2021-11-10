@@ -47,7 +47,8 @@ class BackgroundTasks(Cog):
         stop = default_timer()
 
         comptime = round((stop-start)*1000)
-        latency = round(self.bot.latency*1000)
+        try: latency = round(self.bot.latency*1000)
+        except OverflowError: latency = "{undefined}"
 
         status_channel = await self.bot.fetch_channel(907036398048116758)
         status_message = await status_channel.fetch_message(907036562427088976)
@@ -56,8 +57,6 @@ class BackgroundTasks(Cog):
             description=f"NHentai.net response time: {comptime} miliseconds\n"
                         f"Discord bot response time: {latency} miliseconds\n"
                         f"Server count (affects response time when larger): {len(self.bot.guilds)}\n"
-                        f"\n"
-                        f"Developers: <@331551368789622784> (Bot), <@310904374945775627> (Web API)"
         ).set_footer(text="Updates every 60 seconds."))
 
     @loop(seconds=297.5)
@@ -84,10 +83,10 @@ class BackgroundTasks(Cog):
         await self.bot.wait_until_ready()
         async with ClientSession() as session:
             async with session.post(f'https://api.discordextremelist.xyz/v2/bot/{self.bot.user.id}/stats',
-                headers={'Authorization': self.bot.auth['DEL_TOKEN'],
-                "Content-Type": 'application/json'},
-                data=dumps({'guildCount': len(self.bot.guilds)})
-            ) as r:
+            headers={'Authorization': self.bot.auth['DEL_TOKEN'], # Make sure you put your API Token Here
+            "Content-Type": 'application/json'},
+            data=dumps({'guildCount': len(self.bot.guilds)
+            })) as r:
                 js = await r.json()
                 if js['error'] == True:
                     print(f'Failed to post to discordextremelist.xyz\n{js}')
