@@ -1062,6 +1062,10 @@ class Commands(Cog):
                     await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
                     return
 
+                if not code:
+                    await ctx.send(embed=Embed(description="❌ Provide a code, damnit!"))
+                    return
+
                 try:
                     code = int(code)
                     code = str(code)
@@ -1141,6 +1145,10 @@ class Commands(Cog):
 
                 if len(target_list) >= 25: 
                     await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
+                    return
+
+                if not code:
+                    await ctx.send(embed=Embed(description="❌ Provide a code, damnit!"))
                     return
 
                 try:
@@ -1475,6 +1483,10 @@ class Commands(Cog):
 
                     if len(target_list) >= 25: 
                         await ctx.send(embed=Embed(description="❌ You cannot add more than 25 doujins to a list."))
+                        return
+
+                    if not code:
+                        await ctx.send(embed=Embed(description="❌ Provide a code, damnit!"))
                         return
 
                     try:
