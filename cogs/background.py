@@ -8,6 +8,7 @@ from discord.activity import Activity
 from discord.enums import ActivityType, Status
 from discord.ext.commands.cog import Cog
 from discord.ext.tasks import loop
+from discord.errors import NotFound
 from timeit import default_timer
 from NHentai.nhentai_async import NHentaiAsync as NHentai
 
@@ -50,8 +51,12 @@ class BackgroundTasks(Cog):
         try: latency = round(self.bot.latency*1000)
         except OverflowError: latency = "{undefined}"
 
-        status_channel = await self.bot.fetch_channel(907036398048116758)
-        status_message = await status_channel.fetch_message(907036562427088976)
+        try:
+            status_channel = await self.bot.fetch_channel(907036398048116758)
+            status_message = await status_channel.fetch_message(907036562427088976)
+        except NotFound:
+            await sleep(10)
+            return
 
         await status_message.edit(embed=Embed(
             description=f"NHentai.net response time: {comptime} miliseconds\n"
