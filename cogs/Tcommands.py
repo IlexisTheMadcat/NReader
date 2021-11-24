@@ -394,7 +394,7 @@ class Commands(Cog):
         else:
             appendage = ""
         
-        if "--showrestricted" in query:
+        if "--showrestricted" in query or lolicon_allowed:
             query = query.replace("--showrestricted", "")
             restricted_appendage = ""
         elif not lolicon_allowed:
