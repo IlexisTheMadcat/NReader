@@ -25,7 +25,7 @@ from utils.Tmisc import language_to_flag, restricted_tags, render_date
 from cogs.localization import *
 
 newline = "\n"
-experimental_prefix = "T"
+experimental_prefix = "T"  # One character only
 
 class Commands(Cog):
     def __init__(self, bot):
@@ -396,11 +396,12 @@ class Commands(Cog):
         
         if "--showrestricted" in query:
             query = query.replace("--showrestricted", "")
+            restricted_appendage = ""
         elif not lolicon_allowed:
-            appendage = appendage + " " + " ".join([f"-\"{tag}\"" for tag in restricted_tags])
+            restricted_appendage = " ".join([f"-\"{tag}\"" for tag in restricted_tags])
 
         conf = await ctx.send(embed=Embed(
-            description=localization[user_language]['search_doujins']['searching'].format(query=query, appendage=appendage)))
+            description=localization[user_language]['search_doujins']['searching'].format(query=query, appendage=appendage+" "+restricted_appendage)))
 
         page_raw = search(r"\-\-page=[0-9]+", query)
         if page_raw: 
@@ -445,7 +446,7 @@ class Commands(Cog):
             return
 
         try:
-            results = await nhentai_api.search(query=f"{query} {appendage}", sort=sort, page=page)
+            results = await nhentai_api.search(query=f"{query} {appendage} {restricted_appendage}", sort=sort, page=page)
         except Exception:
             await conf.edit(embed=Embed(description=localization[user_language]['search_doujins']['unexpected_error']))
             error = exc_info()
