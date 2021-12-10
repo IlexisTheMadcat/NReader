@@ -45,6 +45,8 @@ DATA_DEFAULTS = {
                 "ThumbnailPreference": 0
             },
 
+            "Recall": "N/A",
+
             # User collections
             # Dev note: When editing keys, also use the CTRL+SHIFT+F to replace respective keys in the project.
             "Lists": {
@@ -110,7 +112,6 @@ else:
     with open("Files/user_data.json", "r") as f:
         db = None
         user_data = load(f)
-
 
 # Check the database
 for key in DATA_DEFAULTS:
