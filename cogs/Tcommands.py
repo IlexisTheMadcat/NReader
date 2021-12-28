@@ -5,6 +5,7 @@ from textwrap import shorten
 from copy import deepcopy
 from contextlib import suppress
 
+import pytz
 from udpy import AsyncUrbanClient
 from discord import Forbidden, NotFound
 from discord.ext.commands import (
@@ -183,6 +184,10 @@ class Commands(Cog):
 
             return
 
+        # Create timestamp Discord markdown
+        utc = pytz.timezone("UTC")
+        timestamp = int(utc.localize(doujin.upload_at).timestamp())
+
         emb = Embed()
         emb.add_field(
             name=localization[user_language]['doujin_info']['fields']['title'],
@@ -195,7 +200,7 @@ class Commands(Cog):
         ).add_field(
             inline=False,
             name=localization[user_language]['doujin_info']['fields']['date_uploaded'],
-            value=f"`{render_date(doujin.upload_at, user_language)}`"
+            value=f"<t:{timestamp}>"
         ).add_field(
             inline=False,
             name=localization[user_language]['doujin_info']['fields']['languages'],

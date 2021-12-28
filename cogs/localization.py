@@ -88,7 +88,7 @@ localization = {
 					"ID || Pages",
 
 				"date_uploaded":
-					"Date uploaded",
+					"Date uploaded (UTC)",
 				"date_uploaded_weekdays": {
 					0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday",
 					4: "Thursday", 5: "Friday", 6: "Saturday"
@@ -401,7 +401,7 @@ localization = {
 					"身元 || ページ",
 
 				"date_uploaded":
-					"アップロード日",
+					"アップロード日(UTC)",
 				"date_uploaded_weekdays": {
 					0: "日", 1: "月", 2: "火", 3: "水",
 					4: "木", 5: "金", 6: "土"
@@ -610,7 +610,7 @@ localization = {
 					"鑑別 || 頁",
 
 				"date_uploaded":
-					"上傳日期",
+					"上傳日期(UTC)",
 				"date_uploaded_weekdays": {
 					0: "星期日", 1: "星期一", 2: "星期二", 3: "星期三",
 					4: "星期四", 5: "星期五", 6: "星期六"
