@@ -9,6 +9,8 @@ from discord.enums import ActivityType, Status
 from discord.ext.commands.cog import Cog
 from discord.ext.tasks import loop
 from discord.errors import NotFound
+from discord.ext.commands import is_owner
+from discord.ext.commands.core import command
 from timeit import default_timer
 from NHentai.nhentai_async import NHentaiAsync as NHentai
 
@@ -25,6 +27,31 @@ class BackgroundTasks(Cog):
 
         self.discords = DiscordsClient(bot, self.bot.auth["DISCORDS_TOKEN"])
         self.discords_update_stats.start()
+
+    @is_owner()
+    @command()
+    async def restart_task(self, ctx, task):
+        try: task_object = getattr(self, task)
+        except AttributeError: 
+            return await ctx.send(
+                embed=Embed(
+                    color=0xff0000,
+                    title="Task Not Found",
+                    description="The BackgroundTasks cog does not have a task by that name."))
+        try:
+            task_object.restart()
+        except AttributeError:
+            return await ctx.send(
+                embed=Embed(
+                    color=0xff0000,
+                    title="Task Not Found",
+                    description="The BackgroundTasks cog does not have a task by that name."))
+
+        return await ctx.send(
+            embed=Embed(
+                color=0x00ff00,
+                title="Task Restarted",
+                description=f"Restarted task `{task}`."))
 
     @loop(seconds=60)
     async def status_change(self):
@@ -80,7 +107,6 @@ class BackgroundTasks(Cog):
         self.bot.inactive = self.bot.inactive + 1
         time = datetime.now().strftime("%H:%M, %m/%d/%Y")
         print(f"[HRB: {time}] Running.")
-
     
     @loop(minutes=30)
     async def del_update_stats(self):

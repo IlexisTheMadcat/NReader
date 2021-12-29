@@ -5,7 +5,6 @@ from textwrap import shorten
 from copy import deepcopy
 from contextlib import suppress
 
-import pytz
 from udpy import AsyncUrbanClient
 from discord import Forbidden, NotFound
 from discord.ext.commands import (
@@ -19,14 +18,14 @@ from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbna
 
 from utils.classes import (
     Embed, BotInteractionCooldown)
-from cogs.Tclasses import (
+from cogs.classes import (
     ImagePageReader,
     SearchResultsBrowser)
-from utils.Tmisc import language_to_flag, restricted_tags, render_date
+from utils.misc import language_to_flag, restricted_tags, render_date
 from cogs.localization import *
 
 newline = "\n"
-experimental_prefix = "T"  # One character only
+experimental_prefix = ""  # One character only
 
 class Commands(Cog):
     def __init__(self, bot):
@@ -86,7 +85,7 @@ class Commands(Cog):
         embed_links=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -184,10 +183,6 @@ class Commands(Cog):
 
             return
 
-        # Create timestamp Discord markdown
-        utc = pytz.timezone("UTC")
-        timestamp = int(utc.localize(doujin.upload_at).timestamp())
-
         emb = Embed()
         emb.add_field(
             name=localization[user_language]['doujin_info']['fields']['title'],
@@ -200,7 +195,7 @@ class Commands(Cog):
         ).add_field(
             inline=False,
             name=localization[user_language]['doujin_info']['fields']['date_uploaded'],
-            value=f"<t:{timestamp}>"
+            value=f"`{render_date(doujin.upload_at, user_language)}`"
         ).add_field(
             inline=False,
             name=localization[user_language]['doujin_info']['fields']['languages'],
@@ -358,7 +353,7 @@ class Commands(Cog):
         embed_links=True)
     async def search_doujins(self, ctx, *, query: str = ""):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -402,7 +397,7 @@ class Commands(Cog):
         if "--showrestricted" in query or lolicon_allowed:
             query = query.replace("--showrestricted", "")
             restricted_appendage = ""
-        elif not lolicon_allowed:
+        else:
             restricted_appendage = " ".join([f"-\"{tag}\"" for tag in restricted_tags])
 
         conf = await ctx.send(embed=Embed(
@@ -546,7 +541,7 @@ class Commands(Cog):
         embed_links=True)
     async def popular(self, ctx):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -664,7 +659,7 @@ class Commands(Cog):
         embed_links=True)
     async def whitelist(self, ctx, mode=None):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -800,7 +795,7 @@ class Commands(Cog):
         embed_links=True)
     async def lists(self, ctx, name=None, mode=None, code=None):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -1577,7 +1572,7 @@ class Commands(Cog):
         embed_links=True)
     async def recommended(self, ctx, query: str = ''):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -1790,7 +1785,7 @@ class Commands(Cog):
         embed_links=True)
     async def search_appendage(self, ctx, *, appendage=""):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -1934,7 +1929,7 @@ class Commands(Cog):
         manage_roles=True)
     async def recall(self, ctx):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
@@ -2027,7 +2022,7 @@ class Commands(Cog):
         embed_links=True)
     async def urban_dictionary(self, ctx, *, word):
         user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1:len(ctx.command.qualified_name)] not in localization[user_language]:
+        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
             conf = await ctx.send(
                 embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
                 components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])

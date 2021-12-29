@@ -397,7 +397,7 @@ class Commands(Cog):
         if "--showrestricted" in query or lolicon_allowed:
             query = query.replace("--showrestricted", "")
             restricted_appendage = ""
-        elif not lolicon_allowed:
+        else:
             restricted_appendage = " ".join([f"-\"{tag}\"" for tag in restricted_tags])
 
         conf = await ctx.send(embed=Embed(
