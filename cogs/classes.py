@@ -130,7 +130,7 @@ class ImagePageReader:
                         self.parent.am_embed.set_thumbnail(url=Embed.Empty)
                         self.parent.am_embed.description=localization[self.parent.language]['page_reader']['finished']
 
-                        await self.parent.active_message.edit(embed=self.am_embed, view=None)
+                        await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
                         if self.parent.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl']:
                             self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl'].remove(self.parent.code)
                         
