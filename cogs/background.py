@@ -55,6 +55,13 @@ class BackgroundTasks(Cog):
 
     @loop(seconds=60)
     async def status_change(self):
+        # activity = Activity(
+        #     type=ActivityType.playing,
+        #     name=f"COMMANDS ARE BEING REWRITTEN. Most will be unavailable.")
+
+        # await self.bot.change_presence(activity=activity)
+        # return
+
         time = datetime.utcnow().strftime("%H:%M")
 
         if self.bot.inactive >= 5:

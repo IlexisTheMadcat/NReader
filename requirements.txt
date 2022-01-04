@@ -1,7 +1,7 @@
-discord==1.7.3
-discord_components==2.1.0
-firebase_admin
+#discord==2.0.0a
+git+https://github.com/Rapptz/discord.py@master
 discordspy
+expiringdict==1.2.1
+firebase_admin
 NHentai-API
 udpy
-pytz

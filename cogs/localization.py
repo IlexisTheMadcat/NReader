@@ -93,8 +93,6 @@ localization = {
 					0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday",
 					4: "Thursday", 5: "Friday", 6: "Saturday"
 				},
-				"date_uploaded_format":
-					"On {month_name} {day} ({weekday}), {year} at {hour}:{minute}{am_pm}",
 
 				"languages":
 					"Language(s) in this work",
@@ -138,7 +136,7 @@ localization = {
 			"opened":
 				"Opened"
 		},
-
+		
 		"page_reader": { 
 			"description": {
 				"previous":
@@ -406,8 +404,6 @@ localization = {
 					0: "日", 1: "月", 2: "火", 3: "水",
 					4: "木", 5: "金", 6: "土"
 				},
-				"date_uploaded_format":
-					"{year}年{month_numeral}月{day}日（{weekday}）- {am_pm}{hour}:{minute}",
 
 				"languages":
 					"同人誌言語",
@@ -615,8 +611,6 @@ localization = {
 					0: "星期日", 1: "星期一", 2: "星期二", 3: "星期三",
 					4: "星期四", 5: "星期五", 6: "星期六"
 				},
-				"date_uploaded_format":
-					"{year}年{month_numeral}月{day}日 ({weekday}) - {am_pm}{hour}:{minute}",  # 2006年1月29日
 
 				"languages":
 					"同人誌語言",
@@ -743,9 +737,9 @@ localization = {
 
 from discord.ext.commands.cog import Cog
 
-class Commands(Cog):
+class Localization(Cog):
     def __init__(self, bot):
         self.bot = bot
 
 def setup(bot):
-    bot.add_cog(Commands(bot))
+    bot.add_cog(Localization(bot))

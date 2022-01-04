@@ -413,7 +413,7 @@ class Commands(Cog):
         
         message_part = []
         doujins = []
-        thumbnail_url = self.bot.user.avatar_url
+        thumbnail_url = self.bot.user.avatar.url
         for ind, dj in enumerate(results.doujins):
             if not lolicon_allowed and any([tag.name in restricted_tags for tag in dj.tags]):
                 message_part.append("__`       `__ | ⚠🚫 | Contains restricted tags.")
@@ -422,7 +422,7 @@ class Commands(Cog):
                     f"__`{str(dj.id).ljust(7)}`__ | "
                     f"{language_to_flag(dj.languages)} | "
                     f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
-                if thumbnail_url == self.bot.user.avatar_url:
+                if thumbnail_url == self.bot.user.avatar.url:
                     thumbnail_url = dj.cover.src
             
         emb = Embed(

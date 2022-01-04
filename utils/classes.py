@@ -1,11 +1,10 @@
-# IMPORTS
 from os import getcwd
 from sys import exc_info
 from typing import List
+from asyncio import iscoroutinefunction
 
-from discord import (
-    Embed as DiscordEmbed)
-from discord_components import ComponentsBot as DiscordBot
+from discord import ui, Embed as DiscordEmbed
+from discord.ext.commands import Bot as DiscordBot
 from expiringdict import ExpiringDict
 
 
@@ -109,7 +108,6 @@ class BotInteractionCooldown(Exception):
     pass
 
 class Bot(DiscordBot):
-
     def __init__(self, *args, **kwargs):
         # Timer to track minutes since responded to a command.
         self.inactive = 0
@@ -206,3 +204,28 @@ class Bot(DiscordBot):
         
         else:
             return await super().wait_for(*args, **kwargs)
+
+
+class ViewConstructor(ui.View):
+    def __init__(self, parent_attrs=None, timeout=0, timeout_callback=None, view_classes=[]):
+        """
+        This constructor is for constructing Select views.
+        Must pass parent class `self` to use its features.
+        For a looping view, create the message editor as a separate function and call that function in the view_class callback. 
+        Pass the callback interaction and view_class's self.values into that function
+        """
+        self.timeout_callback = timeout_callback
+
+        super().__init__(timeout=timeout)
+        if not view_classes:
+            raise ValueError("View Items need to be provided.")
+
+        for view_class in view_classes:
+            self.add_item(view_class)
+
+    async def on_timeout(self):
+        if self.timeout_callback:
+            if iscoroutinefunction(self.timeout_callback):
+                await self.timeout_callback()
+            elif not iscoroutinefunction(self.timeout_callback):
+                self.timeout_callback()

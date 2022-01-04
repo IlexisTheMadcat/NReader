@@ -10,7 +10,6 @@ from discord.enums import Status
 from discord.permissions import Permissions
 from discord.utils import oauth_url
 from discord.ext.commands import ExtensionAlreadyLoaded
-from discord_components import ComponentsBot
 
 from utils.classes import Bot
 from utils.errorlog import ErrorLog
@@ -85,7 +84,20 @@ INIT_EXTENSIONS = [
     "events",
     "help",
     "repl",
-    #"web",
+]
+
+INIT_EXTENSIONS = [
+    "admin",
+    "background",
+    "commands",
+    "Tcommands",
+    "classes",
+    "Tclasses",
+    "events",
+    "help",
+    # "legacy.classes_reactions",
+    # "legacy.commands_reactions",
+    "repl",
 ]
 
 # 0 = use JSON
@@ -224,7 +236,7 @@ async def on_ready():
           f"| User ID:   {bot.user.id}\n"
           f"| Owner:     {bot.owner}\n"
           f"| Guilds:    {len(bot.guilds)}\n"
-          f"| OAuth URL: {oauth_url(app_info.id, permissions)}\n"
+          f"| OAuth URL: {oauth_url(app_info.id, permissions=permissions)}\n"
           f"#------------------------------#\n")
 
 if __name__ == "__main__":

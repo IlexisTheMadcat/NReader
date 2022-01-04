@@ -6,28 +6,40 @@ from copy import deepcopy
 from contextlib import suppress
 
 from udpy import AsyncUrbanClient
-from discord import Forbidden, NotFound
+from discord import ui, ButtonStyle, Forbidden
 from discord.ext.commands import (
     Cog, bot_has_permissions, 
     bot_has_guild_permissions, 
     command, cooldown, max_concurrency)
+from discord.ext.commands.core import is_owner
 from discord.ext.commands.cooldowns import BucketType
 from discord.ext.commands.errors import ExtensionNotLoaded
-from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
 
-from utils.classes import (
-    Embed, BotInteractionCooldown)
-from cogs.classes import (
+from utils.classes import Embed
+from cogs.Tclasses import (
     ImagePageReader,
     SearchResultsBrowser)
-from utils.misc import language_to_flag, restricted_tags, render_date
+from utils.Tmisc import language_to_flag, restricted_tags, render_date
 from cogs.localization import *
 
-newline = "\n"
-experimental_prefix = ""  # One character only
+"""
+# Experimental to Stable todo:
 
-class Commands(Cog):
+from cogs.Tclasses -> from cogs.classes
+from utils.Tmisc -> from utils.misc
+
+experimental_prefix = "T" -> experimental_prefix = ""
+
+class TCommands(Cog) -> class Commands(Cog)
+
+bot.add_cog(TCommands(bot)) -> bot.add_cog(Commands(bot))
+"""
+
+newline = "\n"
+experimental_prefix = "T"  # One character only
+
+class TCommands(Cog):
     def __init__(self, bot):
         self.bot = bot
     
@@ -45,32 +57,33 @@ class Commands(Cog):
             await ctx.send(embed=Embed(description="Done (2/3)."))
         except Exception:
             await ctx.send("(2/3) I can't send embeds in here.")
-        
-        conf = await ctx.send(embed=Embed(description="Waiting for button... (3/3)."),
-            components=[Button(label="Example.", style=1, emoji="🔘", id="button1")])
 
-        try:
-            interaction = await self.bot.wait_for("button_click", timeout=10, bypass_cooldown=True,
-                check=lambda i: \
-                    i.user.id == ctx.author.id and \
-                    i.message.id == conf.id and \
-                    i.component.id == "button1")
-        
-        except TimeoutError:
-            await conf.edit(embed=Embed(description="Button timed out (3/3)."),
-                components=[Button(label="Timeout.", style=4, emoji="🕒", id="button1", disabled=True)])
+        class TestButton(ui.View):
+            def __init__(self):
+                super().__init__(timeout=5)
+                self.value = None
+            
+            @ui.button(label="Click to test.", style=ButtonStyle.primary, emoji="🔘", custom_id="test")
+            async def continue_button(self, button, interaction):
+                if interaction.user.id == ctx.author.id:
+                    button.disabled = True
+                    button.label = "Success!"
+                    button.emoji = "✅"
+                    await interaction.response.edit_message(embed=Embed(description="Button complete. (3/3)"), view=self)
+                    self.value = True
+                    self.stop()
 
-        except Exception:
-            await conf.edit(embed=Embed(description="Button failed (3/3)."),
-                components=[Button(label="Failed.", style=4, emoji="⛔", id="button1", disabled=True)])
+            async def on_timeout(self):
+                self.children[0].disabled = True
+                self.children[0].label = "Timeout!"
+                self.children[0].emoji = "❌"
+                await self.message.edit(embed=Embed(description="Button timed out. (3/3)"), view=self)
+                self.stop()
         
-        else:
-            await conf.edit(embed=Embed(description="Button complete. (3/3)."),
-                components=[Button(label="Complete.", style=3, emoji="✅", id="button1")])
-            
-            await interaction.respond(type=6)
-            
-        
+        view = TestButton()
+        view.message = await ctx.send(embed=Embed(description="Waiting for button... (3/3)"), view=view)
+        await view.wait()
+
         print(f"{ctx.author} ({ctx.author.id}) tested.")
        
     @command(
@@ -84,31 +97,35 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def doujin_info(self, ctx, code="random", interface="new"):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         lolicon_allowed = False
         try:
@@ -195,7 +212,7 @@ class Commands(Cog):
         ).add_field(
             inline=False,
             name=localization[user_language]['doujin_info']['fields']['date_uploaded'],
-            value=f"`{render_date(doujin.upload_at, user_language)}`"
+            value=f"<t:{int(doujin.upload_at.timestamp())}>"
         ).add_field(
             inline=False,
             name=localization[user_language]['doujin_info']['fields']['languages'],
@@ -241,78 +258,54 @@ class Commands(Cog):
             url=f"https://nhentai.net/g/{doujin.id}/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
         emb.set_thumbnail(url=doujin.images[0].src)
-        
-        print(f"[HRB] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
 
-        if not ctx.guild or (ctx.guild and not all([
+        print(f"[HRB] {ctx.author} ({ctx.author.id}) looked up `{doujin.id}`.")
+        
+        class DoujinInfoControl(ui.View):
+            def __init__(self, bot):
+                super().__init__(timeout=30)
+                self.value = None
+                self.bot = bot
+            
+            if not ctx.guild or (ctx.guild and not all([
             ctx.guild.me.guild_permissions.manage_channels, 
             ctx.guild.me.guild_permissions.manage_roles, 
             ctx.guild.me.guild_permissions.manage_messages])):
-            await edit.edit(content="", embed=emb,
-                components=[
-                    [Button(label=localization[user_language]["doujin_info"]["need_permissions"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                    Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
-                ])
-        else:
-            await edit.edit(content="", embed=emb,
-                components=[
-                    [Button(label=localization[user_language]["doujin_info"]["read"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                    Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
-                ])
+                @ui.button(label=localization[user_language]["doujin_info"]["need_permissions"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853684136379416616), custom_id="button1", disabled=True)
+                async def read_button(self, button, interaction):
+                    return
 
-        while True:
-            try:
-                interaction = await self.bot.wait_for("button_click", timeout=60, 
-                    check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
-            
-            except TimeoutError:
-                emb.set_thumbnail(url=doujin.images[0].src)
-                emb.set_image(url=Embed.Empty)
-                
-                with suppress(NotFound):
-                    await edit.edit(embed=emb, 
-                        components=[
-                            [Button(label=localization[user_language]["doujin_info"]["read"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                            Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
-                        ])
-                
-                return
-            
-            except BotInteractionCooldown:
-                continue
-            
             else:
-                #await interaction.respond(type=6)
-                if interaction.component.id == "button1":
-                    with suppress(Forbidden):
-                        await edit.clear_reactions()
+                @ui.button(label=localization[user_language]["doujin_info"]["read"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853684136379416616), custom_id="button1")
+                async def read_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        if not ctx.guild or (ctx.guild and not all([
+                            ctx.guild.me.guild_permissions.manage_channels, 
+                            ctx.guild.me.guild_permissions.manage_roles, 
+                            ctx.guild.me.guild_permissions.manage_messages])):
+                            
+                            button.disabled = True
+                            button.label = localization[user_language]["doujin_info"]["need_permissions"]
+                            await interaction.respond.edit_message(embed=emb, view=self)
 
-                    if not ctx.guild or (ctx.guild and not all([
-                        ctx.guild.me.guild_permissions.manage_channels, 
-                        ctx.guild.me.guild_permissions.manage_roles, 
-                        ctx.guild.me.guild_permissions.manage_messages])):
-                        await ctx.send(embed=Embed(description=localization[user_language]["doujin_info"]["unexpected_loss"]), delete_after=5)
-                        continue
+                        else:
+                            emb.set_thumbnail(
+                                url=doujin.images[0].src)
+                            emb.set_image(url=Embed.Empty)
+                            button.disabled = True
+                            button.label = localization[user_language]["doujin_info"]["opened"]
+                            await interaction.response.edit_message(embed=emb, view=self)
 
-                    else:
-                        emb.set_thumbnail(
-                            url=doujin.images[0].src)
-                        emb.set_image(url=Embed.Empty)
-                        await interaction.respond(type=7, content="", embed=emb,
-                            components=[
-                                [Button(label=localization[user_language]["doujin_info"]["opened"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                                Button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2", disabled=True)]
-                            ])
+                            self.stop()
 
-                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), user_language=user_language)
-                        response = await session.setup()
-                        if response:
-                            print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
-                            await session.start()
-                    
-                        return
-                
-                if interaction.component.id == "button2":
+                            session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), user_language=user_language)
+                            response = await session.setup()
+                            if response:
+                                await session.start()
+
+            @ui.button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=ButtonStyle.secondary, emoji=self.bot.get_emoji(853684136433942560), custom_id="button2")
+            async def expand_thumbnail(self, button, interaction):
+                if interaction.user.id == ctx.author.id:
                     if not emb.image:
                         emb.set_image(url=emb.thumbnail.url)
                         emb.set_thumbnail(url=Embed.Empty)
@@ -322,25 +315,23 @@ class Commands(Cog):
                         emb.set_thumbnail(url=emb.image.url)
                         emb.set_image(url=Embed.Empty)
                         thumbnail_size = localization[user_language]["doujin_info"]["expand_thumbnail"]
-                    
-                    if not ctx.guild or (ctx.guild and not all([
-                        ctx.guild.me.guild_permissions.manage_channels, 
-                        ctx.guild.me.guild_permissions.manage_roles, 
-                        ctx.guild.me.guild_permissions.manage_messages])):
-                        await interaction.respond(type=7, content="", embed=emb,
-                            components=[
-                                [Button(label=localization[user_language]["doujin_info"]["need_permissions"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1", disabled=True),
-                                Button(label=f"{thumbnail_size}", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
-                            ])
-                    else:
-                        await interaction.respond(type=7, content="", embed=emb,
-                            components=[
-                                [Button(label=localization[user_language]["doujin_info"]["read"], style=1, emoji=self.bot.get_emoji(853684136379416616), id="button1"),
-                                Button(label=f"{thumbnail_size}", style=2, emoji=self.bot.get_emoji(853684136433942560), id="button2")]
-                            ])
 
-                    continue
+                    button.label = thumbnail_size
+                    await interaction.response.edit_message(embed=emb, view=self)
+
+            async def on_timeout(self):
+                for component in self.children:
+                    component.disabled = True
+                emb.set_thumbnail(url=doujin.images[0].src)
+                emb.set_image(url=Embed.Empty)
+                await view.message.edit(embed=emb, view=self)
+                self.stop()
+        
+        view = DoujinInfoControl(self.bot)
+        view.message = await edit.edit(embed=emb, view=view)
+        await view.wait()
     
+
     @command(
         name=f"{experimental_prefix}search_doujins",
         aliases=[
@@ -352,31 +343,35 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def search_doujins(self, ctx, *, query: str = ""):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         lolicon_allowed = False
         try:
@@ -474,7 +469,7 @@ class Commands(Cog):
         
         message_part = []
         doujins = []
-        thumbnail_url = self.bot.user.avatar_url
+        thumbnail_url = self.bot.user.avatar.url
         for ind, dj in enumerate(results.doujins):
             if not lolicon_allowed and any([tag.name in restricted_tags for tag in dj.tags]):
                 message_part.append(localization[user_language]['search_doujins']['contains_restricted_tags'])
@@ -483,7 +478,7 @@ class Commands(Cog):
                     f"__`{str(dj.id).ljust(7)}`__ | "
                     f"{language_to_flag(dj.languages)} | "
                     f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
-                if thumbnail_url == self.bot.user.avatar_url:
+                if thumbnail_url == self.bot.user.avatar.url:
                     thumbnail_url = dj.cover.src
             
         emb = Embed(
@@ -498,37 +493,31 @@ class Commands(Cog):
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         
-        await conf.edit(embed=emb,
-            components=[
-                [Button(label=localization[user_language]['search_doujins']['start_interactive'], style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
-            ])
-        
-        try:
-            interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-
-        except TimeoutError:
-            await conf.edit(embed=emb,
-                components=[
-                    Button(label=localization[user_language]['search_doujins']['start_interactive'], style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)
-                ])
+        class Interactive(ui.View):
+            def __init__(self, bot):
+                super().__init__(timeout=15)
+                self.bot = bot
+                self.value = None
             
-            return
+            @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
+            async def interactive_mode(self, button, interaction):
+                if interaction.user.id == ctx.author.id:
+                    await interaction.response.defer()
+                    self.stop()
 
-        else:
-            if interaction.component.id == "stop":
-                await interaction.respond(type=7, embed=emb,
-                    components=[
-                        Button(label=localization[user_language]['search_doujins']['start_interactive'], style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-                    )
-            
-                return
+                    interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
+                    await interactive.start(ctx)
 
-            else:
-                await interaction.respond(type=6)
-                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
-                await interactive.start(ctx)
-    
+            async def on_timeout(self):
+                self.children[0].disabled = True
+                await view.message.edit(embed=emb, view=self)
+                self.stop()
+
+        view = Interactive(self.bot)
+        view.message = await conf.edit(embed=emb, view=view)
+        await view.wait()
+
+
     @command(
         name=f"{experimental_prefix}popular",
         aliases=[
@@ -540,31 +529,35 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def popular(self, ctx):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         if ctx.guild and not ctx.channel.is_nsfw():
             await ctx.send(embed=Embed(
@@ -601,6 +594,10 @@ class Commands(Cog):
                     f"{language_to_flag(dj.languages)} | "
                     f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
 
+        minimal_details = False 
+        if ctx.guild and not ctx.channel.is_nsfw(): 
+            minimal_details = True
+
         emb = Embed(
             title=f"<:npopular:853883174455214102> **Popular Now**",
             description=f"\n"+('\n'.join(message_part)))
@@ -608,45 +605,38 @@ class Commands(Cog):
             name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-        
-        await conf.edit(embed=emb,
-            components=[
-                Button(label="Start Interactive (out of order)", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-            )
 
-        return  # out of order
-        
-        await conf.edit(embed=emb,
-            components=[
-                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
-            ])
-        
-        try:
-            interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-
-        except TimeoutError:
-            await conf.edit(embed=emb,
-                components=[
-                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-                )
+        class Interactive(ui.View):
+            def __init__(self, bot):
+                super().__init__(timeout=15)
+                self.bot = bot
+                self.value = None
             
-            return
+            @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
+            async def interactive_mode(self, button, interaction):
+                if interaction.user.id == ctx.author.id:
+                    await interaction.response.defer()
+                    self.stop()
+                    
+                    interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
+                    await interactive.start(ctx)
 
-        else:
-            if interaction.component.id == "stop":
-                await interaction.respond(type=7, embed=emb,
-                    components=[
-                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-                    )
-            
-                return
+            async def on_timeout(self):
+                self.children[0].disabled = True
+                await view.message.edit(embed=emb, view=self)
+                self.stop()
 
-            else:
-                await interaction.respond(type=6)
-                interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed)
-                await interactive.start(ctx)
-    
+        class Interaction(ui.View):
+            def __init__(self, bot):
+                super().__init__()
+                self.bot = bot
+                self.add_item(ui.Button(label="Start Interactive (out of order)", style=ButtonStyle.danger, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1", disabled=True))
+
+        view = Interactive(self.bot)
+        # out of order
+        view.message = await conf.edit(embed=emb, view=Interaction(self.bot))
+        await view.wait()
+        
     @command(
         name=f"{experimental_prefix}whitelist",
         aliases=[
@@ -658,31 +648,35 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def whitelist(self, ctx, mode=None):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -725,46 +719,45 @@ class Commands(Cog):
                             "Remember, admins can see what you read in your server. If you want to read in private, remove admins or create a new server.")
             
             emb.set_footer(text="If you still want to continue, press the 'I accept' button.")
-            
-            conf = await ctx.send(embed=emb,
-                components=[
-                    [Button(label="Accept", style=2, emoji="✅", id="button1"),
-                    Button(label="Decline", style=1, emoji="❌", id="button2")]])
-            
-            try:
-                interaction = await self.bot.wait_for('button_click', timeout=60, bypass_cooldown=True,
-                    check=lambda i: \
-                        i.message.id==conf.id and \
-                        i.user.id==ctx.author.id)
-            
-            except TimeoutError:
-                await conf.edit(embed=emb,
-                    components=[
-                        [Button(label="Accept", style=2, emoji="✅", id="button1", disabled=True),
-                        Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
-                
-                return
 
-            else:
-                if interaction.component.id == "button1":
-                    if ctx.guild.id not in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
+            class Agree(ui.View):
+                def __init__(self, bot):
+                    super().__init__(timeout=15)
+                    self.value = None
+                    self.bot = bot
+                
+                @ui.button(label="Accept", style=ButtonStyle.secondary, emoji="✅", custom_id="button1")
+                async def accept_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].append(ctx.guild.id)
-                    await interaction.respond(type=7, embed=Embed(
-                        title="Server Whitelisting",
-                        description="✅ This server can now access doujins that contain underage characters."),
-                        components=[
-                            [Button(label="Accepted", style=3, emoji="✅", id="button1", disabled=True),
-                             Button(label="Decline", style=1, emoji="❌", id="button2", disabled=True)]])
-                
-                if interaction.component.id == "button2":
-                    await interaction.respond(type=7, embed=Embed(
-                        title="Server Whitelisting",
-                        description="❌ Operation cancelled."),
-                        components=[
-                            [Button(label="Accept", style=2, emoji="✅", id="button1", disabled=True),
-                             Button(label="Declined", style=4, emoji="❌", id="button2", disabled=True)]])
 
-    
+                        emb.description="✅ This server can now access doujins that contain underage characters."
+                        button.label = "Accepted"
+                        for component in self.children:
+                            component.disabled = True
+                        await interaction.response.edit_message(embed=emb, view=self)
+                        self.stop()
+
+                @ui.button(label="Decline", style=ButtonStyle.primary, emoji="❌", custom_id="button2")
+                async def decline_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        emb.description="❌ Operation cancelled."
+                        button.label = "Declined"
+                        for component in self.children:
+                            component.disabled = True
+                        await interaction.response.edit_message(embed=emb, view=self)
+                        self.stop()
+
+                async def on_timeout(self):
+                    for component in self.children:
+                        component.disabled = True
+                    await view.message.edit(embed=emb, view=self)
+                    self.stop()
+
+            view = Agree(self.bot)
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+
         elif mode.lower() in ["remove", "r", "-"]:
             if ctx.guild.id in self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"]:
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].remove(ctx.guild.id)
@@ -794,31 +787,35 @@ class Commands(Cog):
         send_messages=True,
         embed_links=True)
     async def lists(self, ctx, name=None, mode=None, code=None):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         minimal_details = False 
         if ctx.guild and not ctx.channel.is_nsfw(): 
@@ -915,39 +912,31 @@ class Commands(Cog):
                 name="NHentai",
                 url="https://nhentai.net/",
                 icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+
+            class Interactive(ui.View):
+                def __init__(self, bot):
+                    super().__init__(timeout=15)
+                    self.bot = bot
+                    self.value = None
                 
-            await edit.edit(embed=emb,
-                components=[
-                    [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
-                ])
-        
-            try:
-                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                    check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
+                @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
+                async def interactive_mode(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+                        self.stop()
 
-            except TimeoutError:
-                await edit.edit(embed=emb,
-                    components=[
-                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-                    )
-            
-                return
+                        interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=self.message, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
+                        await interactive.start(ctx)
 
-            else:
-                if interaction.component.id == "stop":
-                    await interaction.respond(type=7, embed=emb,
-                        components=[
-                            Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-                        )
-            
-                    return
+                async def on_timeout(self):
+                    self.children[0].disabled = True
+                    await view.message.edit(embed=emb, view=self)
+                    self.stop()
 
-                else:
-                    await interaction.respond(type=6)
-                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=edit, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details)
-                    await interactive.start(ctx)
-
-            await edit.edit(embed=emb)
+            view = Interactive(self.bot)
+            view.message = await edit.edit(embed=emb, view=view)
+            await view.wait()
+            return
 
         if not name:
             built_in_str = []
@@ -1100,34 +1089,43 @@ class Commands(Cog):
 
             elif mode in ["clear", "c"]:
                 emb = Embed(
-                    title="Clearing An Occupied List",
+                    title="Clearing Favorites",
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
                                 f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
                                 f"**Number of doujins inside**: `{len(target_list)-1}`")
-                conf = await ctx.send(embed=emb,
-                    components=[
-                        [Button(label="Continue", style=4, id="button1"),
-                        Button(label="Cancel", style=2, id="button2")]])
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-        
-                except TimeoutError:
-                    await conf.edit(embed=emb,
-                        components=[
-                            [Button(label="Continue", style=4, id="button1", disabled=True),
-                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
-                        
-                else:
-                    if interaction.component.id == "button1":
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
 
-                    elif interaction.component.id == "button2":
-                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                class Confirm(ui.View):
+                    def __init__(self, bot):
+                        super().__init__(timeout=15)
+                        self.bot = bot
+                        self.value = None
+                    
+                    @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                    async def confirm_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
 
+                    @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
+                    async def cancel_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            emb = Embed(description=f"❌ Operation cancelled.")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
+
+                    async def on_timeout(self):
+                        for component in self.children:
+                            component.disabled = True
+                        await self.message.edit(embed=emb, view=self)
+                        self.stop()
+
+                view = Confirm(self.bot)
+                view.message = await ctx.send(embed=emb, view=view)
+                await view.wait()
                 return
 
         elif name in ["Read Later", "rl"]:
@@ -1185,34 +1183,43 @@ class Commands(Cog):
 
             elif mode in ["clear", "c"]:
                 emb = Embed(
-                    title="Clearing An Occupied List",
+                    title="Clearing Read Later",
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
                                 f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
                                 f"**Number of doujins inside**: `{len(target_list)-1}`")
-                conf = await ctx.send(embed=emb,
-                    components=[
-                        [Button(label="Continue", style=4, id="button1"),
-                        Button(label="Cancel", style=2, id="button2")]])
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-        
-                except TimeoutError:
-                    await conf.edit(embed=emb,
-                        components=[
-                            [Button(label="Continue", style=4, id="button1", disabled=True),
-                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
-                        
-                else:
-                    if interaction.component.id == "button1":
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
+                                
+                class Confirm(ui.View):
+                    def __init__(self, bot):
+                        super().__init__(timeout=15)
+                        self.bot = bot
+                        self.value = None
+                    
+                    @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                    async def confirm_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
 
-                    elif interaction.component.id == "button2":
-                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                    @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
+                    async def cancel_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            emb = Embed(description=f"❌ Operation cancelled.")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
 
+                    async def on_timeout(self):
+                        for component in self.children:
+                            component.disabled = True
+                        await self.message.edit(embed=emb, view=self)
+                        self.stop()
+
+                view = Confirm(self.bot)
+                view.message = await ctx.send(embed=emb, view=view)
+                await view.wait()
                 return
 
         elif name in ["Bookmarks", "bm"]:
@@ -1237,34 +1244,43 @@ class Commands(Cog):
 
             elif mode in ["clear", "c"]:
                 emb = Embed(
-                    title="Clearing An Occupied List",
+                    title="Clearing Bookmarks",
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
                                 f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
                                 f"**Number of doujins inside**: `{len(target_list)-1}`")
-                conf = await ctx.send(embed=emb,
-                    components=[
-                        [Button(label="Continue", style=4, id="button1"),
-                        Button(label="Cancel", style=2, id="button2")]])
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-        
-                except TimeoutError:
-                    await conf.edit(embed=emb,
-                        components=[
-                            [Button(label="Continue", style=4, id="button1", disabled=True),
-                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
-                        
-                else:
-                    if interaction.component.id == "button1":
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"0": 0}
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
 
-                    elif interaction.component.id == "button2":
-                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                class Confirm(ui.View):
+                    def __init__(self, bot):
+                        super().__init__(timeout=15)
+                        self.bot = bot
+                        self.value = None
+                    
+                    @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                    async def confirm_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
 
+                    @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
+                    async def cancel_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            emb = Embed(description=f"❌ Operation cancelled.")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
+
+                    async def on_timeout(self):
+                        for component in self.children:
+                            component.disabled = True
+                        await self.message.edit(embed=emb, view=self)
+                        self.stop()
+
+                view = Confirm(self.bot)
+                view.message = await ctx.send(embed=emb, view=view)
+                await view.wait()
                 return
 
         elif name in ["History", "his"]:
@@ -1289,34 +1305,43 @@ class Commands(Cog):
 
             elif mode in ["clear", "c"]:
                 emb = Embed(
-                    title="Clearing An Occupied List",
+                    title="Clearing History",
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
                                 f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
                                 f"**Number of doujins inside**: `{len(target_list)-1}`")
-                conf = await ctx.send(embed=emb,
-                    components=[
-                        [Button(label="Continue", style=4, id="button1"),
-                        Button(label="Cancel", style=2, id="button2")]])
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-        
-                except TimeoutError:
-                    await conf.edit(embed=emb,
-                        components=[
-                            [Button(label="Continue", style=4, id="button1", disabled=True),
-                            Button(label="Cancel", style=2, id="button2", disabled=True)]])
-                        
-                else:
-                    if interaction.component.id == "button1":
-                        self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name]["list"] = ["0"]
-                        await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
+                                
+                class Confirm(ui.View):
+                    def __init__(self, bot):
+                        super().__init__(timeout=15)
+                        self.bot = bot
+                        self.value = None
+                    
+                    @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                    async def confirm_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
 
-                    elif interaction.component.id == "button2":
-                        await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                    @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
+                    async def cancel_button(self, button, interaction):
+                        if interaction.user.id == ctx.author.id:
+                            emb = Embed(description=f"❌ Operation cancelled.")
+                            await interaction.response.edit_message(embed=emb, view=None)
+                            self.stop()
 
+                    async def on_timeout(self):
+                        for component in self.children:
+                            component.disabled = True
+                        await self.message.edit(embed=emb, view=self)
+                        self.stop()
+
+                view = Confirm(self.bot)
+                view.message = await ctx.send(embed=emb, view=view)
+                await view.wait()
                 return
         
             elif mode in ["toggle", "t"]:
@@ -1438,6 +1463,7 @@ class Commands(Cog):
                     if not len(target_list)-1:
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
                         await ctx.send(embed=Embed(description=f"✅ Deleted list **`{list_name}`** (empty list)."))
+                        return
 
                     else:
                         emb = Embed(
@@ -1448,34 +1474,37 @@ class Commands(Cog):
                                         f"{'**Alias**: **`'+alias_name+'`**'+newline if alias_name else ''}"
                                         f"**Number of doujins inside**: **`{len(target_list)-1}`**")
 
-                        conf = await ctx.send(embed=emb,
-                            components=[
-                                [Button(label="Continue", style=4, id="button1"),
-                                Button(label="Cancel", style=2, id="button2")]])
-        
-                        try:
-                            interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
-                                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-        
-                        except TimeoutError:
-                            await conf.edit(embed=emb,
-                                components=[
-                                    [Button(label="Continue", style=4, id="button1", disabled=True),
-                                    Button(label="Cancel", style=2, id="button2", disabled=True)]])
-            
-                            return
-        
-                        else:
-                            if interaction.component.id == "button1":
-                                self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
-                                emb.description = f"✅ Deleted list **`{list_name}`** (disbanded **`{len(target_list)-1}`** doujins)."
-                                await interaction.respond(type=7, embed=emb, components=[])
-            
+                        class Confirm(ui.View):
+                            def __init__(self, bot):
+                                super().__init__(timeout=15)
+                                self.bot = bot
+                                self.value = None
                             
-                            elif interaction.component.id == "button2":
-                                emb.description = f"❌ Operation cancelled."
-                                await interaction.respond(type=7, embed=emb, components=[])
-                    return
+                            @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                            async def confirm_button(self, button, interaction):
+                                if interaction.user.id == ctx.author.id:
+                                    self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category].pop(full_name)
+                                    emb = Embed(description=f"✅ Deleted **`{list_name}`** (disbanded **`{len(target_list)-1}`** doujins).")
+                                    await interaction.response.edit_message(embed=emb, view=None)
+                                    self.stop()
+
+                            @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
+                            async def cancel_button(self, button, interaction):
+                                if interaction.user.id == ctx.author.id:
+                                    emb = Embed(description=f"❌ Operation cancelled.")
+                                    await interaction.response.edit_message(embed=emb, view=None)
+                                    self.stop()
+
+                            async def on_timeout(self):
+                                for component in self.children:
+                                    component.disabled = True
+                                await self.message.edit(embed=emb, view=self)
+                                self.stop()
+
+                        view = Confirm(self.bot)
+                        view.message = await ctx.send(embed=emb, view=view)
+                        await view.wait()
+                        return
 
                 elif mode in ["add", "a", "+"]:
                     if code in target_list:
@@ -1530,28 +1559,37 @@ class Commands(Cog):
                                     f"**Name**: **{list_name}**\n"
                                     f"{'**Alias**: **`'+alias_name+'`**'+newline if alias_name else ''}"
                                     f"**Number of doujins inside**: **`{len(target_list)-1}`**")
-                    conf = await ctx.send(embed=emb,
-                        components=[
-                            [Button(label="Continue", style=4, id="button1"),
-                            Button(label="Cancel", style=2, id="button2")]])
-                    try:
-                        interaction = await self.bot.wait_for("button_click", timeout=20, bypass_cooldown=True, 
-                            check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-        
-                    except TimeoutError:
-                        await conf.edit(embed=emb,
-                            components=[
-                                [Button(label="Continue", style=4, id="button1", disabled=True),
-                                Button(label="Cancel", style=2, id="button2", disabled=True)]])
+                                    
+                    class Confirm(ui.View):
+                        def __init__(self, bot):
+                            super().__init__(timeout=15)
+                            self.bot = bot
+                            self.value = None
                         
-                    else:
-                        if interaction.component.id == "button1":
-                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                            await interaction.respond(type=7, embed=Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins)."), components=[])
+                        @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                        async def confirm_button(self, button, interaction):
+                            if interaction.user.id == ctx.author.id:
+                                self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                                emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                                await interaction.response.edit_message(embed=emb, view=None)
+                                self.stop()
 
-                        elif interaction.component.id == "button2":
-                            await interaction.respond(type=7, embed=Embed(description=f"❌ Operation cancelled."), components=[])
+                        @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
+                        async def cancel_button(self, button, interaction):
+                            if interaction.user.id == ctx.author.id:
+                                emb = Embed(description=f"❌ Operation cancelled.")
+                                await interaction.response.edit_message(embed=emb, view=None)
+                                self.stop()
 
+                        async def on_timeout(self):
+                            for component in self.children:
+                                component.disabled = True
+                            await self.message.edit(embed=emb, view=self)
+                            self.stop()
+
+                    view = Confirm(self.bot)
+                    view.message = await ctx.send(embed=emb, view=view)
+                    await view.wait()
                     return
 
                 elif not mode:
@@ -1571,31 +1609,35 @@ class Commands(Cog):
         send_messages=True,
         embed_links=True)
     async def recommended(self, ctx, query: str = ''):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         lolicon_allowed = False
         try:
@@ -1702,7 +1744,7 @@ class Commands(Cog):
         successful_search_tries = 0
         doujins = []
         message_part = []
-        thumbnail_url = self.bot.user.avatar_url
+        thumbnail_url = self.bot.user.avatar.url
         for tag_str in tally_tags:
             if successful_search_tries == 5:
                 break
@@ -1724,7 +1766,7 @@ class Commands(Cog):
             message_part.append(
                 f"**Because of your interest in __{tag_str.strip(quotemark)}__:**\n"
                 f"__`{str(dj.id).ljust(7)}`__ | {language_to_flag(dj.languages)} | {shorten(dj.title.pretty, width=50, placeholder='...')}\n")
-            if thumbnail_url == self.bot.user.avatar_url:
+            if thumbnail_url == self.bot.user.avatar.url:
                 thumbnail_url = dj.cover.src
 
             exclude_titles.append(f"-title:\"{dj.title.english}\"")
@@ -1741,36 +1783,29 @@ class Commands(Cog):
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         
-        await conf.edit(embed=emb,
-            components=[
-                [Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")]
-            ])
-        
-        try:
-            interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-
-        except TimeoutError:
-            await conf.edit(embed=emb,
-                components=[
-                    Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)
-                ])
+        class Interactive(ui.View):
+            def __init__(self, bot):
+                super().__init__(timeout=15)
+                self.bot = bot
+                self.value = None
             
-            return
+            @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
+            async def interactive_mode(self, button, interaction):
+                if interaction.user.id == ctx.author.id:
+                    await interaction.response.defer()
+                    self.stop()
 
-        else:
-            if interaction.component.id == "stop":
-                await interaction.respond(type=7, embed=emb,
-                    components=[
-                        Button(label="Start Interactive", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1", disabled=True)]
-                    )
-            
-                return
+                    interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
+                    await interactive.start(ctx)
 
-            else:
-                await interaction.respond(type=6)
-                interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details)
-                await interactive.start(ctx)
+            async def on_timeout(self):
+                self.children[0].disabled = True
+                await view.message.edit(embed=emb, view=self)
+                self.stop()
+
+        view = Interactive(self.bot)
+        view.message = await conf.edit(embed=emb, view=view)
+        await view.wait()
 
 
     @command(
@@ -1784,31 +1819,35 @@ class Commands(Cog):
         send_messages=True,
         embed_links=True)
     async def search_appendage(self, ctx, *, appendage=""):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         if appendage and appendage != "clear_appendage":
             emb = embed=Embed(
@@ -1822,33 +1861,34 @@ class Commands(Cog):
                               f"Brackets not included. Press `Update` to confirm.")
             emb.set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command.")
 
-            conf = await ctx.send(embed=emb,
-                components=[Button(label="Update", style=1, emoji="💾", id="button1")])
+            class Confirm(ui.View):
+                def __init__(self, bot):
+                    super().__init__(timeout=15)
+                    self.bot = bot
+                    self.value = None
                 
-            try:
-                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                    check=lambda i: i.message.id==conf.id and \
-                        i.user.id==ctx.author.id and \
-                        i.component.id=="button1")
-
-            except TimeoutError:
-                await conf.edit(embed=emb,
-                    components=[Button(label="Update", style=1, emoji="💾", id="button1", disabled=True)])
-                    
-                return
-
-            else:
-                self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = appendage
+                @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                async def confirm_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = appendage
                 
-                await interaction.respond(type=7, embed=Embed(
-                    title = "Search Appendage Updated",
-                    description = f"✅ The following string will now be appended to all of your searches:\n"
-                                  f"```{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}```\n"
-                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."),
-                components=[Button(label="Updated", style=3, emoji="💾", id="button1", disabled=True)])
-        
-                return
+                        emb = Embed(
+                            title = "Search Appendage Updated",
+                            description = f"✅ The following string will now be appended to all of your searches:\n"
+                                          f"```{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}```\n"
+                        ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command.")
+                        await interaction.response.edit_message(embed=emb, view=None)
+                        self.stop()
 
+                async def on_timeout(self):
+                    for component in self.children:
+                        component.disabled = True
+                    await self.message.edit(embed=emb, view=self)
+                    self.stop()
+
+            view = Confirm(self.bot)
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
                 
         elif appendage == "clear_appendage":
             if not self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]:
@@ -1865,39 +1905,39 @@ class Commands(Cog):
                               f"- [{self.bot.user_data['UserData'][str(ctx.author.id)]['Settings']['SearchAppendage']}]\n"
                               f"```\n"
                               f"Brackets not included. Press `Update` to confirm.")
-            
             emb.set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command.")
             
-            conf = await ctx.send(embed=emb,
-                components=[Button(label="Erase", style=4, emoji="💾", id="button1")])
+            class Confirm(ui.View):
+                def __init__(self, bot):
+                    super().__init__(timeout=15)
+                    self.bot = bot
+                    self.value = None
                 
-            try:
-                interaction = await self.bot.wait_for('button_click', timeout=20, bypass_cooldown=True,
-                    check=lambda i: i.message.id==conf.id and \
-                        i.user.id==ctx.author.id and \
-                        i.component.id=="button1")
-
-            except TimeoutError:
-                await conf.edit(embed=emb,
-                    components=[Button(label="Erase", style=4, emoji="💾", id="button1", disabled=True)])
-                    
-                return
-
-            else:
-                old = deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"])
-                self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = ""
+                @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+                async def confirm_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        old = deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"])
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = " "
                 
-                await interaction.respond(type=7, embed=Embed(
-                    title = "Search Appendage Erased",
-                    description = f"✅ Nothing will be added to your searches.\n"
-                                  f"```diff\n"
-                                  f"- [{old}]\n"
-                                  f"```\n"
-                ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command."),
-                components=[Button(label="Erased", style=3, emoji="💾", id="button1", disabled=True)])
+                        emb = Embed(
+                            title = "Search Appendage Erased",
+                            description = f"✅ Nothing will be added to your searches.\n"
+                                        f"```diff\n"
+                                        f"- [{old}]\n"
+                                        f"```\n"
+                        ).set_footer(text="Please note that this will be appended to searches in all cases, so if you have unexpected results, check back on this command.")
+                        await interaction.response.edit_message(embed=emb, view=None)
+                        self.stop()
+
+                async def on_timeout(self):
+                    for component in self.children:
+                        component.disabled = True
+                    await self.message.edit(embed=emb, view=self)
+                    self.stop()
         
-
-                return
+            view = Confirm(self.bot)
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
 
         else:
             if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"]:
@@ -1928,31 +1968,35 @@ class Commands(Cog):
         manage_channels=True, 
         manage_roles=True)
     async def recall(self, ctx):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         if not ctx.guild:
             await ctx.send(embed=Embed(
@@ -1999,16 +2043,18 @@ class Commands(Cog):
                 description="⚠️⛔ You can't recall your doujin here. Did you think you could wormhole like that?"))
 
         session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), starting_page=int(page))
+        await edit.edit(embed=Embed(description="<:nhentai:845298862184726538> Successfully recalled."))
+        self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
         response = await session.setup()
         if response:
             self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = "N/A"
             
-            await edit.edit(embed=Embed(description="<:nhentai:845298862184726538> Successfully recalled."))
             print(f"[HRB] {ctx.author} ({ctx.author.id}) started reading `{doujin.id}`.")
             await session.start()
         
         else:
-            await edit.edit(embed=Embed(description="❌ You didn't answer the recall in time. Run this command again."))
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Recall"] = f"{code}*n*{page}"
+            await edit.edit(embed=Embed(description="❌ You didn't answer the recall in time. It has been reapplied to your profile."))
         
         return
 
@@ -2021,31 +2067,35 @@ class Commands(Cog):
         send_messages=True, 
         embed_links=True)
     async def urban_dictionary(self, ctx, *, word):
-        user_language = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]
-        if ctx.command.qualified_name[1 if experimental_prefix else 0:len(ctx.command.qualified_name)] not in localization[user_language]:
-            conf = await ctx.send(
-                embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue")])
-
-            while True:
-                try:
-                    interaction = await self.bot.wait_for("button_click", timeout=15, bypass_cooldown=True,
-                        check=lambda i: i.message.id==conf.id and i.user.id==ctx.author.id)
-                except TimeoutError:
-                    await conf.edit(
-                        embed=Embed(description=localization[user_language]["language_not_available"]["description"]).set_footer(text=localization[user_language]["language_not_available"]["footer"]),
-                        components=[Button(label=localization[user_language]["language_not_available"]["button"], style=2, emoji="▶️", id="continue", disabled=True)])
+        # This tells the user that the command they are trying to use isn't translated yet.
+        user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
+        if ctx.command.qualified_name not in localization[user_language["lang"]]:
+            class Continue(ui.View):
+                def __init__(self):
+                    super().__init__(timeout=15)
+                    self.value = None
                 
-                    return
-            
-                else:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
+                @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
+                async def continue_button(self, button, interaction):
+                    if interaction.user.id == ctx.author.id:
+                        user_language["lang"] = "eng"
+                        await self.message.delete()
+                        self.value = True
+                        self.stop()
 
-                    if interaction.component.id == "continue":
-                        user_language = "eng"
-                        await conf.delete()
-                        break
+                async def on_timeout(self):
+                    await self.message.delete()
+                    self.stop()
+
+            emb = Embed(
+                description=localization[user_language["lang"]]["language_not_available"]["description"]
+            ).set_footer(text=localization[user_language["lang"]]["language_not_available"]["footer"])
+            view = Continue()
+            view.message = await ctx.send(embed=emb, view=view)
+            await view.wait()
+            if not view.value:
+                return
+        user_language = user_language["lang"]
 
         edit = await ctx.send(embed=Embed(
             color=0x1d2439,
@@ -2092,151 +2142,143 @@ class Commands(Cog):
                 res.example_lines[ind] = ex.strip(" ")
 
 
-        current_def = 0
+        current_def = {"index": 0}
         examples_part = []
-        for ind, example in enumerate(response[current_def].example_lines):
+        for ind, example in enumerate(response[current_def["index"]].example_lines):
             examples_part.append(f"> *{example}*")
 
-        if len(response) > 1:
-            await edit.edit(
-                embed=Embed(
-                    color=0x1d2439,
-                    title=response[current_def].word,
-                    description=f"{response[current_def].definition}\n"
-                                f"\n"
-                                f"{newline.join(examples_part)}\n"
-                                f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                                f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
-                ).set_author(
-                    name="Urban Dictionary",
-                    url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                    icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
+        emb = Embed(
+            color=0x1d2439,
+            title=response[current_def['index']].word,
+            description=f"{response[current_def['index']].definition}\n"
+                        f"\n"
+                        f"{newline.join(examples_part)}\n"
+                        f"{self.bot.get_emoji(274492025678856192)}{response[current_def['index']].upvotes} "
+                        f"{self.bot.get_emoji(274492025720537088)}{response[current_def['index']].downvotes}"
+        ).set_author(
+            name="Urban Dictionary",
+            url=f"https://www.urbandictionary.com/define.php?term={response[current_def['index']].word.replace(' ', '%20')}",
+            icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"
+        ).set_footer(text=f"[ {current_def['index']+1}/{len(response)} ]")
+
+        class UrbanDictionaryView(ui.View):
+            def __init__(self, bot):
+                super().__init__(timeout=30)
+                self.bot = bot
+                self.value = None
             
-                components=[[
-                    Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
-                    Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]
-                ])
+            @ui.button(label="Previous", style=ButtonStyle.primary, emoji="◀️", custom_id="button1", disabled=True if len(response) <=1 else False)
+            async def previous_button(self, button, interaction):
+                if interaction.user.id == ctx.author.id:
+                    if current_def["index"] == 0:
+                        current_def["index"] = len(response)-1
+                    else:
+                        current_def["index"] = current_def["index"] - 1
 
-        else:
-            await edit.edit(
-                embed=Embed(
-                    color=0x1d2439,
-                    title=response[current_def].word,
-                    description=f"{response[current_def].definition}\n"
-                                f"\n"
-                                f"{newline.join(examples_part)}\n"
-                                f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                                f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
-                ).set_author(
-                    name="Urban Dictionary",
-                    url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                    icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
-            
-                components=[[
-                    Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
-                    Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                    Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]
-                ])
-
-        while len(response) > 1:
-            try:
-                interaction = await self.bot.wait_for("button_click", timeout=60, 
-                    check=lambda i: i.message.id==edit.id and i.user.id==ctx.author.id)
-
-            except TimeoutError:
-                examples_part = []
-                for example in response[current_def].example_lines:
-                    examples_part.append(f"> *{example}*")
-
-                await edit.edit(
-                    embed=Embed(
+                    emb = Embed(
                         color=0x1d2439,
-                        title=response[current_def].word,
-                        description=f"{response[current_def].definition}\n"
+                        title=response[current_def['index']].word,
+                        description=f"{response[current_def['index']].definition}\n"
                                     f"\n"
                                     f"{newline.join(examples_part)}\n"
-                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def['index']].upvotes} "
+                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def['index']].downvotes}"
                     ).set_author(
                         name="Urban Dictionary",
-                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
-            
-                    components=[[
-                        Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True),
-                        Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]
-                    ])
+                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def['index']].word.replace(' ', '%20')}",
+                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"
+                    ).set_footer(text=f"[ {current_def['index']+1}/{len(response)} ]")
+                    await interaction.response.edit_message(embed=emb, view=self)
 
-            except BotInteractionCooldown:
-                continue
+            @ui.button(label=f"[ ----- ]", style=ButtonStyle.secondary, custom_id="button0", disabled=True)
+            async def display_button(self, button, interaction):
+                return
 
-            else:
-                if interaction.component.id == "button1":
-                    if current_def == 0:
-                        current_def = len(response)-1
+            @ui.button(label="Next", style=ButtonStyle.primary, emoji="▶️", custom_id="button2", disabled=True if len(response) <=1 else False)
+            async def next_button(self, button, interaction):
+                if interaction.user.id == ctx.author.id:
+                    if current_def["index"] == len(response)-1:
+                        current_def["index"] = 0
                     else:
-                        current_def = current_def - 1
+                        current_def["index"] = current_def["index"] + 1
 
-                elif interaction.component.id == "button2":
-                    if current_def == len(response)-1:
-                        current_def = 0
-                    else:
-                        current_def = current_def + 1
-
-                elif interaction.component.id == "stop":
-                    examples_part = []
-                    for example in response[current_def].example_lines:
-                        examples_part.append(f"> *{example}*")
-
-                    await interaction.respond(type=7, 
-                        embed=Embed(
-                            color=0x1d2439,
-                            title=response[current_def].word,
-                            description=f"{response[current_def].definition}\n"
-                                        f"\n"
-                                        f"{newline.join(examples_part)}\n"
-                                        f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                                        f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
-                        ).set_author(
-                            name="Urban Dictionary",
-                            url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                            icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
-            
-                        components=[[
-                            Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True),
-                            Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                            Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True)]
-                        ])
-
-                    return
-
-                examples_part = []
-                for example in response[current_def].example_lines:
-                    examples_part.append(f"> *{example}*")
-
-                await interaction.respond(type=7, 
-                    embed=Embed(
+                    emb = Embed(
                         color=0x1d2439,
-                        title=response[current_def].word,
-                        description=f"{response[current_def].definition}\n"
+                        title=response[current_def['index']].word,
+                        description=f"{response[current_def['index']].definition}\n"
                                     f"\n"
                                     f"{newline.join(examples_part)}\n"
-                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def].upvotes} "
-                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def].downvotes}"
+                                    f"{self.bot.get_emoji(274492025678856192)}{response[current_def['index']].upvotes} "
+                                    f"{self.bot.get_emoji(274492025720537088)}{response[current_def['index']].downvotes}"
                     ).set_author(
                         name="Urban Dictionary",
-                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def].word.replace(' ', '%20')}",
-                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"),
-            
-                    components=[[
-                        Button(label="Previous", style=2 if current_def<=0 else 1, emoji="◀️", id="button1", disabled=True if len(response) <=1 else False),
-                        Button(label=f"[ {current_def+1}/{len(response)} ]", style=2, id="button0", disabled=True),
-                        Button(label="Next", style=2 if current_def>=len(response)-1 else 1, emoji="▶️", id="button2", disabled=True if len(response) <=1 else False)]
-                   ])
+                        url=f"https://www.urbandictionary.com/define.php?term={response[current_def['index']].word.replace(' ', '%20')}",
+                        icon_url="https://cdn.discordapp.com/attachments/655456170391109663/867163805535961109/favicons.png"
+                    ).set_footer(text=f"[ {current_def['index']+1}/{len(response)} ]")
+                    await interaction.response.edit_message(embed=emb, view=self)
 
-                continue
+            async def on_timeout(self):
+                await udclient.session.close()
+                await self.message.edit(embed=emb, view=None)
+                self.stop()
+
+        view = UrbanDictionaryView(self.bot)
+        view.message = await edit.edit(embed=emb, view=view)
+        await view.wait()
+
+    @command(
+        name=f"{experimental_prefix}reset_my_data",
+        aliases=[
+            f"{experimental_prefix}reset", 
+            f"{experimental_prefix}rs"])
+    @bot_has_permissions(
+        send_messages=True, 
+        embed_links=True)
+    async def reset_user_data(self, ctx):
+        class ConfirmReset(ui.View):
+            def __init__(self, bot, ctx):
+                super().__init__(timeout=15)
+                self.value = None
+                self.bot = bot
+                self.ctx = ctx
+            
+            @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
+            async def confirm_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    self.bot.user_data["UserData"].pop(str(self.ctx.author.id))
+                    print(f"[HRB] {ctx.author} ({ctx.author.id}) popped their data from NReader.")
+                    emb = Embed(
+                        title="✅ Reset Success",
+                        description="Your data has been removed. Thank you for using NReader!"
+                    )
+                    await interaction.response.edit_message(embed=emb, view=None)
+                    self.stop()
+
+            @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
+            async def cancel_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    emb = Embed(
+                        title="<:nhentai:845298862184726538> Reset Cancelled",
+                        description="Your data hasn't been touched."
+                    )
+                    await interaction.response.edit_message(embed=emb, view=None)
+                    self.stop()
+
+            async def on_timeout(self):
+                for component in self.children:
+                    component.disabled = True
+                await self.message.edit(embed=emb, view=self)
+                self.stop()
+
+        emb = Embed(
+            title="⚠️ Resetting User Data",
+            description="You've requested to remove all of your data from NReader's database.\n"
+                        "If you wish to continue, press Confirm. To leave your data untouched, press Cancel."
+        )
+        view = ConfirmReset(self.bot, ctx)
+        view.message = await ctx.send(embed=emb, view=view)
+        await view.wait()
+        return
 
     @whitelist.before_invoke
     @search_appendage.before_invoke
@@ -2264,4 +2306,4 @@ class Commands(Cog):
 
 
 def setup(bot):
-    bot.add_cog(Commands(bot))
+    bot.add_cog(TCommands(bot))

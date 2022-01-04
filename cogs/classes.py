@@ -6,12 +6,13 @@ from contextlib import suppress
 from typing import List
 
 from discord import (
-    Message, TextChannel,
-    Forbidden, NotFound)
+    interactions, ui, ButtonStyle, Message, 
+    TextChannel, Forbidden, NotFound)
+from discord.components import Button
+from discord.ui import view
 from discord.utils import get
 from discord.ext.commands import Context
 from discord.ext.commands.cog import Cog
-from discord_components import Button
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
@@ -22,11 +23,23 @@ from utils.misc import (
     restricted_tags)
 from cogs.localization import *
 
+"""
+# Experimental to Stable todo:
+
+from utils.Tmisc -> from utils.misc
+
+class TClasses(Cog) -> class Classes(Cog)
+
+bot.add_cog(TClasses(bot)) -> bot.add_cog(Classes(bot))
+"""
+
 newline = "\n"
+
 
 class Classes(Cog):
     def __init__(self, bot):
         self.bot = bot
+
 
 class ImagePageReader:
     def __init__(self, bot: Bot, ctx: Context, images:list, name:str, code:str, **kwargs):
@@ -59,9 +72,9 @@ class ImagePageReader:
 
         self.language = kwargs.pop("user_language", "eng")
 
-    async def update_reader(self):
-        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
-            self.current_page == self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
+    async def update(self, ctx):
+        if self.code in self.bot.user_data['UserData'][str(ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'] and \
+            self.current_page == self.bot.user_data['UserData'][str(ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]:
             self.on_bookmarked_page = True
         else:
             self.on_bookmarked_page = False
@@ -73,11 +86,11 @@ class ImagePageReader:
         self.am_embed.set_image(url=self.images[self.current_page].src)
         self.am_embed.set_footer(text=localization[self.language]['page_reader']['footer'].format(current=self.current_page+1, total=len(self.images), bookmark='🔖' if self.on_bookmarked_page else ''))
 
-        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 0:
+        if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 0:
             self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)                
-        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 1:
+        if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 1:
             self.am_embed.set_thumbnail(url=self.images[self.current_page-1].src if (self.current_page-1) in range(0, len(self.images)) else Embed.Empty) 
-        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
+        if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
             self.am_embed.set_thumbnail(url=Embed.Empty)
 
         thumbnail_buttons = {
@@ -86,17 +99,250 @@ class ImagePageReader:
             2: self.bot.get_emoji(903121521621491732)
         }
 
-        await self.active_message.edit(embed=self.am_embed,
-            components=[
-                [Button(emoji=self.bot.get_emoji(853668227124953159), style=2, id="previous", disabled=self.current_page==0),
-                Button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=2, id="next"),
-                Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                Button(emoji=self.bot.get_emoji(853668227234529300), style=2, id="pause")],
-                [Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="bookmark"),
-                Button(emoji="⭐", style=2, id="favorite"),
-                Button(emoji=thumbnail_buttons[self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"]], style=2, id="thumbnail"),
-                Button(label=localization[self.language]['page_reader']['redirect_button'], style=5, url="https://discord.gg/DJ4wdsRYy2")]])
+        class IPRControls(ui.View):
+            def __init__(self, bot, ctx, parent):
+                super().__init__(timeout=300)
+                self.value = 0
+                self.bot = bot
+                self.ctx = ctx
+                self.parent = parent
+            
+            @ui.button(emoji=self.bot.get_emoji(853668227124953159), style=ButtonStyle.secondary, custom_id="previous", disabled=self.current_page==0)
+            async def previous_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    if self.parent.current_page == 0:  # Not allowed to go behind zero
+                        return self.stop()
+                    else:
+                        self.parent.current_page = self.parent.current_page - 1
+
+                    self.stop()
+
+            @ui.button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=ButtonStyle.secondary, custom_id="next")
+            async def next_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    self.parent.current_page = self.parent.current_page + 1
+                    if self.parent.current_page > (len(self.parent.images)-1):  # Finish the doujin if at last page
+                        self.parent.am_embed.set_image(url=Embed.Empty)
+                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                        self.parent.am_embed.description=localization[self.parent.language]['page_reader']['finished']
+
+                        await self.parent.active_message.edit(embed=self.am_embed, view=None)
+                        if self.parent.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl']:
+                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl'].remove(self.parent.code)
+                        
+                        await sleep(2)
+                        await self.parent.active_message.edit(content=f"{self.parent.bot.get_emoji(810936543401213953)} {localization[self.parent.language]['page_reader']['closing']}", embed=None)
+
+                        await sleep(1)
+                        await self.parent.am_channel.delete()
+
+                        self.value = 1
+                        self.stop()
+                    
+                    else:
+                        self.stop()
+
+            @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
+            async def select_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+                    
+                    bm_page = None
+                    if self.parent.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
+                        bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.parent.code]
+                    
+                    conf = await self.parent.am_channel.send(embed=Embed(
+                        description=localization[self.parent.language]['page_reader']['select_inquiry']['description']
+                    ).set_footer(
+                        text=localization[self.parent.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')))
+                    
+                    while True:
+                        try:
+                            m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
+                                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.parent.am_channel.id)
+                        
+                        except TimeoutError:
+                            await conf.delete()
+                            break
+
+                        else:
+                            with suppress(Forbidden):
+                                await m.delete()
+                            
+                            if m.content == "n-cancel":
+                                await conf.delete()
+                                break
+                            
+                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.parent.images)):
+                                await conf.delete()
+                                self.parent.current_page = int(m.content)-1
+                                
+                                return self.stop()
+                            
+                            else:
+                                with suppress(Forbidden):
+                                    await m.delete()
+
+                                continue
+                
+            @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
+            async def stop_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    self.parent.am_embed.set_image(url=Embed.Empty)
+                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.description=localization[self.parent.language]['page_reader']['stopped']
+                    
+                    await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
+
+                    await sleep(2)
+                    await self.parent.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.parent.language]['page_reader']['closing']}", embed=None)
+                    
+                    await sleep(1)
+                    await self.parent.am_channel.delete()
+                    
+                    self.value = 1
+                    self.stop()
+
+            @ui.button(emoji=self.bot.get_emoji(853668227234529300), style=ButtonStyle.secondary, custom_id="pause")
+            async def pause_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    self.parent.am_embed.set_image(url=Embed.Empty)
+                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.description=localization[self.parent.language]['page_reader']['paused']
+                    
+                    await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
+
+                    await sleep(2)
+                    await self.parent.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.parent.language]['page_reader']['closing']}", embed=None)
+                    
+                    await sleep(1)
+                    await self.parent.am_channel.delete()
+                    
+                    await sleep(1)
+                    self.bot.user_data["UserData"][str(self.ctx.author.id)]["Recall"] = f"{self.parent.code}*n*{self.parent.current_page}"
+                    await self.ctx.author.send(embed=Embed(
+                        title=localization[self.parent.language]['page_reader']['recall_saved']['title'],
+                        description=localization[self.parent.language]['page_reader']['recall_saved']['description'].format(code=self.parent.code, current=self.parent.current_page+1, total=len(self.parent.images))))
+
+                    self.value = 1
+                    self.stop()
+
+            @ui.button(emoji=self.bot.get_emoji(853668227205038090), style=ButtonStyle.secondary, custom_id="bookmark")
+            async def bookmark_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    if not self.parent.on_bookmarked_page:
+                        if self.parent.current_page == 0:
+                            await self.parent.am_channel.send(
+                                embed=Embed(
+                                    color=0xFF0000,
+                                    description=localization[self.parent.language]['page_reader']['cannot_bookmark_first_page']
+                                ),
+                                delete_after=5)
+                            
+                            return self.stop()
+
+                        if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Bookmarks|*n*|bm"]) >= 25: 
+                            await self.parent.am_channel.send(
+                                color=0xff0000, 
+                                embed=Embed(
+                                    description=localization[self.parent.language]['page_reader']['bookmarks_full']
+                                ),
+                                delete_after=5)
+
+                            return self.stop()
+
+                        self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.parent.code] = self.parent.current_page
+                        self.parent.on_bookmarked_page = True
+                    
+                    else:
+                        if self.parent.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
+                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'].pop(self.parent.code)
+                            self.parent.on_bookmarked_page = False
+
+                    self.stop()
+
+            @ui.button(emoji="⭐", style=ButtonStyle.secondary, custom_id="favorite")
+            async def favorite_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Favorites|*n*|fav"]) >= 25: 
+                        await self.parent.am_channel.send(
+                            color=0xff0000, 
+                            embed=Embed(
+                                description=localization[self.parent.language]['page_reader']['favorites_full']
+                            ),
+                            delete_after=5)
+
+                        return self.stop()
+
+                    if self.parent.code not in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav']:
+                        self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].append(self.parent.code)
+
+                        await self.parent.am_channel.send(
+                            embed=Embed(
+                                description=localization[self.parent.language]['page_reader']['added_to_favorites'].format(code=self.parent.code)
+                            ),
+                            delete_after=5)
+                    else:
+                        self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].remove(self.parent.code)
+
+                        await self.parent.am_channel.send(
+                            embed=Embed(
+                                description=localization[self.parent.language]['page_reader']['removed_from_favorites'].format(code=self.parent.code)
+                            ),
+                            delete_after=5)
+
+                    self.stop()
+
+            @ui.button(emoji=thumbnail_buttons[self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"]], style=ButtonStyle.secondary, custom_id="thumbnail")
+            async def thumbnail_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
+                        self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] = 0
+                    else:
+                        self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] += 1
+
+                    self.stop()
+
+            async def on_timeout(self):
+                with suppress(NotFound):
+                    self.parent.am_embed.set_image(url=Embed.Empty)
+                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.description=localization[self.parent.language]['page_reader']['timeout'].format(current=self.parent.current_page+1, total=len(self.parent.images))
+
+                    await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
+                    temp = await self.parent.am_channel.send(content=localization[self.parent.language]['page_reader']['timeout_notification'].format(mention=self.ctx.author.mention), delete_after=1)
+        
+                    await sleep(10)
+
+                    with suppress(NotFound):
+                        await self.parent.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.parent.language]['page_reader']['closing']}", embed=None)
+
+                    await sleep(1)
+                    await self.parent.am_channel.delete()
+
+                self.value = 1
+                self.stop()
+
+        view = IPRControls(self.bot, self.ctx, self)
+        view.add_item(ui.Button(label=localization[self.language]['page_reader']['redirect_button'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
+        with suppress(NotFound):
+            await self.active_message.edit(embed=self.am_embed, view=view)
+        await view.wait()
+        return view.value
 
     async def setup(self):
         edit = await self.ctx.send(embed=Embed(
@@ -128,51 +374,57 @@ class ImagePageReader:
         self.am_embed.set_footer(
             text=localization[self.language]['page_reader']['init']['footer'].format(total=len(self.images)))
         
-        # Reader message
-        conf = await channel.send( 
-            content=self.ctx.author.mention, embed=self.am_embed,
-            components=[Button(label="Start", style=1, emoji=self.bot.get_emoji(853674277416206387), id="button1")])
+        class Start(ui.View):
+            def __init__(self, bot, ctx, parent):
+                super().__init__(timeout=30)
+                self.value = None
+                self.bot = bot
+                self.ctx = ctx
+                self.parent = parent
+            
+            @ui.button(label=localization[self.language]["page_reader"]["init"]["button"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
+            async def start_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
 
-        # Portal
-        await edit.edit(
-            content=conf.channel.mention, 
-            embed=Embed(
-                description=localization[self.language]['page_reader']['portal'].format(code=self.code, name=self.name)
-                ).set_author(
-                    name=self.bot.user.name,
-                    icon_url=self.bot.user.avatar_url),
-            delete_after=10)
+                    self.active_message = view.message
 
-        while True:
-            try:
-                interaction = await self.bot.wait_for("button_click", timeout=30, bypass_cooldown=True,
-                    check=lambda i: 
-                        i.message.id == conf.id and \
-                        i.user.id == self.ctx.author.id)
-        
-            except TimeoutError:
+                    self.value = True
+                    self.stop()
+
+            async def on_timeout(self):
                 with suppress(NotFound):
-                    await conf.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
+                    await view.message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.parent.language]['page_reader']['closing']}", embed=None)
             
                 await sleep(1)
                 
                 with suppress(NotFound):
-                    await conf.channel.delete()
+                    await view.message.channel.delete()
                 
-                return False
-        
-            else:
-                try: await interaction.respond(type=6)
-                except Exception: continue
-            
-                self.active_message = conf
-                self.am_channel = conf.channel
+                self.value = 1
+                self.stop()
 
-                await self.update_reader()
+        # Reader message
+        view = Start(self.bot, self.ctx, self)
+        self.am_channel = channel
+        self.active_message = view.message = await self.am_channel.send(embed=self.am_embed, view=view)
 
-                await sleep(0.2)
+        # Portal
+        await edit.edit(
+            content=self.am_channel.mention, 
+            embed=Embed(
+                description=localization[self.language]['page_reader']['portal'].format(code=self.code, name=self.name)
+                ).set_author(
+                    name=self.bot.user.name,
+                    icon_url=self.bot.user.avatar.url),
+            delete_after=10)
 
-                return True
+        await view.wait()
+        if view.value:
+            print(f"[HRB] {self.ctx.author} ({self.ctx.author.id}) started reading `{self.code}`.")
+            await self.update(self.ctx)
+
+        return view.value
 
     async def start(self):
         if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["enabled"]:
@@ -194,225 +446,9 @@ class ImagePageReader:
             if "0" not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].append("0")
         
-        while True:
-            try:
-                interaction = await self.bot.wait_for("button_click", timeout=60*5,
-                    check=lambda i: i.message.id==self.active_message.id and i.user.id==self.ctx.author.id)
-
-            except TimeoutError:
-                with suppress(NotFound):
-                    self.am_embed.set_image(url=Embed.Empty)
-                    self.am_embed.set_thumbnail(url=Embed.Empty)
-                    self.am_embed.description=localization[self.language]['page_reader']['timeout'].format(current=self.current_page+1, total=len(self.images))
-
-                    await self.active_message.edit(embed=self.am_embed, components=[])
-                    temp = await self.am_channel.send(content=localization[self.language]['page_reader']['timeout_notification'].format(mention=self.ctx.author.mention, delete_after=1))
-                    await temp.delete(delay=1)
-        
-                    await sleep(10)
-
-                    with suppress(NotFound):
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
-
-                    await sleep(1)
-                    await self.am_channel.delete()
-
-                    break
-            
-            except BotInteractionCooldown:
-                continue
-            
-            else:
-                try:
-                    try: await interaction.respond(type=6)
-                    except NotFound: continue
-
-                    self.bot.inactive = 0
-                    if interaction.component.id == "next":  # Next page
-                        self.current_page = self.current_page + 1
-                        if self.current_page > (len(self.images)-1):  # Finish the doujin if at last page
-                            self.am_embed.set_image(url=Embed.Empty)
-                            self.am_embed.set_thumbnail(url=Embed.Empty)
-                            self.am_embed.description=localization[self.language]['page_reader']['finished']
-
-                            await self.active_message.edit(embed=self.am_embed, components=[])
-                            if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl']:
-                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Read Later|*n*|rl'].remove(self.code)
-                            
-                            await sleep(2)
-                            await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
-
-                            await sleep(1)
-                            await self.am_channel.delete()
-                            
-                            break
-                        else:
-                            await self.update_reader()
-
-                    elif interaction.component.id == "previous":  # Previous page
-                        if self.current_page == 0:  # Not allowed to go behind zero
-                            continue
-                        else:
-                            self.current_page = self.current_page - 1
-                        
-                        await self.update_reader()
-                    
-                    elif interaction.component.id == "select":  # Select page
-                        bm_page = None
-                        if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
-                            bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code]
-                        
-                        conf = await self.am_channel.send(embed=Embed(
-                            description=localization[self.language]['page_reader']['select_inquiry']['description']
-                        ).set_footer(
-                            text=localization[self.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')))
-                        
-                        while True:
-                            try:
-                                m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
-                                    check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.am_channel.id)
-                            
-                            except TimeoutError:
-                                await conf.delete()
-                                break
-
-                            else:
-                                with suppress(Forbidden):
-                                    await m.delete()
-                                
-                                if m.content == "n-cancel":
-                                    await conf.delete()
-                                    break
-                                
-                                if is_int(m.content) and (int(m.content)-1) in range(0, len(self.images)):
-                                    await conf.delete()
-                                    self.current_page = int(m.content)-1
-                                    
-                                    await self.update_reader()
-                                    
-                                    break
-                                
-                                else:
-                                    with suppress(Forbidden):
-                                        await m.delete()
-
-                                    continue
-                    
-                    elif interaction.component.id == "pause":  # Pause and send to recall
-                        self.am_embed.set_image(url=Embed.Empty)
-                        self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.description=localization[self.language]['page_reader']['paused']
-                        
-                        await self.active_message.edit(embed=self.am_embed, components=[])
-
-                        await sleep(2)
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
-                        
-                        await sleep(1)
-                        await self.am_channel.delete()
-                        
-                        await sleep(1)
-                        self.bot.user_data["UserData"][str(self.ctx.author.id)]["Recall"] = f"{self.code}*n*{self.current_page}"
-                        await self.ctx.author.send(embed=Embed(
-                            title=localization[self.language]['page_reader']['recall_saved']['title'],
-                            description=localization[self.language]['page_reader']['recall_saved']['description'].format(code=self.code, current=self.current_page+1, total=len(self.images))))
-
-                        break
-
-                    elif interaction.component.id == "stop":  # Stop entirely
-                        self.am_embed.set_image(url=Embed.Empty)
-                        self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.description=localization[self.language]['page_reader']['stopped']
-                        
-                        await self.active_message.edit(embed=self.am_embed, components=[])
-
-                        await sleep(2)
-                        await self.active_message.edit(content=f"{self.bot.get_emoji(810936543401213953)} {localization[self.language]['page_reader']['closing']}", embed=None)
-                        
-                        await sleep(1)
-                        await self.am_channel.delete()
-                        
-                        break
-                    
-                    elif interaction.component.id == "bookmark":  # Set/Remove bookmark
-                        if not self.on_bookmarked_page:
-                            if self.current_page == 0:
-                                await self.am_channel.send(
-                                    embed=Embed(
-                                        color=0xFF0000,
-                                        description=localization[self.language]['page_reader']['cannot_bookmark_first_page']
-                                    ),
-                                    delete_after=5)
-                                continue
-
-                            if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Bookmarks|*n*|bm"]) >= 25: 
-                                await self.am_channel.send(
-                                    color=0xff0000, 
-                                    embed=Embed(
-                                        description=localization[self.language]['page_reader']['bookmarks_full']
-                                    ),
-                                    delete_after=5)
-                                continue
-
-                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.code] = self.current_page
-                            self.on_bookmarked_page = True
-                        
-                        else:
-                            if self.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
-                                self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'].pop(self.code)
-                                self.on_bookmarked_page = False
-                        
-                        await self.update_reader()
-
-                    elif interaction.component.id == "favorite":  # Add to favorites
-                        if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Bookmarks|*n*|bm"]) >= 25: 
-                            await self.am_channel.send(
-                                color=0xff0000, 
-                                embed=Embed(
-                                    description=localization[self.language]['page_reader']['favorites_full']
-                                ),
-                                delete_after=5)
-                            continue
-
-                        if self.code not in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav']:
-                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].append(self.code)
-
-                            await self.am_channel.send(
-                                embed=Embed(
-                                    description=localization[self.language]['page_reader']['added_to_favorites'].format(code=self.code)
-                                ),
-                                delete_after=5)
-                        else:
-                            self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].remove(self.code)
-
-                            await self.am_channel.send(
-                                embed=Embed(
-                                    description=localization[self.language]['page_reader']['removed_from_favorites'].format(code=self.code)
-                                ),
-                                delete_after=5)
-
-                    elif interaction.component.id == "thumbnail":
-                        if self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
-                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] = 0
-                        else:
-                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"] += 1
-
-                        await self.update_reader()
-
-                except Exception:
-                    error = exc_info()
-                    temp = await self.am_channel.send(embed=Embed(
-                        color=0xFF0000,
-                        description=localization[self.language]['page_reader']['error']),
-                        delete_after=10)
-                    
-                    await temp.delete(delay=10)
-                        
-                    await self.bot.errorlog.send(error, ctx=self.ctx, event="ImagePageReader")
-                    
-                    continue
-
-        return
+        view_exit_code = 0
+        while view_exit_code == 0:
+            view_exit_code = await self.update(self.ctx)
 
 class SearchResultsBrowser:
     def __init__(self, bot: Bot, ctx: Context, results: List[Doujin], **kwargs):
@@ -438,9 +474,9 @@ class SearchResultsBrowser:
         message_part = []
         for ind, dj in enumerate(self.doujins):
             try: 
-                if ind == self.index and int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Favorites|*n*|fav"]: symbol = '🟩'
+                if ind == self.index and int(dj.id) in self.bot.user_data['UserData'][str(ctx.author.id)]['Lists']['Built-in']["Favorites|*n*|fav"]: symbol = '🟩'
                 elif ind == self.index: symbol='🟥'
-                elif int(dj.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Favorites|*n*|fav"]: symbol = '🟦'
+                elif int(dj.id) in self.bot.user_data['UserData'][str(ctx.author.id)]['Lists']['Built-in']["Favorites|*n*|fav"]: symbol = '🟦'
                 else: symbol='⬛'
             except KeyError: 
                 symbol='⬛'
@@ -478,9 +514,8 @@ class SearchResultsBrowser:
                 self.am_embed.set_image(url=Embed.Empty)        
 
         nhentai = NHentai()
-        
         tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
-        if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.lolicon_allowed:
+        if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
             self.am_embed.add_field(
                 name=localization[self.language]['results_browser']['forbidden']['title'],
                 inline=False,
@@ -489,7 +524,7 @@ class SearchResultsBrowser:
                 text=f"⭐ N/A"
             )
             
-            doujin.cover.src = str(self.bot.user.avatar_url)
+            doujin.cover.src = str(self.bot.user.avatar.url)
         
         else:
             if self.minimal_details:
@@ -509,8 +544,6 @@ class SearchResultsBrowser:
                 self.am_embed.set_author(
                     name=f"NHentai",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-
-                await self.active_message.edit(content="", embed=self.am_embed)
 
             else:
                 self.am_embed.add_field(
@@ -572,257 +605,269 @@ class SearchResultsBrowser:
 
 
         if not self.active_message:
-            self.active_message = await self.ctx.send("...")
+            self.active_message = await ctx.send("...")
 
-        if not self.ctx.guild or (self.ctx.guild and not all([
-            ctx.guild.me.guild_permissions.manage_channels, 
-            ctx.guild.me.guild_permissions.manage_roles, 
-            ctx.guild.me.guild_permissions.manage_messages])):
-            await self.active_message.edit(
-                embed=self.am_embed,
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
-                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read", disabled=True)],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom", disabled=self.minimal_details),
-                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
-                    Button(label=localization[self.language]['results_browser']['buttons']['support_server'], style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
-
-        else:
-            await self.active_message.edit(
-                embed=self.am_embed,
-                components=[
-                    [Button(emoji=self.bot.get_emoji(853800909108936754), style=2, id="up"),
-                    Button(emoji=self.bot.get_emoji(853800909276315678), style=2, id="down"),
-                    Button(emoji=self.bot.get_emoji(853668227212902410), style=2, id="select"),
-                    Button(emoji=self.bot.get_emoji(853668227175546952), style=2, id="stop"),
-                    Button(emoji=self.bot.get_emoji(853684136379416616), style=2, id="read", disabled=self.minimal_details)],
-                    [Button(emoji=self.bot.get_emoji(853684136433942560), style=2, id="zoom", disabled=self.minimal_details),
-                    Button(emoji=self.bot.get_emoji(853668227205038090), style=2, id="readlater"),
-                    Button(label=localization[self.language]['results_browser']['buttons']['support_server'], style=5, url="https://discord.gg/DJ4wdsRYy2")]]),
+        class SRBControls(ui.View):
+            def __init__(self, bot, ctx, parent):
+                super().__init__(timeout=60)
+                self.value = 0
+                self.bot = bot
+                self.ctx = ctx
+                self.parent = parent
             
-            await sleep(0.5)
-    
-    async def start(self, ctx):
-        """Initial start of the result browser."""
+            @ui.button(emoji=self.bot.get_emoji(853800909108936754), style=ButtonStyle.secondary, custom_id="up")
+            async def up_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
 
-        await self.update_browser(self.ctx)
+                    if self.parent.index > 0:
+                        self.parent.index -= 1
+                    elif self.parent.index == 0:
+                        self.parent.index = len(self.parent.doujins)-1
 
-        while True:
-            try:
-                interaction = await self.bot.wait_for("button_click", timeout=300, 
-                    check=lambda i: \
-                        i.message.id == self.active_message.id and \
-                        i.user.id == self.ctx.author.id)
-            except TimeoutError:
+                    self.stop()
+
+            @ui.button(emoji=self.bot.get_emoji(853800909276315678), style=ButtonStyle.secondary, custom_id="down")
+            async def down_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    if self.parent.index < len(self.parent.doujins)-1:
+                        self.parent.index += 1
+                    elif self.parent.index == len(self.parent.doujins)-1:
+                        self.parent.index = 0
+
+                    self.stop()
+
+            @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
+            async def select_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    conf = await self.ctx.send(embed=Embed(
+                        description=localization[self.parent.language]['results_browser']['buttons']['select']))
+
+                    while True:
+                        try:
+                            m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
+                                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id)
+                        
+                        except TimeoutError:
+                            await conf.delete()
+                            
+                            self.stop()
+                            return
+
+                        else:
+                            with suppress(Forbidden):
+                                await m.delete()
+                            
+                            if m.content == "n-cancel":
+                                await conf.delete()
+                                
+                                self.stop()
+                                return
+                            
+                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.parent.doujins)):
+                                await conf.delete()
+                                self.parent.index = int(m.content)-1
+
+                                self.stop()
+                                return
+
+                            else:
+                                continue
+
+                    self.stop()  # unreachable, but just to be consistant with design
+
+            @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
+            async def stop_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    message_part = []
+                    for ind, dj in enumerate(self.parent.doujins):
+                        tags = [tag.name for tag in dj.tags if tag.type == "tag"]
+                        if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
+                            message_part.append(localization[self.parent.language]['search_doujins']['search_results']['contains_restricted_tags'])
+                        else:
+                            message_part.append(
+                                f"__`{str(dj.id).ljust(7)}`__ | "
+                                f"{language_to_flag(dj.languages)} | "
+                                f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
+                    
+                    self.parent.am_embed = Embed(
+                        title=self.parent.name,
+                        description=f"\n"+('\n'.join(message_part)))
+
+                    self.parent.am_embed.set_author(
+                        name="NHentai",
+                        url=f"https://nhentai.net/",
+                        icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+                    
+                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.set_image(url=Embed.Empty)
+                    await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
+
+                    self.value = 1
+                    self.stop()
+
+            if not self.ctx.guild or (self.ctx.guild and not all([
+                self.ctx.guild.me.guild_permissions.manage_channels, 
+                self.ctx.guild.me.guild_permissions.manage_roles, 
+                self.ctx.guild.me.guild_permissions.manage_messages])):
+
+                @ui.button(emoji=self.bot.get_emoji(853684136379416616), style=ButtonStyle.secondary, custom_id="read", disabled=True)
+                async def read_button(self, button, interaction):
+                    return
+
+            else:
+                @ui.button(emoji=self.bot.get_emoji(853684136379416616), style=ButtonStyle.secondary, custom_id="read", disabled=self.minimal_details)
+                async def read_button(self, button, interaction):
+                    if interaction.user.id == self.ctx.author.id:
+                        await interaction.response.defer()
+
+                        tags = [tag.name for tag in self.parent.doujins[self.parent.index].tags if tag.type == "tag"]
+                        if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
+                            self.stop()
+                            return
+                        
+                        message_part = []
+                        for ind, dj in enumerate(self.parent.doujins):
+                            tags = [tag.name for tag in dj.tags if tag.type == "tag"]
+                            if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
+                                message_part.append(localization[self.parent.language]['search_doujins']['search_results']['contains_restricted_tags'])
+                            else:
+                                message_part.append(
+                                    f"{'**' if ind == self.parent.index else ''}"
+                                    f"__`{str(dj.id).ljust(7)}`__ | "
+                                    f"{language_to_flag(dj.languages)} | "
+                                    f"{shorten(dj.title.pretty, width=50, placeholder='...')}"
+                                    f"{'**' if ind == self.parent.index else ''}")
+
+                        self.parent.am_embed = Embed(
+                            title=self.parent.name,
+                            description=f"\n"+('\n'.join(message_part)))
+                        self.parent.am_embed.set_author(
+                            name="NHentai",
+                            url=f"https://nhentai.net/",
+                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
+                        
+                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                        self.parent.am_embed.set_image(url=Embed.Empty)
+
+                        await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
+
+                        self.value = 1
+                        self.stop()
+
+                        doujin = self.parent.doujins[self.parent.index]
+                        if str(doujin.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Bookmarks|*n*|bm"]:
+                            page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Bookmarks|*n*|bm"][str(doujin.id)]
+                        else:
+                            page = 0
+
+                        session = ImagePageReader(self.bot, self.ctx, doujin.images, doujin.title.pretty, str(doujin.id), starting_page=page)
+                        response = await session.setup()
+                        if response:
+                            await session.start()
+                        else:
+                            await self.active_message.edit(embed=self.parent.am_embed)
+
+                        
+
+            @ui.button(emoji=self.bot.get_emoji(853684136433942560), style=ButtonStyle.secondary, custom_id="zoom", disabled=self.minimal_details)
+            async def zoom_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    doujin = self.parent.doujins[self.parent.index]
+                    if self.parent.am_embed.image.url == Embed.Empty:
+                        self.parent.am_embed.set_image(url=doujin.cover.src)
+                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    elif self.parent.am_embed.thumbnail.url == Embed.Empty:
+                        self.parent.am_embed.set_thumbnail(url=doujin.cover.src)
+                        self.parent.am_embed.set_image(url=Embed.Empty)
+                    
+                    await self.parent.active_message.edit(embed=self.parent.am_embed)
+                    
+                    self.stop()
+
+            @ui.button(emoji=self.bot.get_emoji(853668227205038090), style=ButtonStyle.secondary, custom_id="readlater")
+            async def readlater_button(self, button, interaction):
+                if interaction.user.id == self.ctx.author.id:
+                    await interaction.response.defer()
+
+                    if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]) >= 25: 
+                        await self.ctx.send(
+                            embed=Embed(
+                                color=0xff0000, 
+                                description=localization[self.parent.language]['results_browser']['buttons']['read_later_full']
+                            ),
+                            delete_after=5)
+                        
+                        self.stop()
+                        return
+
+                    if str(self.parent.doujins[self.parent.index].id) not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
+                        self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.parent.doujins[self.parent.index].id))
+                        await self.ctx.send(
+                            embed=Embed(
+                                description=localization[self.parent.language]['results_browser']['buttons']['add_to_read_later'].format(code=self.parent.doujins[self.parent.index].id)
+                            ),
+                            delete_after=5)
+                    else:
+                        self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.parent.doujins[self.parent.index].id))
+                        await self.ctx.send(
+                            embed=Embed(
+                                description=localization[self.parent.language]['results_browser']['buttons']['remove_from_read_later'].format(code=self.parent.doujins[self.parent.index].id)
+                            ),
+                            delete_after=5)
+            
+                    self.stop()
+
+            async def on_timeout(self):
                 message_part = []
-                for ind, dj in enumerate(self.doujins):
+                for ind, dj in enumerate(self.parent.doujins):
                     tags = [tag.name for tag in dj.tags if tag.type == "tag"]
-                    if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
-                        message_part.append(localization[self.language]['search_doujins']['search_results']['contains_restricted_tags'])
+                    if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
+                        message_part.append(localization[self.parent.language]['search_doujins']['search_results']['contains_restricted_tags'])
                     else:
                         message_part.append(
                             f"__`{str(dj.id).ljust(7)}`__ | "
                             f"{language_to_flag(dj.languages)} | "
                             f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
                 
-                self.am_embed = Embed(
-                    title=self.name,
+                self.parent.am_embed = Embed(
+                    title=self.parent.name,
                     description=f"\n"+('\n'.join(message_part)))
-                self.am_embed.set_author(
+                self.parent.am_embed.set_author(
                     name="NHentai",
                     url=f"https://nhentai.net/",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                 
 
-                self.am_embed.set_thumbnail(url=Embed.Empty)
-                self.am_embed.set_image(url=Embed.Empty)
+                self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                self.parent.am_embed.set_image(url=Embed.Empty)
 
-                await self.active_message.edit(embed=self.am_embed, components=[])
+                await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
                 
-                return
+                self.value = 1
+                self.stop()
 
-            except BotInteractionCooldown:
-                continue
-            
-            else:
-                try: await interaction.respond(type=6)
-                except NotFound: continue
+        view = SRBControls(self.bot, self.ctx, self)
+        view.add_item(ui.Button(label=localization[self.language]['results_browser']['buttons']['support_server'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
+        await self.active_message.edit(embed=self.am_embed, view=view)
+        await view.wait()
+        return view.value
 
-                try:
-                    self.bot.inactive = 0
-                    
-                    if interaction.component.id == "up":
-                        if self.index > 0:
-                            self.index -= 1
-                            await self.update_browser(self.ctx)
-                        elif self.index == 0:
-                            self.index = len(self.doujins)-1
-                            await self.update_browser(self.ctx)
+    async def start(self, ctx):
+        """Initial start of the result browser."""
 
-                    elif interaction.component.id == "down":
-                        if self.index < len(self.doujins)-1:
-                            self.index += 1
-                            await self.update_browser(self.ctx)
-                        elif self.index == len(self.doujins)-1:
-                            self.index = 0
-                            await self.update_browser(self.ctx)
-                    
-                    elif interaction.component.id == "select":
-                        conf = await self.ctx.send(embed=Embed(
-                            description=localization[self.language]['results_browser']['buttons']['select']))
+        view_exit_code = 0
+        while view_exit_code == 0:
+            view_exit_code = await self.update_browser(self.ctx)
 
-                        while True:
-                            try:
-                                m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
-                                    check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id)
-                            
-                            except TimeoutError:
-                                await conf.delete()
-                                break
-
-                            else:
-                                with suppress(Forbidden):
-                                    await m.delete()
-                                
-                                if m.content == "n-cancel":
-                                    await conf.delete()
-                                    break
-                                
-                                if is_int(m.content) and (int(m.content)-1) in range(0, len(self.doujins)):
-                                    await conf.delete()
-                                    self.index = int(m.content)-1
-                                    await self.update_browser(self.ctx)
-                                    break
-
-                                else:
-                                    continue
-                    
-                    elif interaction.component.id == "stop":
-                        message_part = []
-                        for ind, dj in enumerate(self.doujins):
-                            tags = [tag.name for tag in dj.tags if tag.type == "tag"]
-                            if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
-                                message_part.append(localization[self.language]['search_doujins']['search_results']['contains_restricted_tags'])
-                            else:
-                                message_part.append(
-                                    f"__`{str(dj.id).ljust(7)}`__ | "
-                                    f"{language_to_flag(dj.languages)} | "
-                                    f"{shorten(dj.title.pretty, width=50, placeholder='...')}")
-                        
-                        self.am_embed = Embed(
-                            title=self.name,
-                            description=f"\n"+('\n'.join(message_part)))
-
-                        self.am_embed.set_author(
-                            name="NHentai",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        
-                        self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.set_image(url=Embed.Empty)
-                        await self.active_message.edit(embed=self.am_embed, components=[])
-                        
-                        return
-                    
-                    elif interaction.component.id == "read":
-                        tags = [tag.name for tag in self.doujins[self.index].tags if tag.type == "tag"]
-                        if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
-                            continue
-                        
-                        message_part = []
-                        for ind, dj in enumerate(self.doujins):
-                            tags = [tag.name for tag in dj.tags if tag.type == "tag"]
-                            if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
-                                message_part.append(localization[self.language]['search_doujins']['search_results']['contains_restricted_tags'])
-                            else:
-                                message_part.append(
-                                    f"{'**' if ind == self.index else ''}"
-                                    f"__`{str(dj.id).ljust(7)}`__ | "
-                                    f"{language_to_flag(dj.languages)} | "
-                                    f"{shorten(dj.title.pretty, width=50, placeholder='...')}"
-                                    f"{'**' if ind == self.index else ''}")
-
-                        self.am_embed = Embed(
-                            title=self.name,
-                            description=f"\n"+('\n'.join(message_part)))
-                        self.am_embed.set_author(
-                            name="NHentai",
-                            url=f"https://nhentai.net/",
-                            icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-                        
-                        self.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.am_embed.set_image(url=Embed.Empty)
-
-                        await self.active_message.edit(content='', embed=self.am_embed, components=[])
-
-                        doujin = self.doujins[self.index]
-                        if str(doujin.id) in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Bookmarks|*n*|bm"]:
-                            page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']["Bookmarks|*n*|bm"][str(doujin.id)]
-                        else:
-                            page = 0
-
-                        session = ImagePageReader(self.bot, ctx, doujin.images, doujin.title.pretty, str(doujin.id), starting_page=page)
-                        response = await session.setup()
-                        if response:
-                            await session.start()
-                        else:
-                            await self.active_message.edit(embed=self.am_embed)
-
-                        return
-                    
-                    elif interaction.component.id == "zoom":
-                        doujin = self.doujins[self.index]
-                        if self.am_embed.image.url == Embed.Empty:
-                            self.am_embed.set_image(url=doujin.cover.src)
-                            self.am_embed.set_thumbnail(url=Embed.Empty)
-                        elif self.am_embed.thumbnail.url == Embed.Empty:
-                            self.am_embed.set_thumbnail(url=doujin.cover.src)
-                            self.am_embed.set_image(url=Embed.Empty)
-                        
-                        await self.active_message.edit(embed=self.am_embed)
-
-                    elif interaction.component.id == "readlater":
-                        if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]) >= 25: 
-                            await self.ctx.send(
-                                embed=Embed(
-                                    color=0xff0000, 
-                                    description=localization[self.language]['results_browser']['buttons']['read_later_full']
-                                ),
-                                delete_after=5)
-                            continue
-
-                        if str(self.doujins[self.index].id) not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"]:
-                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].append(str(self.doujins[self.index].id))
-                            await self.ctx.send(
-                                embed=Embed(
-                                    description=localization[self.language]['results_browser']['buttons']['add_to_read_later'].format(code=self.doujins[self.index].id)
-                                ),
-                                delete_after=5)
-                        else:
-                            self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Read Later|*n*|rl"].remove(str(self.doujins[self.index].id))
-                            await self.ctx.send(
-                                embed=Embed(
-                                    description=localization[self.language]['results_browser']['buttons']['remove_from_read_later'].format(code=self.doujins[self.index].id)
-                                ),
-                                delete_after=5)
-            
-                except Exception:
-                    error = exc_info()
-                    temp = await self.ctx.send(
-                        embed=Embed(
-                            color=0xFF0000,
-                            description="An unhandled error occured; Please try again.\n"
-                                        "If the issue persists, please try searching again.\n"
-                                        "If searching again doesn't work, click the `Support Server` button."
-                        ).set_footer(text="This message will disappear in 10 seconds."),
-                        delete_after=10)
-                        
-                    await self.bot.errorlog.send(error, ctx=self.ctx, event="SearchResultsBrowser")
-                    
-                    continue
 
 def setup(bot):
     bot.add_cog(Classes(bot))

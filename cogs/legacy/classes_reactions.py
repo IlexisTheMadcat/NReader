@@ -25,7 +25,7 @@ from utils.misc import (
 newline = "\n"
 
 
-class Classes(Cog):
+class RClasses(Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -98,7 +98,7 @@ class ImagePageReader:
                 description="Click/Tap the mention above to jump to your reader."
                 ).set_author(
                     name=self.bot.user.name,
-                    icon_url=self.bot.user.avatar_url),
+                    icon_url=self.bot.user.avatar.url),
             delete_after=10)
         
         await conf.add_reaction("▶")
@@ -345,4 +345,4 @@ class ImagePageReader:
 
     
 def setup(bot):
-    bot.add_cog(Classes(bot))
+    bot.add_cog(RClasses(bot))

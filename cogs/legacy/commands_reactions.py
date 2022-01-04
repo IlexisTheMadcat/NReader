@@ -20,11 +20,11 @@ from utils.misc import language_to_flag
 from cogs.localization import *
 
 
-class Commands(Cog):
+class RCommands(Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @command(name="test")
+    @command(name="old_test")
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def test(self, ctx):
         try:
@@ -216,7 +216,7 @@ class Commands(Cog):
                         url=doujin.images[0].src)
                     emb.set_image(
                         url=Embed.Empty)
-                    await edit.edit(embed=emb, components=[])
+                    await edit.edit(embed=emb)
 
                     session = ImagePageReader(self.bot, ctx, doujin.images, f"{doujin.id} [*n*] {doujin.title.pretty if doujin.title.pretty else 'Not provided'}")
                     response = await session.setup()
@@ -375,4 +375,4 @@ class Commands(Cog):
 
 
 def setup(bot):
-    bot.add_cog(Commands(bot))
+    bot.add_cog(RCommands(bot))
