@@ -337,12 +337,12 @@ class ImagePageReader:
                 self.value = 1
                 self.stop()
 
-        view = IPRControls(self.bot, self.ctx, self)
-        view.add_item(ui.Button(label=localization[self.language]['page_reader']['redirect_button'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
+        self.view = IPRControls(self.bot, self.ctx, self)
+        self.view.add_item(ui.Button(label=localization[self.language]['page_reader']['redirect_button'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
         with suppress(NotFound):
-            await self.active_message.edit(embed=self.am_embed, view=view)
-        await view.wait()
-        return view.value
+            await self.active_message.edit(embed=self.am_embed, view=self.view)
+        await self.view.wait()
+        return self.view.value
 
     async def setup(self):
         edit = await self.ctx.send(embed=Embed(
@@ -557,7 +557,7 @@ class SearchResultsBrowser:
                 ).add_field(
                     inline=False,
                     name=localization[self.language]['doujin_info']['fields']['date_uploaded'],
-                    value=f"`{render_date(doujin.upload_at, self.language)}`"
+                    value=f"<t:{int(doujin.upload_at.timestamp())}>"
                 ).add_field(
                     inline=False,
                     name=localization[self.language]['doujin_info']['fields']['languages'],

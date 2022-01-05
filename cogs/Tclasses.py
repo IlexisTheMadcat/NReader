@@ -557,7 +557,7 @@ class SearchResultsBrowser:
                 ).add_field(
                     inline=False,
                     name=localization[self.language]['doujin_info']['fields']['date_uploaded'],
-                    value=f"`{render_date(doujin.upload_at, self.language)}`"
+                    value=f"<t:{int(doujin.upload_at.timestamp())}>"
                 ).add_field(
                     inline=False,
                     name=localization[self.language]['doujin_info']['fields']['languages'],
