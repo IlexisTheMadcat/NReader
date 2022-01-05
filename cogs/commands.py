@@ -4,7 +4,6 @@ from asyncio import sleep, TimeoutError
 from textwrap import shorten
 from copy import deepcopy
 from contextlib import suppress
-from discord.role import RoleTags
 
 from udpy import AsyncUrbanClient
 from discord import ui, ButtonStyle, Forbidden
@@ -12,6 +11,7 @@ from discord.ext.commands import (
     Cog, bot_has_permissions, 
     bot_has_guild_permissions, 
     command, cooldown, max_concurrency)
+from discord.ext.commands.core import is_owner
 from discord.ext.commands.cooldowns import BucketType
 from discord.ext.commands.errors import ExtensionNotLoaded
 from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
@@ -108,6 +108,7 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -279,6 +280,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language]["doujin_info"]["read"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853684136379416616), custom_id="button1")
                 async def read_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+                        
                         if not ctx.guild or (ctx.guild and not all([
                             ctx.guild.me.guild_permissions.manage_channels, 
                             ctx.guild.me.guild_permissions.manage_roles, 
@@ -286,7 +289,7 @@ class Commands(Cog):
                             
                             button.disabled = True
                             button.label = localization[user_language]["doujin_info"]["need_permissions"]
-                            await interaction.respond.edit_message(embed=emb, view=self)
+                            await view.message.edit(embed=emb, view=self)
 
                         else:
                             emb.set_thumbnail(
@@ -294,7 +297,7 @@ class Commands(Cog):
                             emb.set_image(url=Embed.Empty)
                             button.disabled = True
                             button.label = localization[user_language]["doujin_info"]["opened"]
-                            await interaction.response.edit_message(embed=emb, view=self)
+                            await view.message.edit(embed=emb, view=self)
 
                             self.stop()
 
@@ -354,6 +357,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -540,6 +545,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -659,6 +666,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -798,6 +807,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -1620,6 +1631,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -1830,6 +1843,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+                        
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -1979,6 +1994,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+                        
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
@@ -2078,6 +2095,8 @@ class Commands(Cog):
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
                 async def continue_button(self, button, interaction):
                     if interaction.user.id == ctx.author.id:
+                        await interaction.response.defer()
+                        
                         user_language["lang"] = "eng"
                         await self.message.delete()
                         self.value = True
