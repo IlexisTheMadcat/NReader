@@ -56,7 +56,7 @@ def language_to_flag(languages):
             return "🏳❔"
 
         elif is_translated:
-            return f"{language_to_flag_dict[languages[0].name]}🔄"
+            return f"{language_to_flag_dict[languages[0].name]}🔁"
 
         elif not is_translated:
             return f"{language_to_flag_dict[languages[0].name]}💬"

@@ -63,7 +63,9 @@ DATA_DEFAULTS = {
         }
     },
     "Tokens": {  # Replace ONLY for initialization
-        "BOT_TOKEN": "xxx"  # str(token)
+        "BOT_TOKEN": "xxx",  # str(token)
+        "DEL_TOKEN": "xxx",  # str(token)
+        "DISCORDS_TOKEN": "xxx"  # str(token)
     },
     "config": {
         "debug_mode": False,        
@@ -107,12 +109,8 @@ DATA_CLOUD = 0
 if DATA_CLOUD:
     if exists("Files/ServiceAccountKey.json"):
         key = load(open("Files/ServiceAccountKey.json", "r"))
-    else:  # If it doesn't exists assume running on replit
-        try:
-            from replit import db
-            key = dict(db["SAK"])
-        except Exception:
-            raise FileNotFoundError("Could not find ServiceAccountKey.json.")
+    else:
+        raise FileNotFoundError("Could not find ServiceAccountKey.json.")
 
     db = FirebaseDB(
         "https://nreader-database-default-rtdb.firebaseio.com/", 

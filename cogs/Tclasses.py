@@ -772,7 +772,7 @@ class SearchResultsBrowser:
                         if response:
                             await session.start()
                         else:
-                            await self.active_message.edit(embed=self.parent.am_embed)
+                            await self.parent.active_message.edit(embed=self.parent.am_embed)
 
                         
 

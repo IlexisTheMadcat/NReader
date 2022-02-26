@@ -195,12 +195,6 @@ class Bot(DiscordBot):
             if payload.user_id in self.global_cooldown: raise BotInteractionCooldown("Bot interaction on cooldown.")
             else: self.global_cooldown.update({payload.user_id:"placeholder"})
             return payload
-
-        elif "button_click" in args:
-            payload = await super().wait_for(*args, **kwargs)
-            if payload.user.id in self.global_cooldown: raise BotInteractionCooldown("Bot interaction on cooldown.")
-            else: self.global_cooldown.update({payload.user.id:"placeholder"})
-            return payload
         
         else:
             return await super().wait_for(*args, **kwargs)

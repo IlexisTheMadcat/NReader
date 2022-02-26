@@ -23,8 +23,8 @@ class BackgroundTasks(Cog):
         self.bot = bot
         self.save_data.start()
         self.status_change.start()
-        self.del_update_stats.start()
 
+        self.del_update_stats.start()
         self.discords = DiscordsClient(bot, self.bot.auth["DISCORDS_TOKEN"])
         self.discords_update_stats.start()
 

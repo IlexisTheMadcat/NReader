@@ -786,6 +786,7 @@ class TCommands(Cog):
     @command(
         name=f"{experimental_prefix}lists",
         aliases=[
+            f"{experimental_prefix}list",
             f"{experimental_prefix}library",
             f"{experimental_prefix}lib", 
             f"{experimental_prefix}l",
@@ -1245,8 +1246,7 @@ class TCommands(Cog):
             elif mode in ["remove", "r", "-"]:
                 if code not in target_list:
                     await ctx.send(embed=Embed(
-                        description="❌ That doujin is not in that list.\n"
-                                    "Note: In the case of bookmarks, use the format `code/-/bookmarked_page` for `code`."))
+                        description="❌ That doujin is not in that list."))
                     return
 
                 target_list.pop(code)
@@ -1271,7 +1271,7 @@ class TCommands(Cog):
                     @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
                     async def confirm_button(self, button, interaction):
                         if interaction.user.id == ctx.author.id:
-                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"placeholder": 1}
                             emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
                             await interaction.response.edit_message(embed=emb, view=None)
                             self.stop()
@@ -1304,13 +1304,12 @@ class TCommands(Cog):
                 return
 
             elif mode in ["remove", "r", "-"]:
-                if code not in target_list:
+                if code not in target_list["list"]:
                     await ctx.send(embed=Embed(
-                        description="❌ That doujin is not in that list.\n"
-                                    "Note: In the case of bookmarks, use the format `code/-/bookmarked_page` for `code`."))
+                        description="❌ That doujin is not in that list."))
                     return
 
-                target_list.remove(code)
+                target_list["list"].remove(code)
                 await ctx.send(embed=Embed(description=f"✅ Removed `{code}` from `{list_name}`."))
                 return
 
@@ -1808,7 +1807,7 @@ class TCommands(Cog):
                     await interaction.response.defer()
                     self.stop()
 
-                    interactive = SearchResultsBrowser(self.bot, ctx, results.doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
+                    interactive = SearchResultsBrowser(self.bot, ctx, doujins, msg=conf, lolicon_allowed=lolicon_allowed, minimal_details=minimal_details, user_language=user_language)
                     await interactive.start(ctx)
 
             async def on_timeout(self):
@@ -2194,6 +2193,10 @@ class TCommands(Cog):
                     else:
                         current_def["index"] = current_def["index"] - 1
 
+                    examples_part = []
+                    for ind, example in enumerate(response[current_def["index"]].example_lines):
+                        examples_part.append(f"> *{example}*")
+
                     emb = Embed(
                         color=0x1d2439,
                         title=response[current_def['index']].word,
@@ -2220,6 +2223,10 @@ class TCommands(Cog):
                         current_def["index"] = 0
                     else:
                         current_def["index"] = current_def["index"] + 1
+
+                    examples_part = []
+                    for ind, example in enumerate(response[current_def["index"]].example_lines):
+                        examples_part.append(f"> *{example}*")
 
                     emb = Embed(
                         color=0x1d2439,
