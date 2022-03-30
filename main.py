@@ -26,11 +26,11 @@ DATA_DEFAULTS = {
 
                 # Listings that are normally blocked for legal reasons in servers show in these servers.
                 # Only the owner of the server can add its ID to this list.
-                "UnrestrictedServers": [0],  # [int(serverID)]
+                "UnrestrictedServers": [],  # [int(serverID)]
 
                 # Users may add a string to the end of searches. 
                 # This string will be appended to all their searches no matter the case.
-                "SearchAppendage": " ",  # str(appendage)
+                "SearchAppendage": "",  # str(appendage)
 
                 # A notification sent to users when they use a command for the first time.
                 # These are set to true after being executed. Resets by command.
@@ -50,13 +50,13 @@ DATA_DEFAULTS = {
             # Dev note: When editing keys, also use the CTRL+SHIFT+F to replace respective keys in the project.
             "Lists": {
                 "Built-in": {
-                    "Favorites|*n*|fav": ["0"],  # Top favorites
-                    "Read Later|*n*|rl": ["0"],  # To Read list, auto-changed by search browser and finishing doujin.
-                    "Bookmarks|*n*|bm": {"placeholder": 1},  # Bookmarks; code/-/page. Use `.split("/-/")`.
-                    "History|*n*|his": {"enabled": True, "list": ["0"]},  # Reading history 
+                    "Favorites|*n*|fav": [],  # [str(doujinID)] Top favorites. 
+                    "Read Later|*n*|rl": [],  # [str(doujinID)] To Read list, auto-updated by search browser and finishing doujin. 
+                    "Bookmarks|*n*|bm": {},   # {str(doujinID): int(page)} Bookmarks 
+                    "History|*n*|his": {"enabled": True, "list": []},  # Reading history 
                 },
                 "Custom": {
-                    "placeholder|*n*|ph": ["0"],
+                    # "custom_name|*n*|cn": [],
                 }
             },
 
@@ -73,20 +73,21 @@ DATA_DEFAULTS = {
 
         "error_log_channel": 734499801697091654,
         # The channel that errors are sent to.
+
+        "first_time_tip": "👋 It appears to be your first time using this bot!\n"
+                          "⚠️ This bot is to be used by mature users only and in NSFW channels.\n"
+                          "ℹ️ For more information and help, please use the `n!help` command.\n"
+                          "ℹ️ For brief legal information, please use the `n!legal` command.\n"
+                          "ℹ️ MechHub highly recommends you join the support server: **[MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n"
+                          "||(If you are receiving this notification again, a portion of your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||", 
+        
+        "lolicon_viewing_tip": "Tip: To view lolicon/shotacon doujins on Discord, you need to invite me to a server that you "
+                               "own and run the `n!whitelist <'add' or 'remove'>` (Server-owner only) command. \n"
+                               "This will allow all users in your server to open lolicon/shotacon doujins.\n"
+                               "This command is not in the help menu.\n"
+                               "Lolicon/shotacon doujins are __only__ reflected on your history, favorites, bookmarks, or searches __**in whitelisted servers**__.",
     }
 }
-
-INIT_EXTENSIONS = [
-    "admin",
-    "background",
-    "commands",
-    "Tcommands",
-    "classes",
-    "Tclasses",
-    "events",
-    "help",
-    "repl",
-]
 
 INIT_EXTENSIONS = [
     "admin",
@@ -172,7 +173,8 @@ bot = Bot(
     user_data=user_data,   
     defaults=DATA_DEFAULTS,
     auth=user_data["Tokens"],
-    use_firebase=DATA_CLOUD
+    use_firebase=DATA_CLOUD,
+    intents=intents
 )
 
 # If a custom help command is created:
@@ -212,7 +214,7 @@ async def on_ready():
 
     for cog in INIT_EXTENSIONS:
         try:
-            bot.load_extension(f"cogs.{cog}")
+            await bot.load_extension(f"cogs.{cog}")
             print(f"| Loaded initial cog {cog}")
         except ExtensionAlreadyLoaded:
             continue
@@ -224,8 +226,12 @@ async def on_ready():
                 print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
             
             error = exc_info()
-            if e:
-                await bot.errorlog.send(error, event="Load Initial Cog")
+            await bot.errorlog.send(error, event="Load Initial Cog")
+
+    print(f"| Syncing commands...", end="\r")
+    await bot.tree.sync()
+    await bot.tree.sync(guild=await bot.fetch_guild(699399549218717707))
+    print(f"| Commands synced    ")
 
     print(f"#-------------------------------#\n"
           f"| Successfully logged in.\n"

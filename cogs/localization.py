@@ -741,5 +741,5 @@ class Localization(Cog):
     def __init__(self, bot):
         self.bot = bot
 
-def setup(bot):
-    bot.add_cog(Localization(bot))
+async def setup(bot):
+    await bot.add_cog(Localization(bot))

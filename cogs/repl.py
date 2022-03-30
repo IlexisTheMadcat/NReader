@@ -169,5 +169,5 @@ class REPL(Cog):
                 await eval_message.edit(embed=Embed(description=":eye_in_speech_bubble: Caller has hidden eval output.", color=0x000000))
 
 
-def setup(bot: Bot):
-    bot.add_cog(REPL(bot))
+async def setup(bot: Bot):
+    await bot.add_cog(REPL(bot))

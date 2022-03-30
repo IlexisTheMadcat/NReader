@@ -61,7 +61,8 @@ class MiscCommands(Cog):
             add_reactions=True,
             manage_messages=True,
             manage_roles=True,
-            manage_channels=True)
+            manage_channels=True,
+            use_slash_commands=True)
 
         emb = Embed(
             title=localization[user_language]["invite"]["title"],
@@ -209,5 +210,5 @@ class MiscCommands(Cog):
         ))
 
 
-def setup(bot):
-    bot.add_cog(MiscCommands(bot))
+async def setup(bot):
+    await bot.add_cog(MiscCommands(bot))

@@ -14,7 +14,8 @@ from discord.ext.commands import (
 from discord.ext.commands.core import is_owner
 from discord.ext.commands.cooldowns import BucketType
 from discord.ext.commands.errors import ExtensionNotLoaded
-from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin, DoujinThumbnail
+# from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
+from utils.NHentai_API.NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import Embed
 from cogs.Tclasses import (
@@ -64,7 +65,7 @@ class TCommands(Cog):
                 self.value = None
             
             @ui.button(label="Click to test.", style=ButtonStyle.primary, emoji="🔘", custom_id="test")
-            async def continue_button(self, button, interaction):
+            async def continue_button(self, interaction, button):
                 if interaction.user.id == ctx.author.id:
                     button.disabled = True
                     button.label = "Success!"
@@ -106,7 +107,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
                         user_language["lang"] = "eng"
@@ -273,12 +274,12 @@ class TCommands(Cog):
             ctx.guild.me.guild_permissions.manage_roles, 
             ctx.guild.me.guild_permissions.manage_messages])):
                 @ui.button(label=localization[user_language]["doujin_info"]["need_permissions"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853684136379416616), custom_id="button1", disabled=True)
-                async def read_button(self, button, interaction):
+                async def read_button(self, interaction, button):
                     return
 
             else:
                 @ui.button(label=localization[user_language]["doujin_info"]["read"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853684136379416616), custom_id="button1")
-                async def read_button(self, button, interaction):
+                async def read_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
                         
@@ -294,7 +295,7 @@ class TCommands(Cog):
                         else:
                             emb.set_thumbnail(
                                 url=doujin.images[0].src)
-                            emb.set_image(url=Embed.Empty)
+                            emb.set_image(url=None)
                             button.disabled = True
                             button.label = localization[user_language]["doujin_info"]["opened"]
                             await view.message.edit(embed=emb, view=self)
@@ -307,16 +308,16 @@ class TCommands(Cog):
                                 await session.start()
 
             @ui.button(label=localization[user_language]["doujin_info"]["expand_thumbnail"], style=ButtonStyle.secondary, emoji=self.bot.get_emoji(853684136433942560), custom_id="button2")
-            async def expand_thumbnail(self, button, interaction):
+            async def expand_thumbnail(self, interaction, button):
                 if interaction.user.id == ctx.author.id:
                     if not emb.image:
                         emb.set_image(url=emb.thumbnail.url)
-                        emb.set_thumbnail(url=Embed.Empty)
+                        emb.set_thumbnail(url=None)
                         thumbnail_size = localization[user_language]["doujin_info"]["minimize_thumbnail"]
 
                     elif not emb.thumbnail:
                         emb.set_thumbnail(url=emb.image.url)
-                        emb.set_image(url=Embed.Empty)
+                        emb.set_image(url=None)
                         thumbnail_size = localization[user_language]["doujin_info"]["expand_thumbnail"]
 
                     button.label = thumbnail_size
@@ -326,7 +327,7 @@ class TCommands(Cog):
                 for component in self.children:
                     component.disabled = True
                 emb.set_thumbnail(url=doujin.images[0].src)
-                emb.set_image(url=Embed.Empty)
+                emb.set_image(url=None)
                 await view.message.edit(embed=emb, view=self)
                 self.stop()
         
@@ -355,7 +356,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
 
@@ -494,7 +495,7 @@ class TCommands(Cog):
             name="NHentai",
             url="https://nhentai.net/",
             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1"
-        ).set_thumbnail(url=thumbnail_url if not minimal_details else Embed.Empty)
+        ).set_thumbnail(url=thumbnail_url if not minimal_details else None)
         
         print(f"[HRB] {ctx.author} ({ctx.author.id}) searched for [{query if query else ''}{' ' if query and appendage else ''}{appendage if appendage else ''}].")
         
@@ -505,7 +506,7 @@ class TCommands(Cog):
                 self.value = None
             
             @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
-            async def interactive_mode(self, button, interaction):
+            async def interactive_mode(self, interaction, button):
                 if interaction.user.id == ctx.author.id:
                     await interaction.response.defer()
                     self.stop()
@@ -543,7 +544,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
 
@@ -620,7 +621,7 @@ class TCommands(Cog):
                 self.value = None
             
             @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
-            async def interactive_mode(self, button, interaction):
+            async def interactive_mode(self, interaction, button):
                 if interaction.user.id == ctx.author.id:
                     await interaction.response.defer()
                     self.stop()
@@ -664,7 +665,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
 
@@ -736,7 +737,7 @@ class TCommands(Cog):
                     self.bot = bot
                 
                 @ui.button(label="Accept", style=ButtonStyle.secondary, emoji="✅", custom_id="button1")
-                async def accept_button(self, button, interaction):
+                async def accept_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].append(ctx.guild.id)
 
@@ -748,7 +749,7 @@ class TCommands(Cog):
                         self.stop()
 
                 @ui.button(label="Decline", style=ButtonStyle.primary, emoji="❌", custom_id="button2")
-                async def decline_button(self, button, interaction):
+                async def decline_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         emb.description="❌ Operation cancelled."
                         button.label = "Declined"
@@ -806,7 +807,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
 
@@ -932,7 +933,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
-                async def interactive_mode(self, button, interaction):
+                async def interactive_mode(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
                         self.stop()
@@ -1115,7 +1116,7 @@ class TCommands(Cog):
                         self.value = None
                     
                     @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                    async def confirm_button(self, button, interaction):
+                    async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
                             emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
@@ -1123,7 +1124,7 @@ class TCommands(Cog):
                             self.stop()
 
                     @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
-                    async def cancel_button(self, button, interaction):
+                    async def cancel_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             emb = Embed(description=f"❌ Operation cancelled.")
                             await interaction.response.edit_message(embed=emb, view=None)
@@ -1209,7 +1210,7 @@ class TCommands(Cog):
                         self.value = None
                     
                     @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                    async def confirm_button(self, button, interaction):
+                    async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
                             emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
@@ -1217,7 +1218,7 @@ class TCommands(Cog):
                             self.stop()
 
                     @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
-                    async def cancel_button(self, button, interaction):
+                    async def cancel_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             emb = Embed(description=f"❌ Operation cancelled.")
                             await interaction.response.edit_message(embed=emb, view=None)
@@ -1269,7 +1270,7 @@ class TCommands(Cog):
                         self.value = None
                     
                     @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                    async def confirm_button(self, button, interaction):
+                    async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"placeholder": 1}
                             emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
@@ -1277,7 +1278,7 @@ class TCommands(Cog):
                             self.stop()
 
                     @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
-                    async def cancel_button(self, button, interaction):
+                    async def cancel_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             emb = Embed(description=f"❌ Operation cancelled.")
                             await interaction.response.edit_message(embed=emb, view=None)
@@ -1329,7 +1330,7 @@ class TCommands(Cog):
                         self.value = None
                     
                     @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                    async def confirm_button(self, button, interaction):
+                    async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
                             emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
@@ -1337,7 +1338,7 @@ class TCommands(Cog):
                             self.stop()
 
                     @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
-                    async def cancel_button(self, button, interaction):
+                    async def cancel_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             emb = Embed(description=f"❌ Operation cancelled.")
                             await interaction.response.edit_message(embed=emb, view=None)
@@ -1491,7 +1492,7 @@ class TCommands(Cog):
                                 self.value = None
                             
                             @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                            async def confirm_button(self, button, interaction):
+                            async def confirm_button(self, interaction, button):
                                 if interaction.user.id == ctx.author.id:
                                     self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category].pop(full_name)
                                     emb = Embed(description=f"✅ Deleted **`{list_name}`** (disbanded **`{len(target_list)-1}`** doujins).")
@@ -1499,7 +1500,7 @@ class TCommands(Cog):
                                     self.stop()
 
                             @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
-                            async def cancel_button(self, button, interaction):
+                            async def cancel_button(self, interaction, button):
                                 if interaction.user.id == ctx.author.id:
                                     emb = Embed(description=f"❌ Operation cancelled.")
                                     await interaction.response.edit_message(embed=emb, view=None)
@@ -1577,7 +1578,7 @@ class TCommands(Cog):
                             self.value = None
                         
                         @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                        async def confirm_button(self, button, interaction):
+                        async def confirm_button(self, interaction, button):
                             if interaction.user.id == ctx.author.id:
                                 self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
                                 emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
@@ -1585,7 +1586,7 @@ class TCommands(Cog):
                                 self.stop()
 
                         @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
-                        async def cancel_button(self, button, interaction):
+                        async def cancel_button(self, interaction, button):
                             if interaction.user.id == ctx.author.id:
                                 emb = Embed(description=f"❌ Operation cancelled.")
                                 await interaction.response.edit_message(embed=emb, view=None)
@@ -1628,7 +1629,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
 
@@ -1802,7 +1803,7 @@ class TCommands(Cog):
                 self.value = None
             
             @ui.button(label=localization[user_language]['search_doujins']['start_interactive'], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
-            async def interactive_mode(self, button, interaction):
+            async def interactive_mode(self, interaction, button):
                 if interaction.user.id == ctx.author.id:
                     await interaction.response.defer()
                     self.stop()
@@ -1840,7 +1841,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
                         
@@ -1882,7 +1883,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                async def confirm_button(self, button, interaction):
+                async def confirm_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = appendage
                 
@@ -1928,7 +1929,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-                async def confirm_button(self, button, interaction):
+                async def confirm_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         old = deepcopy(self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"])
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["SearchAppendage"] = " "
@@ -1991,7 +1992,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
                         
@@ -2092,7 +2093,7 @@ class TCommands(Cog):
                     self.value = None
                 
                 @ui.button(label=localization[user_language["lang"]]["language_not_available"]["button"], style=ButtonStyle.primary, emoji="▶️", custom_id="continue")
-                async def continue_button(self, button, interaction):
+                async def continue_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         await interaction.response.defer()
                         
@@ -2186,7 +2187,7 @@ class TCommands(Cog):
                 self.value = None
             
             @ui.button(label="Previous", style=ButtonStyle.primary, emoji="◀️", custom_id="button1", disabled=True if len(response) <=1 else False)
-            async def previous_button(self, button, interaction):
+            async def previous_button(self, interaction, button):
                 if interaction.user.id == ctx.author.id:
                     if current_def["index"] == 0:
                         current_def["index"] = len(response)-1
@@ -2213,11 +2214,11 @@ class TCommands(Cog):
                     await interaction.response.edit_message(embed=emb, view=self)
 
             @ui.button(label=f"[ ----- ]", style=ButtonStyle.secondary, custom_id="button0", disabled=True)
-            async def display_button(self, button, interaction):
+            async def display_button(self, interaction, button):
                 return
 
             @ui.button(label="Next", style=ButtonStyle.primary, emoji="▶️", custom_id="button2", disabled=True if len(response) <=1 else False)
-            async def next_button(self, button, interaction):
+            async def next_button(self, interaction, button):
                 if interaction.user.id == ctx.author.id:
                     if current_def["index"] == len(response)-1:
                         current_def["index"] = 0
@@ -2269,7 +2270,7 @@ class TCommands(Cog):
                 self.ctx = ctx
             
             @ui.button(label="Continue", style=ButtonStyle.danger, custom_id="button1")
-            async def confirm_button(self, button, interaction):
+            async def confirm_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     self.bot.user_data["UserData"].pop(str(self.ctx.author.id))
                     print(f"[HRB] {ctx.author} ({ctx.author.id}) popped their data from NReader.")
@@ -2281,7 +2282,7 @@ class TCommands(Cog):
                     self.stop()
 
             @ui.button(label="Cancel", style=ButtonStyle.secondary, custom_id="button2")
-            async def cancel_button(self, button, interaction):
+            async def cancel_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     emb = Embed(
                         title="<:nhentai:845298862184726538> Reset Cancelled",
@@ -2331,5 +2332,5 @@ class TCommands(Cog):
                 return
 
 
-def setup(bot):
-    bot.add_cog(TCommands(bot))
+async def setup(bot):
+    await bot.add_cog(TCommands(bot))

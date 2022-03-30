@@ -71,7 +71,7 @@ class BackgroundTasks(Cog):
 
         activity = Activity(
             type=ActivityType.watching,
-            name=f"{time}/UTC | {self.bot.command_prefix} | {len(self.bot.guilds)}")
+            name=f"{time}/UTC | /r | {len(self.bot.guilds)}")
 
         await self.bot.change_presence(status=status, activity=activity)
 
@@ -154,5 +154,5 @@ class BackgroundTasks(Cog):
         self.del_update_stats.cancel()
         self.discords_update_stats.cancel()
 
-def setup(bot):
-    bot.add_cog(BackgroundTasks(bot))
+async def setup(bot):
+    await bot.add_cog(BackgroundTasks(bot))

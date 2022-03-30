@@ -55,7 +55,7 @@ class Admin(Cog):
         module = f"cogs.{module}"
 
         try:
-            self.bot.load_extension(module)
+            await self.bot.load_extension(module)
 
         except ExtensionNotFound:
             em = Embed(
@@ -141,7 +141,7 @@ class Admin(Cog):
         module = f"cogs.{module}"
 
         try:
-            self.bot.unload_extension(module)
+            await self.bot.unload_extension(module)
 
         except ExtensionNotLoaded:
             em = Embed(
@@ -192,7 +192,7 @@ class Admin(Cog):
         module = f"cogs.{module}"
 
         try:
-            self.bot.reload_extension(module)
+            await self.bot.reload_extension(module)
 
         except ExtensionNotLoaded:
             em = Embed(
@@ -267,183 +267,6 @@ class Admin(Cog):
     
         await ctx.send(embed=em)
 
-    @is_owner()
-    @command()
-    async def config(self, ctx: Context, mode="view", setting=None, new_value=None):
-        """View and change bot settings"""
-        if mode == "view":
-            message_lines = list()
 
-            for setting, value in self.bot.config.items():
-                message_lines.append(f"{setting}:\n{type(value).__name__}({value})")
-            
-            message_lines.insert(0, "```")
-            message_lines.append("```")
-            
-            newline = "\n"
-            em = Embed(
-                title="Administration: Config",
-                description=f"The options and values are listed below:\n"
-                            f"{str(newline+newline).join(message_lines)}",
-                color=0x0000ff)
-            
-            return await ctx.send(embed=em)
-        
-        elif mode == "change":
-            if not setting or not new_value:
-                return await ctx.send("Specify the setting and value to change.")
-            
-            if setting not in self.bot.config:
-                return await ctx.send("That setting option doesn't exist.")
-
-            if type(self.bot.config[setting]).__name__ == "int":
-                try: self.bot.config[setting] = int(new_value)
-                except ValueError: 
-                    return await ctx.send("Invalid value type. Setting value should be of type `int`.")
-            
-            elif type(self.bot.config[setting]).__name__ == "float":
-                try: self.bot.config[setting] = float(new_value)
-                except ValueError: 
-                    return await ctx.send("Invalid value type. Setting value should be of type `float`.")
-            
-            elif type(self.bot.config[setting]).__name__ == "bool":
-                if new_value == "True":
-                    self.bot.config[setting] = True
-                elif new_value == "False":
-                    self.bot.config[setting] = False
-                else: 
-                    return await ctx.send("Invalid value type. Setting value should be of type `bool`.")
-            
-            elif type(self.bot.config[setting]).__name__ == "str":
-                self.bot.config[setting] = new_value
-            
-            else:
-                return await ctx.send(f"Unknown config value type ({type(self.bot.config[setting]).__name__}).")
-            
-            await ctx.send(f"Changed `{setting}` to `{new_value}`")
-    
-    @is_owner()
-    @group(name="say", invoke_without_command=True)
-    async def say(self, ctx: Context, *, msg: str = ""):
-        """Makes the bot send a message
-        If self.say_dest is set, it will send the message there
-        If it is not, it will send to ctx.channel"""
-        dest = self.say_dest
-        
-        if dest:
-            await ctx.send("I will await your words. Type `-stop` to cancel.")
-        else:
-            await ctx.send("I don't know where to send your message to!")
-            return
-        
-        if isinstance(self.say_dest, TextChannel):
-            while True:
-                try:
-                    m = await self.bot.wait_for("message", timeout=500, 
-                        check=lambda m: m.channel.id==ctx.channel.id and m.author.id==ctx.author.id)
-                except TimeoutError:
-                    await ctx.send("Timed out.")
-                    break
-                else:
-                    if m.content == "-stop" or m.content.startswith(self.bot.command_prefix):
-                        await m.add_reaction("✅")
-                        break
-                    
-                    await m.add_reaction("🕗")
-                    await sleep(2)
-                    if (len(m.content) / 5) * (60/self.say_wpm)-2 > 2:
-                        async with dest.typing():
-                            await sleep((len(m.content) / 5) * (60/self.say_wpm)-2)
-                    await m.remove_reaction("🕗", self.bot.user)
-                    
-                    files = [await i.to_file() for i in m.attachments if m.attachments]
-                    await dest.send(m.content, files=files)
-
-        elif isinstance(dest, DMChannel):
-            while True:
-                try:
-                    m = await self.bot.wait_for("message", timeout=500, 
-                        check=lambda m: m.channel.id in [ctx.channel.id, dest.id] and m.author.id in [ctx.author.id, dest.recipient.id])
-                except TimeoutError:
-                    await ctx.send("Timed out.")
-                    break
-                else:
-                    if m.author.id == ctx.author.id:
-                        if m.content == "-stop" or m.content.startswith(self.bot.command_prefix):
-                            await m.add_reaction("✅")
-                            break
-                        
-                        await m.add_reaction("🕗")
-                        await sleep(2)
-                        if (len(m.content) / 5) * (60/self.say_wpm)-2 > 2:
-                            async with dest.typing():
-                                await sleep((len(m.content) / 5) * (60/self.say_wpm)-2)
-                        
-                        files = [await i.to_file() for i in m.attachments if m.attachments]
-                        await dest.send(m.content, files=files)
-                        await m.remove_reaction("🕗", self.bot.user)
-                    
-                    elif m.author.id == dest.recipient.id:
-                        files = [await i.to_file() for i in m.attachments if m.attachments]
-                        await ctx.author.send(f"**{dest.recipient.name}:** {m.content if m.content else '[No Content]'}", files=files)
-
-    @is_owner()
-    @say.command(name="_in")
-    async def say_in(self, ctx: Context, dest:int = None):
-        """Sets the destination for messages from `[p]say`"""
-        if dest:
-            try:
-                self.say_dest = await self.bot.fetch_channel(dest)
-            except NotFound:
-                user = await self.bot.fetch_user(dest)
-                self.say_dest = await user.create_dm()
-            except Exception:
-                em = Embed(
-                    title="Administration: Set `say` Destination",
-                    description=f"Error: `say` destination not found.",
-                    color=0xFF0000)
-                await ctx.send(embed=em)
-                return
-            
-            if not self.say_dest or self.say_dest.id == ctx.author.id:
-                em = Embed(
-                    title="Administration: Set `say` Destination",
-                    description=f"Error: `say` destination not found.",
-                    color=0xFF0000)
-                await ctx.send(embed=em)
-                return
-            
-            if isinstance(self.say_dest, TextChannel):
-                em = Embed(
-                    title="Administration: Set `say` Destination",
-                    description=f"__Say destination set__\n"
-                                f"Guild: {self.say_dest.guild.name}\n"
-                                f"Channel: {self.say_dest.mention}\n"
-                                f"ID: {self.say_dest.id}",
-                    color=0x00FF00)
-                await ctx.send(embed=em)
-                return
-            
-            elif isinstance(self.say_dest, DMChannel):
-                em = Embed(
-                    title="Administration: Set `say` Destination",
-                    description=f"__Say destination set__\n"
-                                f"User: {self.say_dest.recipient.mention}\n"
-                                f"DMChannel ID: {self.say_dest.id}",
-                    color=0x00FF00)
-                await ctx.send(embed=em)
-                return
-
-        else:
-            self.say_dest = None
-            em = Embed(
-                title="Administration: Set `say` Destination",
-                description="Say destination has been unset",
-                color=0x00FF00
-            )
-            await ctx.send(embed=em)
-            return
-
-
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))
