@@ -3,7 +3,7 @@ from copy import deepcopy
 from textwrap import shorten
 from asyncio import sleep, TimeoutError
 from contextlib import suppress
-from typing import List
+from typing import List, Union
 
 from discord import (
     interactions, ui, ButtonStyle, Message, 
@@ -13,7 +13,8 @@ from discord.ui import view
 from discord.utils import get
 from discord.ext.commands import Context
 from discord.ext.commands.cog import Cog
-from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
+# from NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
+from utils.NHentai_API.NHentai.nhentai_async import NHentaiAsync as NHentai, Doujin
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
 from utils.Tmisc import (
@@ -87,11 +88,11 @@ class ImagePageReader:
         self.am_embed.set_footer(text=localization[self.language]['page_reader']['footer'].format(current=self.current_page+1, total=len(self.images), bookmark='🔖' if self.on_bookmarked_page else ''))
 
         if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 0:
-            self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)                
+            self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else None)                
         if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 1:
-            self.am_embed.set_thumbnail(url=self.images[self.current_page-1].src if (self.current_page-1) in range(0, len(self.images)) else Embed.Empty) 
+            self.am_embed.set_thumbnail(url=self.images[self.current_page-1].src if (self.current_page-1) in range(0, len(self.images)) else None) 
         if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
-            self.am_embed.set_thumbnail(url=Embed.Empty)
+            self.am_embed.set_thumbnail(url=None)
 
         thumbnail_buttons = {
             0: self.bot.get_emoji(903121521571168276),
@@ -108,7 +109,7 @@ class ImagePageReader:
                 self.parent = parent
             
             @ui.button(emoji=self.bot.get_emoji(853668227124953159), style=ButtonStyle.secondary, custom_id="previous", disabled=self.current_page==0)
-            async def previous_button(self, button, interaction):
+            async def previous_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -120,14 +121,14 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=ButtonStyle.secondary, custom_id="next")
-            async def next_button(self, button, interaction):
+            async def next_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
                     self.parent.current_page = self.parent.current_page + 1
                     if self.parent.current_page > (len(self.parent.images)-1):  # Finish the doujin if at last page
-                        self.parent.am_embed.set_image(url=Embed.Empty)
-                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                        self.parent.am_embed.set_image(url=None)
+                        self.parent.am_embed.set_thumbnail(url=None)
                         self.parent.am_embed.description=localization[self.parent.language]['page_reader']['finished']
 
                         await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -147,7 +148,7 @@ class ImagePageReader:
                         self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
-            async def select_button(self, button, interaction):
+            async def select_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
                     
@@ -155,47 +156,34 @@ class ImagePageReader:
                     if self.parent.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
                         bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.parent.code]
                     
-                    conf = await self.parent.am_channel.send(embed=Embed(
-                        description=localization[self.parent.language]['page_reader']['select_inquiry']['description']
-                    ).set_footer(
-                        text=localization[self.parent.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')))
+                    emb = Embed(
+                        description=f"{localization[self.parent.language]['page_reader']['select_inquiry']['description']}\n"
+                                    f"*{localization[self.parent.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')}*"
+                    )
                     
                     while True:
-                        try:
-                            m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
-                                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.parent.am_channel.id)
-                        
-                        except TimeoutError:
-                            await conf.delete()
+                        numpad = ButtonNumpad(self.bot, self.ctx, emb, dest=self.parent.am_channel)
+                        number, msg = await numpad.start()
+                        await msg.delete()
+
+                        if number in ["timeout", "cancel"]:
                             break
-
                         else:
-                            with suppress(Forbidden):
-                                await m.delete()
-                            
-                            if m.content == "n-cancel":
-                                await conf.delete()
+                            if (int(number)-1) in range(0, len(self.parent.images)):
+                                self.parent.current_page = int(number)-1
                                 break
-                            
-                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.parent.images)):
-                                await conf.delete()
-                                self.parent.current_page = int(m.content)-1
-                                
-                                return self.stop()
-                            
                             else:
-                                with suppress(Forbidden):
-                                    await m.delete()
-
                                 continue
+
+                    self.stop()
                 
             @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
-            async def stop_button(self, button, interaction):
+            async def stop_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
-                    self.parent.am_embed.set_image(url=Embed.Empty)
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.set_image(url=None)
+                    self.parent.am_embed.set_thumbnail(url=None)
                     self.parent.am_embed.description=localization[self.parent.language]['page_reader']['stopped']
                     
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -210,12 +198,12 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227234529300), style=ButtonStyle.secondary, custom_id="pause")
-            async def pause_button(self, button, interaction):
+            async def pause_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
-                    self.parent.am_embed.set_image(url=Embed.Empty)
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.set_image(url=None)
+                    self.parent.am_embed.set_thumbnail(url=None)
                     self.parent.am_embed.description=localization[self.parent.language]['page_reader']['paused']
                     
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -236,7 +224,7 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227205038090), style=ButtonStyle.secondary, custom_id="bookmark")
-            async def bookmark_button(self, button, interaction):
+            async def bookmark_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -272,7 +260,7 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji="⭐", style=ButtonStyle.secondary, custom_id="favorite")
-            async def favorite_button(self, button, interaction):
+            async def favorite_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -306,7 +294,7 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=thumbnail_buttons[self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"]], style=ButtonStyle.secondary, custom_id="thumbnail")
-            async def thumbnail_button(self, button, interaction):
+            async def thumbnail_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -319,8 +307,8 @@ class ImagePageReader:
 
             async def on_timeout(self):
                 with suppress(NotFound):
-                    self.parent.am_embed.set_image(url=Embed.Empty)
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.set_image(url=None)
+                    self.parent.am_embed.set_thumbnail(url=None)
                     self.parent.am_embed.description=localization[self.parent.language]['page_reader']['timeout'].format(current=self.parent.current_page+1, total=len(self.parent.images))
 
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -383,7 +371,7 @@ class ImagePageReader:
                 self.parent = parent
             
             @ui.button(label=localization[self.language]["page_reader"]["init"]["button"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
-            async def start_button(self, button, interaction):
+            async def start_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -506,12 +494,12 @@ class SearchResultsBrowser:
         self.am_embed.set_thumbnail(url=doujin.cover.src)
 
         if not self.minimal_details:
-            if previous_emb.image.url != Embed.Empty:
+            if previous_emb.image.url != None:
                 self.am_embed.set_image(url=doujin.cover.src)
-                self.am_embed.set_thumbnail(url=Embed.Empty)
-            elif previous_emb.thumbnail.url != Embed.Empty:
+                self.am_embed.set_thumbnail(url=None)
+            elif previous_emb.thumbnail.url != None:
                 self.am_embed.set_thumbnail(url=doujin.cover.src)
-                self.am_embed.set_image(url=Embed.Empty)        
+                self.am_embed.set_image(url=None)        
 
         nhentai = NHentai()
         tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
@@ -616,7 +604,7 @@ class SearchResultsBrowser:
                 self.parent = parent
             
             @ui.button(emoji=self.bot.get_emoji(853800909108936754), style=ButtonStyle.secondary, custom_id="up")
-            async def up_button(self, button, interaction):
+            async def up_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -628,7 +616,7 @@ class SearchResultsBrowser:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853800909276315678), style=ButtonStyle.secondary, custom_id="down")
-            async def down_button(self, button, interaction):
+            async def down_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -640,48 +628,32 @@ class SearchResultsBrowser:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
-            async def select_button(self, button, interaction):
+            async def select_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
-                    conf = await self.ctx.send(embed=Embed(
-                        description=localization[self.parent.language]['results_browser']['buttons']['select']))
+                    emb = Embed(
+                        description=localization[self.parent.language]['results_browser']['buttons']['select']
+                    )
 
                     while True:
-                        try:
-                            m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
-                                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id)
-                        
-                        except TimeoutError:
-                            await conf.delete()
-                            
-                            self.stop()
-                            return
+                        numpad = ButtonNumpad(self.bot, self.ctx, emb, dest=self.parent.active_message.channel)
+                        number, msg = await numpad.start()
+                        await msg.delete()
 
+                        if number in ["timeout", "cancel"]:
+                            break
                         else:
-                            with suppress(Forbidden):
-                                await m.delete()
-                            
-                            if m.content == "n-cancel":
-                                await conf.delete()
-                                
-                                self.stop()
-                                return
-                            
-                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.parent.doujins)):
-                                await conf.delete()
-                                self.parent.index = int(m.content)-1
-
-                                self.stop()
-                                return
-
+                            if (int(number)-1) in range(0, len(self.parent.doujins)):
+                                self.parent.index = int(number)-1
+                                break
                             else:
                                 continue
 
-                    self.stop()  # unreachable, but just to be consistant with design
+                    self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
-            async def stop_button(self, button, interaction):
+            async def stop_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -705,8 +677,8 @@ class SearchResultsBrowser:
                         url=f"https://nhentai.net/",
                         icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                     
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
-                    self.parent.am_embed.set_image(url=Embed.Empty)
+                    self.parent.am_embed.set_thumbnail(url=None)
+                    self.parent.am_embed.set_image(url=None)
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
 
                     self.value = 1
@@ -718,12 +690,12 @@ class SearchResultsBrowser:
                 self.ctx.guild.me.guild_permissions.manage_messages])):
 
                 @ui.button(emoji=self.bot.get_emoji(853684136379416616), style=ButtonStyle.secondary, custom_id="read", disabled=True)
-                async def read_button(self, button, interaction):
+                async def read_button(self, interaction, button):
                     return
 
             else:
                 @ui.button(emoji=self.bot.get_emoji(853684136379416616), style=ButtonStyle.secondary, custom_id="read", disabled=self.minimal_details)
-                async def read_button(self, button, interaction):
+                async def read_button(self, interaction, button):
                     if interaction.user.id == self.ctx.author.id:
                         await interaction.response.defer()
 
@@ -753,8 +725,8 @@ class SearchResultsBrowser:
                             url=f"https://nhentai.net/",
                             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                         
-                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.parent.am_embed.set_image(url=Embed.Empty)
+                        self.parent.am_embed.set_thumbnail(url=None)
+                        self.parent.am_embed.set_image(url=None)
 
                         await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
 
@@ -777,24 +749,24 @@ class SearchResultsBrowser:
                         
 
             @ui.button(emoji=self.bot.get_emoji(853684136433942560), style=ButtonStyle.secondary, custom_id="zoom", disabled=self.minimal_details)
-            async def zoom_button(self, button, interaction):
+            async def zoom_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
                     doujin = self.parent.doujins[self.parent.index]
-                    if self.parent.am_embed.image.url == Embed.Empty:
+                    if self.parent.am_embed.image.url == None:
                         self.parent.am_embed.set_image(url=doujin.cover.src)
-                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
-                    elif self.parent.am_embed.thumbnail.url == Embed.Empty:
+                        self.parent.am_embed.set_thumbnail(url=None)
+                    elif self.parent.am_embed.thumbnail.url == None:
                         self.parent.am_embed.set_thumbnail(url=doujin.cover.src)
-                        self.parent.am_embed.set_image(url=Embed.Empty)
+                        self.parent.am_embed.set_image(url=None)
                     
                     await self.parent.active_message.edit(embed=self.parent.am_embed)
                     
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227205038090), style=ButtonStyle.secondary, custom_id="readlater")
-            async def readlater_button(self, button, interaction):
+            async def readlater_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -847,8 +819,8 @@ class SearchResultsBrowser:
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                 
 
-                self.parent.am_embed.set_thumbnail(url=Embed.Empty)
-                self.parent.am_embed.set_image(url=Embed.Empty)
+                self.parent.am_embed.set_thumbnail(url=None)
+                self.parent.am_embed.set_image(url=None)
 
                 await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
                 
@@ -869,5 +841,165 @@ class SearchResultsBrowser:
             view_exit_code = await self.update_browser(self.ctx)
 
 
-def setup(bot):
-    bot.add_cog(TClasses(bot))
+class ButtonNumpad:
+    "Create a prompt message to submit numbers with. If creating with an embed, the footer will be replaced with the text field."
+    def __init__(self, bot: Bot, ctx: Context, prompt: Union[str, Embed], **kwargs):
+        """Class to create and run a browser from NHentai-API
+
+        `results` - obtained from nhentai_api.search(query)
+        `msg` - optional message that the bot owns to edit, otherwise created 
+        """
+        self.bot = bot
+        self.ctx = ctx
+        self.prompt = prompt
+        
+        self.text = ""
+        self.can_be_empty = kwargs.pop("empty", False)
+
+        self.active_message: Message = kwargs.pop("msg", None)
+        self.destination: TextChannel = kwargs.pop("dest", self.ctx.channel)
+    
+    async def start(self):
+        while True:
+            class NumberButtons(ui.View):
+                def __init__(self, parent):
+                    super().__init__(timeout=15)
+                    self.parent = parent
+                    self.value = None
+                
+                @ui.button(style=ButtonStyle.secondary, emoji="1️⃣", custom_id="one", row=1)
+                async def one(self, interaction, button):
+                    self.parent.text = self.parent.text+"1"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="2️⃣", custom_id="two", row=1)
+                async def two(self, interaction, button):
+                    self.parent.text = self.parent.text+"2"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="3️⃣", custom_id="three", row=1)
+                async def three(self, interaction, button):
+                    self.parent.text = self.parent.text+"3"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="4️⃣", custom_id="four", row=1)
+                async def four(self, interaction, button):
+                    self.parent.text = self.parent.text+"4"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="5️⃣", custom_id="five", row=1)
+                async def five(self, interaction, button):
+                    self.parent.text = self.parent.text+"5"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="6️⃣", custom_id="six", row=2)
+                async def six(self, interaction, button):
+                    self.parent.text = self.parent.text+"6"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+                
+                @ui.button(style=ButtonStyle.secondary, emoji="7️⃣", custom_id="seven", row=2)
+                async def seven(self, interaction, button):
+                    self.parent.text = self.parent.text+"7"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+                
+                @ui.button(style=ButtonStyle.secondary, emoji="8️⃣", custom_id="eight", row=2)
+                async def eight(self, interaction, button):
+                    self.parent.text = self.parent.text+"8"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="9️⃣", custom_id="nine", row=2)
+                async def nine(self, interaction, button):
+                    self.parent.text = self.parent.text+"9"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="0️⃣", custom_id="zero", row=2)
+                async def zero(self, interaction, button):
+                    self.parent.text = self.parent.text+"0"
+
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.secondary, emoji="◀", custom_id="backspace", row=3)
+                async def backspace(self, interaction, button):
+                    a = list(self.parent.text)
+                    if not a:
+                        await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                        return
+                        
+                    a.pop()
+                    self.parent.text = "".join(a)
+                    
+                    self.parent.prompt.set_footer(text=self.parent.text+"|")
+                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
+                    self.value = True
+
+                @ui.button(style=ButtonStyle.danger, emoji="🗑", custom_id="cancel", row=3)
+                async def cancel(self, interaction, button):
+                    self.value = "cancel"
+                    await interaction.response.defer()
+                    self.stop()
+
+                @ui.button(style=ButtonStyle.success, emoji="✅", custom_id="enter", row=3)
+                async def enter(self, interaction, button):
+                    self.value = self.parent.text
+                    await interaction.response.defer()
+                    if self.value == "":
+                        if not self.parent.can_be_empty:
+                            await interaction.followup.send("Please enter a number.", ephemeral=True)
+                        else:
+                            self.value = "empty"
+                    else:
+                        self.stop()
+
+                async def on_timeout(self):
+                    self.parent.text = ""
+                    self.value = "timeout"
+                    self.stop()
+
+            if isinstance(self.prompt, str):
+                self.prompt = Embed(description=self.prompt)
+            if not self.prompt.footer.text:
+                self.prompt.set_footer(text="")
+            
+            self.prompt.set_footer(text="|")
+
+            view = NumberButtons(self)
+            if not self.active_message:
+                view.message = await self.destination.send(embed=self.prompt, view=view)
+            else:
+                view.message = await self.active_message.edit(embed=self.prompt, view=view)
+
+            await view.wait()
+            return (view.value, view.message)
+
+
+async def setup(bot):
+    await bot.add_cog(TClasses(bot))
