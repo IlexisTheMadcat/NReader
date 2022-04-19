@@ -64,68 +64,50 @@ def language_to_flag(languages):
     else:
         return "🏳❔"
 
-def render_date(datetime, user_language):
-    """Turn a datetime into a word-friendly string"""
-    months = {
-        1: "January",
-        2: "February",
-        3: "March",
-        4: "April",
-        5: "May",
-        6: "June",
-        7: "July",
-        8: "August",
-        9: "September",
-        10: "October",
-        11: "November",
-        12: "December"
-    }
-    suffixs = {
-        1: "st",
-        2: "nd",
-        3: "rd",
-        4: "th",
-        5: "th",
-        6: "th",
-        7: "th",
-        8: "th",
-        9: "th",
-        0: "th"
-    }
-
-    day = str(datetime.day)
-    hour = str(datetime.hour)
-    if int(hour) > 12:
-        hour = str(int(hour)-12)
-        is_afternoon = True
-    else:
-        if user_language != "eng":
-            hour = "0"+hour
-        is_afternoon = False
-    minute = str(datetime.minute)
-    if len(minute) == 1:
-        minute = "0"+minute
-
-    # return f"On {months[datetime.month]} {datetime.day}{suffixs[int(day[-1])] if user_language=='eng' else ''}, {datetime.year} at {hour}:{datetime.minute} {'PM' if is_afternoon else 'AM'}"
-    return localization[user_language]["doujin_info"]["fields"]["date_uploaded_format"].format(
-        month_name=months[datetime.month] if user_language == "eng" else '',
-        month_numeral=str(datetime.month),
-        day=str(datetime.day)+(suffixs[int(day[-1])] if user_language=='eng' else ''),
-        weekday=localization[user_language]["doujin_info"]["fields"]["date_uploaded_weekdays"][datetime.weekday()],
-        year=str(datetime.year),
-        hour=str(hour) if user_language=="eng" else str(datetime.hour),
-        minute=str(minute),
-        am_pm="PM" if is_afternoon else "AM"
-    )
-
 
 def show_values(obj, value_width=200, value_oversize_placeholder="...", include_methods=True):
     items = []
     for i in dir(obj):
-        if not include_methods and callable(getattr(obj, i)):
-            continue 
+        if include_methods and callable(getattr(obj, i)):
+            items.append(f"attr: {type(obj).__name__}.{i}: {shorten(str(getattr(obj, i)), width=value_width, placeholder=value_oversize_placeholder)}")
+        else:
+            continue
 
-        items.append(f"{type(obj).__name__}.{i}: {shorten(str(getattr(obj, i)), width=value_width, placeholder=value_oversize_placeholder)}")
+    if include_methods:
+        for i in dir(obj):
+            if callable(getattr(obj, i)):
+                continue
+            else:
+                items.append(f"method: {type(obj).__name__}.{i}")
 
     return items
+
+def repair_uniform_dict(reference, target):
+    """Repairs `target` dict with `reference` dict data structure."""
+    def recursive_repair(ref_dict: dict, target_dict: dict):
+        for key, value in enumerate(ref_dict.values):
+            # Missing key
+            if key not in target_dict:
+                target_dict[key] = value
+                continue
+
+            # Unmatching type
+            if type(value) != type(target_dict[key]):
+                # If not a dict, just use the reference dict.
+                if isinstance(value, dict) and not isinstance(target_dict[key], dict):
+                    target_dict[key] = value
+                    continue
+
+                # If not matching, try to convert
+                if type(value) != type(target_dict[key]):
+                    try:
+                        target_dict[key] = type(value)(target_dict[key])
+                    except Exception:
+                        pass
+
+                    continue
+
                 
+            
+            if isinstance(value, dict):
+                recursive_repair(value, target_dict[key])

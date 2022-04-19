@@ -21,7 +21,7 @@ from utils.classes import Embed
 from cogs.classes import (
     ImagePageReader,
     SearchResultsBrowser)
-from utils.misc import language_to_flag, restricted_tags, render_date
+from utils.misc import language_to_flag, restricted_tags
 from cogs.localization import *
 
 """

@@ -88,7 +88,7 @@ localization = {
 					"ID || Pages",
 
 				"date_uploaded":
-					"Date uploaded (UTC)",
+					"Date uploaded",
 				"date_uploaded_weekdays": {
 					0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday",
 					4: "Thursday", 5: "Friday", 6: "Saturday"
@@ -181,7 +181,8 @@ localization = {
 				"You finished this doujin.",
 			"select_inquiry": {
 				"description":
-					"Enter a page number within 15 seconds, or type `n-cancel` to cancel.",
+					"Use the numbered buttons to enter a page number.\n"
+					"[◀ = Backspace] [🗑 = Cancel] [✅ = Enter] [🔖 = Bookmark]",
 				"footer":
 					"Bookmarked page: {bookmarked_page}",
 			},
@@ -268,7 +269,8 @@ localization = {
 		"results_browser": { # Over half of what would be here actually uses the doujin_info material
 			"buttons": {
 				"select":
-					"Enter a result number within 15 seconds, or type `n-cancel` to cancel.",
+					"Use the numbered buttons to enter a result number.\n"
+					"[◀ = Backspace] [🗑 = Cancel] [✅ = Enter]",
 				"read_later_full":
 					"❌ Your Read Later list is full. Please remove something from it to perform this action.",
 				"add_to_read_later":
@@ -349,16 +351,16 @@ localization = {
 			},
 
 			"lolicon_viewing_tip": 
-				"ヒント：Discordで制限付き同人誌を表示するには、サーバーに招待して、「`n！whitelist <'add'または 'remove'>`」コマンドを実行します。"
-                "これにより、サーバー上のすべてのユーザーが制限付き同人誌を開くことができます。\n"
-                "制限付き同人誌は、ホワイトリストに登録されたサーバーでの履歴、お気に入り、ブックマーク、または検索にのみ反映されますが、数値統計ではこれらのドメインの外にそれらを隠すことはできません。"
+				"ヒント：Discordで制限付き成人雜誌を表示するには、サーバーに招待して、「`n！whitelist <'add'または 'remove'>`」コマンドを実行します。"
+                "これにより、サーバー上のすべてのユーザーが制限付き成人雜誌を開くことができます。\n"
+                "制限付き成人雜誌は、ホワイトリストに登録されたサーバーでの履歴、お気に入り、ブックマーク、または検索にのみ反映されますが、数値統計ではこれらのドメインの外にそれらを隠すことはできません。"
 		},
 
 		"help": {
 			"title": 
 				"<:info:818664266390700074> 手助け",
 			"description": 
-				"**Discordで同人誌を検索、概要、読みます。**\n" 
+				"**Discordで成人雜誌を検索、概要、読みます。**\n" 
 				"**サポートギルド: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n" 
 				"\n" 
 				"すべての情報については、この[Googleドキュメント](https://docs.google.com/document/d/e/2PACX-1vSZkUzrO5sbwWJJPdejrn_Kl_HEsEqBjzTotcTmEI7bfcS8NDB4FDJnhEO2-avYCVuSMHThozw3H81b/pub)にアクセスしてください。\n"
@@ -383,9 +385,9 @@ localization = {
 			"not_a_valid_id": 
 				"❌ 識別は番号ではありません。 数字のみ！",
 			"doujin_not_found": 
-				"🔎❌ ボットは、そのIDを持つ同人誌を見つけることができませんでした。",
+				"🔎❌ ボットは、そのIDを持つ成人雜誌を見つけることができませんでした。",
 			"is_lolicon":
-				"⚠️⛔ この同人誌には許可されていないタグがあり、表示できません。",
+				"⚠️⛔ この成人雜誌には許可されていないタグがあり、表示できません。",
 			"fields": {
 				"not_provided":
 					"提供されていない",
@@ -399,14 +401,14 @@ localization = {
 					"身元 || ページ",
 
 				"date_uploaded":
-					"アップロード日(UTC)",
+					"アップロード日",
 				"date_uploaded_weekdays": {
 					0: "日", 1: "月", 2: "火", 3: "水",
 					4: "木", 5: "金", 6: "土"
 				},
 
 				"languages":
-					"同人誌言語",
+					"成人雜誌言語",
 				"language_names": {
 					"translated": "翻訳",
 					"rewrite": "リライト",
@@ -421,13 +423,13 @@ localization = {
 				},
 
 				"artists":
-					"同人誌アーティスト",
+					"成人雜誌アーティスト",
 
 				"characters":
-					"同人誌キャラクター",
+					"成人雜誌キャラクター",
 
 				"parodies":
-					"同人誌パロディー",
+					"成人雜誌パロディー",
 
 				"tags": 
 					"コンテンツタグ",
@@ -487,26 +489,27 @@ localization = {
 			"timeout":
 				"[{current} / {total}] ページでタイムアウトしました。",
 			"timeout_notification":
-				"{mention}, 同人誌でタイムアウトしました。一時停止を押すのを忘れましたか？",
+				"{mention}, 成人雜誌でタイムアウトしました。一時停止を押すのを忘れましたか？",
 			"finished":
-				"あなたはこの同人誌を完成させました。",
+				"あなたはこの成人雜誌を完成させました。",
 			"select_inquiry": {
 				"description":
-					"15秒以内にページ番号を入力するか、「`n-cancel`」と入力してキャンセルしてください。",
+					"番号付きのボタンを使用して、ページ番号を入力します\n"
+					"[◀=バックスペース] [🗑=キャンセル] [✅=入力] [🔖=ブックマーク]",
 				"footer":
 					"ブックマークされたページ：{bookmarked_page}",
 			},
 			"paused":
-				"この同人を一時停止しました。",
+				"この成人雜誌を一時停止しました。",
 			"recall_saved": {
 				"title":
 					"保存されたリコール。",
 				"description": 
-					"コード「`{code}`」が保存された同人誌は、ページ[{current}/{total}]に呼び戻すことができます。\n"
+					"コード「`{code}`」が保存された成人雜誌は、ページ[{current}/{total}]に呼び戻すことができます。\n"
 					"このページに戻るには、「`n!recall`」コマンドを実行して、そのページから始まる新しいリーダーをすぐに開きます。",
 			},
 			"stopped":
-				"あなたはこの同人誌を読むのをやめました。",
+				"あなたはこの成人雜誌を読むのをやめました。",
 			"cannot_bookmark_first_page":
 				"最初のページをブックマークすることはできません。代わりにお気に入りを使用してください！",
 			"bookmarks_full":
@@ -519,9 +522,86 @@ localization = {
 				"✅ お気に入りから` 「{code}」 `を削除しました。",
 			"error":
 				"未処理のエラーが発生しました。もう一度やり直してください。\n"
-				"問題が解決しない場合は、同人誌を再度開いてみてください。\n"
+				"問題が解決しない場合は、成人雜誌を再度開いてみてください。\n"
 				"再度開くことができない場合は、「サポートギルド」ボタンをクリックしてください。"
-		}
+		},
+
+		"search_doujins": {  
+			"searching": 
+				"<a:nreader_loading:810936543401213953> サーチ...\n"
+				"```\n"
+				"{query} {appendage}\n"
+				"```\n",
+
+			"invalid_page": {
+				"title":
+					"❌ ページ番号が無効です。",
+				"description":
+					"`0` (ゼロ) は有効なページ番号ではありません。 ゼロより大きくなければなりません。"
+			},
+			"invalid_sort": {
+				"title":
+					"❌ ソートパラメータが無効です。",
+				"description":
+					"`today`、`week`、`month`、`popular`（デフォルト）、`recent` でしか並べ替えることができません。"
+			},
+			"too_broad": {
+				"title":
+					"❌ 検索範囲が広すぎます。",
+				"description":
+					"何を検索するか教えてください。 また、 `n！help` の下の `check_appendage` を確認してください。"
+			},
+			"unexpected_error":
+				"❌ 予期しないエラー。 別の検索を試してください。",
+			"no_results": {
+				"title":
+					"🔎❌ 結果がありません。",
+				"description": {
+					"appendage": 
+						"`*️⃣` これが検索付属物の原因である可能性があります。 `n！help` の下の `search_appendage` を参照するか、`--noappend` を追加してバイパスします。",
+					"page":
+						"`*️⃣` 検索にページ番号を追加しました（`--page=＃`）。 ページが合計ページ数の範囲内であることを確認してください（ページなしで検索して確認してください）。",
+					"restricted_tags":
+						"`*️⃣` 制限付きタグを検索しました。 このボットの動作方法により、制限されたタグはキャンセルされ、検索がnullになります。"
+				}
+			},
+
+			"search_results": {
+				"title":
+					"の検索結果",
+				"description":
+					"表示中のページ{page}/{pages}（〜{approximate}成人雜誌）:\n"
+					"{results}",
+			},
+			"contains_restricted_tags":
+				"__`       `__ | ⚠🚫 | 制限付きタグが含まれています。",
+			"start_interactive":
+				"インタラクティブを開始"
+		},
+
+		"results_browser": { # Over half of what would be here actually uses the doujin_info material
+			"buttons": {
+				"select":
+					"番号付きのボタンを使用して結果番号を入力してください。\n"
+					"[◀=バックスペース][🗑=キャンセル][✅=入力]",
+				"read_later_full":
+					"❌ 後で読むリストがいっぱいです。 このアクションを実行するには、そこから何かを削除してください。",
+				"add_to_read_later":
+					"✅ 後で読むリストに `{code}` を追加しました。",
+				"remove_from_read_later":
+					"✅ 後で読むリストから `{code}` を削除しました。",
+				"support_server":
+					"サポートサーバー"
+			},
+			"forbidden": {
+				"title":
+					"禁断",
+				"description":
+					"⚠️❌ この成人雜誌はこのサーバーでは表示できません。"
+			},
+			"minimal_details": 
+				"最小限の詳細"
+		},
 	},
 
 	"cn": {
@@ -556,15 +636,15 @@ localization = {
 
 			"lolicon_viewing_tip": 
 				"提示：要在 Discord 上查看受限制的漫畫，您需要邀請我加入您擁有的服務器並運行 「`n!whitelist <'add' or'remove'>`」 命令。\n"
-				"這將允許您服務器上的所有用戶打開受限的同人圈。\n"
-				"受限制的同人__僅__反映在您在**白名單服務器**上的歷史記錄、收藏夾、書籤或搜索中，但統計數據**可能不會**從這些域中隱藏此內容。"
+				"這將允許您服務器上的所有用戶打開受限的成人雜誌圈。\n"
+				"受限制的成人雜誌__僅__反映在您在**白名單服務器**上的歷史記錄、收藏夾、書籤或搜索中，但統計數據**可能不會**從這些域中隱藏此內容。"
 		},
 
 		"help": {
 			"title": 
 				"<:info:818664266390700074> 幫助",
 			"description": 
-				"**在 Discord 中搜索、概覽和閱讀同人。**\n" 
+				"**在 Discord 中搜索、概覽和閱讀成人雜誌。**\n" 
 				"**支持公會: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**\n" 
 				"\n" 
 				"如需完整信息表，請訪問 [此 Google 文檔頁面](https://docs.google.com/document/d/e/2PACX-1vTszuOx36UbKmAhyX2sQ4jEJymmkyzf6oz-JduErnFxbWhoXoHeFEd0ZPv-VnKiUMFV4a_H8WjU1iPE/pub)。\n"
@@ -606,14 +686,14 @@ localization = {
 					"鑑別 || 頁",
 
 				"date_uploaded":
-					"上傳日期(UTC)",
+					"上傳日期",
 				"date_uploaded_weekdays": {
 					0: "星期日", 1: "星期一", 2: "星期二", 3: "星期三",
 					4: "星期四", 5: "星期五", 6: "星期六"
 				},
 
 				"languages":
-					"同人誌語言",
+					"成人雜誌語言",
 				"language_names": {
 					"translated": "已翻譯",
 					"rewrite": "又寫了",
@@ -628,13 +708,13 @@ localization = {
 				},
 
 				"artists":
-					"同人誌藝人",
+					"成人雜誌藝人",
 
 				"characters":
-					"同人誌角色",
+					"成人雜誌角色",
 
 				"parodies":
-					"同人誌模仿",
+					"成人雜誌模仿",
 
 				"tags": 
 					"內容標籤",
@@ -702,7 +782,8 @@ localization = {
 				"你完成了這本漫畫。",
 			"select_inquiry": {
 				"description":
-					"在 15 秒內輸入頁碼，或輸入「`n-cancel`」取消。",
+					"使用編號按鈕輸入頁碼\n"
+					"[◀ = 退格] [🗑 = 取消] [✅ = 回車] [🔖 = 書籤]",
 				"footer":
 					"書籤頁面：{bookmarked_page}",
 			},
@@ -731,7 +812,85 @@ localization = {
 				"發生未處理的錯誤；請重試。\n"
 				"如果問題仍然存在，請嘗試重新打開漫畫。\n"
 				"如果重新打開不起作用，請單擊「支持公會」按鈕。"
-		}
+		},
+
+		
+		"search_doujins": {  
+			"searching": 
+				"<a:nreader_loading:810936543401213953> 搜索...\n"
+				"```\n"
+				"{query} {appendage}\n"
+				"```\n",
+
+			"invalid_page": {
+				"title":
+					"❌ 頁碼無效。",
+				"description":
+					"`0` (零) 不是有效的頁碼。 頁碼必須大於零。"
+			},
+			"invalid_sort": {
+				"title":
+					"❌ 無效的排序參數。",
+				"description":
+					"我只能按 `today`、`week`、`month`、`popular`（默認）、和 `recent` 排序。"
+			},
+			"too_broad": {
+				"title":
+					"❌ 搜索範圍太廣。",
+				"description":
+					"告訴我要搜索什麼，或者檢查你的搜索附件（參見 `n!help` 下的 `search_appendage`）。"
+			},
+			"unexpected_error":
+				"❌ 意外的錯誤。 請嘗試其他搜索。",
+			"no_results": {
+				"title":
+					"🔎❌ 沒有結果。",
+				"description": {
+					"appendage": 
+						"`*️⃣` 這可能是您的搜索附件的原因。 請參閱 `n!help` 下的 `search_appendage`，或添加 `--noappend` 以繞過它。",
+					"page":
+						"`*️⃣` 您已在搜索中添加頁碼 (`--page=#`)。 請檢查您的頁面是否在總頁數範圍內（通過不搜索頁面進行檢查）。",
+					"restricted_tags":
+						"`*️⃣` 您搜索了受限標籤。 由於此機器人的工作方式，受限標籤會被取消，從而導致空搜索。"
+				}
+			},
+
+			"search_results": {
+				"title":
+					"搜索結果",
+				"description":
+					"顯示第 {page}/{pages} 頁（~{approximate} 漫畫）：\n"
+					"{results}",
+			},
+			"contains_restricted_tags":
+				"__`       `__ | ⚠🚫 | 包含受限標籤。",
+			"start_interactive":
+				"開始互動"
+		},
+
+		"results_browser": { # Over half of what would be here actually uses the doujin_info material
+			"buttons": {
+				"select":
+					"使用編號按鈕輸入結果編號。\n"
+					"[◀ = 退格] [🗑 = 取消] [✅ = 回車]",
+				"read_later_full":
+					"❌ 您的稍後閱讀列表已滿。 請從中刪除某些內容以執行此操作。",
+				"add_to_read_later":
+					"✅ 將 `{code}` 添加到您的稍後閱讀列表中。",
+				"remove_from_read_later":
+					"✅ 從您的稍後閱讀列表中刪除了 `{code}`。",
+				"support_server":
+					"支持服務器"
+			},
+			"forbidden": {
+				"title":
+					"禁止的",
+				"description":
+					"⚠️❌ 此成人雜誌無法在此服務器中查看。"
+			},
+			"minimal_details": 
+				"最少的細節"
+		},
 	}
 }
 

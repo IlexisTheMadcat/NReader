@@ -20,84 +20,37 @@ from discord.ext.commands.errors import (
 )
 
 # for retrofitting
-from discord.app_commands import command as slash_command
+from discord.app_commands import command as slash_command, describe
+from discord.app_commands.checks import cooldown
 from discord import MessageType
 
 from utils.classes import Embed
 from cogs.localization import *
 
-class RetroMessage(Message):
-    """ Read discord.Message doc string in the Attributes section to learn how to fill this information. """
-    def __init__(
-        self, 
-        tts, type, author, content, nonce, embeds, channel,
-        reference, mention_everyone, mentions, channel_mentions,
-        role_mentions, id, webhook_id, attachments, pinned,
-        flags, reactions, activity, components, guild,
-        application, stickers, _state, _edited_timestamp
-    ):
-        self.tts=tts
-        self.type=type
-        self.author=author
-        self.content=content
-        self.nonce=nonce
-        self.embeds=embeds
-        self.channel=channel
-        self.reference=reference
-        self.mention_everyone=mention_everyone
-        self.mentions=mentions
-        self.channel_mentions=channel_mentions
-        self.role_mentions=role_mentions
-        self.id=id
-        self.webhook_id=webhook_id
-        self.attachments=attachments
-        self.pinned=pinned
-        self.flags=flags
-        self.reactions=reactions
-        self.activity=activity
-        self.components=components
-        self.guild=guild
-        self.application=application
-        self.stickers=stickers
-        self._state=_state
-        self._edited_timestamp=_edited_timestamp
-
 
 class Events(Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.state_message = None  # the one that starts it all
 
-    @slash_command(name="r", description="Run a traditional command. Prefix not required but optional.")
-    async def run(self, interaction, *, input: str):
-        if not self.state_message:
-            await interaction.response.send_message("Be the first to send ANY message to allow everyone to use this universal command!", ephemeral=True)
-            return
+    @cooldown(1, 4)
+    @slash_command(name="r", description="Run a traditional bot command. Original prefix is optional.")
+    @describe(command="Your wish is my command.")
+    async def run(self, interaction, *, command: str):
+        ctx = await Context.from_interaction(interaction)
+        if command[0:2] == "n!":
+            ctx.message.content = command
+        else:
+            ctx.message.content = self.bot.command_prefix+command
 
-        if not interaction.guild:
-            await interaction.response.send_message("Unfortunately the gateway slash command cannot be used in DMs at this time. Please use it in a server.", ephemeral=True)
-            return
-
-        input = input.lstrip("n!")
-        input = "n!"+input
-
-        await interaction.response.defer()
-
-        msg = await interaction.channel.send(input)
-        msg.content = input
-        msg.author = interaction.user
-        msg.type = MessageType.default
-
-        await interaction.followup.send("Command acknoledged.")
-        await self.on_message(msg)
+        await interaction.response.send_message("Command acknowledged.")
+        
+        print(ctx.message.content)
+        await self.on_message(ctx.message)
 
     # Message events
     # --------------------------------------------------------------------------------------------------------------------------
     @Cog.listener()
     async def on_message(self, msg: Message):
-        if not self.state_message:
-            self.state_message = msg
-        
         # Cooldown
         if msg.author.id in self.bot.global_cooldown: return
         else: self.bot.global_cooldown.update({msg.author.id:"placeholder"})

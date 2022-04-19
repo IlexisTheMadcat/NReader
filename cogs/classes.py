@@ -18,8 +18,7 @@ from utils.NHentai_API.NHentai.nhentai_async import NHentaiAsync as NHentai, Dou
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
 from utils.misc import (
-    language_to_flag, 
-    render_date, 
+    language_to_flag,
     is_int, is_float,
     restricted_tags)
 from cogs.localization import *
