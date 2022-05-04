@@ -44,7 +44,6 @@ class Events(Cog):
 
         await interaction.response.send_message("Command acknowledged.")
         
-        print(ctx.message.content)
         await self.on_message(ctx.message)
 
     # Message events
