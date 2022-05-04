@@ -150,7 +150,14 @@ class TCommands(Cog):
 
         if code.lower() not in ["random", "r"]:
             # Lookup
-            doujin = await nhentai_api.get_doujin(code)
+            try:
+                doujin = await nhentai_api.get_doujin(code)
+            except Exception as e:
+                await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["unexpected_error"]))
+                error = exc_info()
+                await self.bot.errorlog.send(error, ctx=ctx, event="Doujin Lookup")
+                return
+
             if not doujin:
                 return await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["doujin_not_found"]))
 
@@ -169,9 +176,16 @@ class TCommands(Cog):
         else:
             # Get a random doujin
             while True:
-                doujin = await nhentai_api.get_random()
+                try:
+                    doujin = await nhentai_api.get_random()
+                except Exception as e:
+                    await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["unexpected_error"]))
+                    error = exc_info()
+                    await self.bot.errorlog.send(error, ctx=ctx, event="Doujin Lookup")
+                    return
+
                 if not lolicon_allowed and any([tag.name in restricted_tags for tag in doujin.tags]):
-                    await sleep(0.5)
+                    await sleep(1)
                     continue
 
                 else:

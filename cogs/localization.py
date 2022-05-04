@@ -71,6 +71,8 @@ localization = {
 				"Showing minimal information. Use the command in an NSFW-marked channel for more details.",
 			"not_a_valid_id": 
 				"❌ You didn't type a proper ID. Come on, numbers!",
+			"unexpected_error":
+				"❌ There was an unexpected error while looking this up for you.",
 			"doujin_not_found": 
 				"🔎❌ I did not find a doujin with that ID.",
 			"is_lolicon":
@@ -384,6 +386,8 @@ localization = {
 				"最小限の情報を表示しています。 詳細については、NSFWでマークされたチャンネルでコマンドを使用してください。",
 			"not_a_valid_id": 
 				"❌ 識別は番号ではありません。 数字のみ！",
+			"unexpected_error":
+				"❌ これを検索しているときに予期しないエラーが発生しました。",
 			"doujin_not_found": 
 				"🔎❌ ボットは、そのIDを持つ成人雜誌を見つけることができませんでした。",
 			"is_lolicon":
@@ -669,6 +673,8 @@ localization = {
 			},
 			"not_a_valid_id": 
 				"❌ 標識無效。 只有數字！",
+			"unexpected_error":
+				"❌ 為您查找此內容時出現意外錯誤。",
 			"doujin_not_found": 
 				"🔎❌ 那個漫畫不存在。",
 			"is_lolicon":
