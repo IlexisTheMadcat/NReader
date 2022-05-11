@@ -2,6 +2,7 @@ from json import dump, dumps
 from asyncio import sleep
 from aiohttp import ClientSession
 from datetime import datetime
+from random import randint
 
 from discordspy import Post as DiscordsPost, Client as DiscordsClient
 from discord.activity import Activity
@@ -28,6 +29,8 @@ class BackgroundTasks(Cog):
         self.discords = DiscordsClient(bot, self.bot.auth["DISCORDS_TOKEN"])
         self.discords_update_stats.start()
 
+        self.is_available = True
+
     @is_owner()
     @command()
     async def restart_task(self, ctx, task):
@@ -53,7 +56,7 @@ class BackgroundTasks(Cog):
                 title="Task Restarted",
                 description=f"Restarted task `{task}`."))
 
-    @loop(seconds=60)
+    @loop(seconds=randint(40,80))
     async def status_change(self):
         # activity = Activity(
         #     type=ActivityType.playing,
@@ -73,8 +76,6 @@ class BackgroundTasks(Cog):
             type=ActivityType.watching,
             name=f"{time}/UTC | /r | {len(self.bot.guilds)}")
 
-        await self.bot.change_presence(status=status, activity=activity)
-
         try:
             status_channel = await self.bot.fetch_channel(907036398048116758)
             status_message = await status_channel.fetch_message(907036562427088976)
@@ -82,33 +83,37 @@ class BackgroundTasks(Cog):
             await sleep(10)
             return
 
+        # Unique timed check for NReader
+        nhentai_ping = str()
         try:
-            # Unique timed check for NReader
             start = default_timer()
             nhentai_api = NHentai()
             await nhentai_api.search(query=f"\"small breasts\"")
             stop = default_timer()
 
-            comptime = round((stop-start)*1000)
-            try: latency = round(self.bot.latency*1000)
-            except OverflowError: latency = "{undefined}"
-            
+            nhentai_ping = f"{round((stop-start)*1000)} miliseconds"
+            self.is_available = True
         except Exception:
-            try: latency = round(self.bot.latency*1000)
-            except OverflowError: latency = "{undefined}"
+            nhentai_ping = "❌ Currently unaccessible"
+            activity = Activity(
+                type=ActivityType.playing,
+                name=f"❌ Currently blocked from website.")
 
-            await status_message.edit(embed=Embed(
-            description=f"NHentai.net response time: **Currently unstable or unavailable**\n"
-                        f"Discord bot response time: {latency} miliseconds\n"
+            self.is_available = False
+        
+        try: 
+            bot_ping = f"{round(self.bot.latency*1000)} miliseconds"
+        except Exception: 
+            bot_ping = "Hmm, check back shortly..."
+
+        await status_message.edit(embed=Embed(
+            description=f"NHentai.net response time: {nhentai_ping}\n"
+                        f"Discord bot response time: {bot_ping}\n"
                         f"Server count (affects response time when larger): {len(self.bot.guilds)}\n"
-            ).set_footer(text="Updates every 60 seconds."))
+        ).set_footer(text="Updates approximately every 60 seconds."))
 
-        else:
-            await status_message.edit(embed=Embed(
-                description=f"NHentai.net response time: {comptime} miliseconds\n"
-                            f"Discord bot response time: {latency} miliseconds\n"
-                            f"Server count (affects response time when larger): {len(self.bot.guilds)}\n"
-            ).set_footer(text="Updates every 60 seconds."))
+
+        await self.bot.change_presence(status=status, activity=activity)
 
     @loop(seconds=297.5)
     async def save_data(self):
