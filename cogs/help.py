@@ -62,7 +62,7 @@ class MiscCommands(Cog):
             manage_messages=True,
             manage_roles=True,
             manage_channels=True,
-            use_slash_commands=True)
+            use_application_commands=True)
 
         emb = Embed(
             title=localization[user_language]["invite"]["title"],

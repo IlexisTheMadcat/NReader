@@ -198,9 +198,10 @@ async def on_ready():
         send_messages=True,
         embed_links=True,
         add_reactions=True,
+        manage_messages=True,
         manage_roles=True,
         manage_channels=True,
-        manage_messages=True)
+        use_application_commands=True)
 
     # Add the ErrorLog object if the channel is specified
     if bot.config["error_log_channel"]:
