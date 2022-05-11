@@ -14,7 +14,7 @@ def is_int(s):
     try:
         int(s)
         return True
-    except ValueError:
+    except Exception:
         return False
 
 def is_float(s):
