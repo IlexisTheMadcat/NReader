@@ -3,6 +3,7 @@ from copy import deepcopy
 from textwrap import shorten
 from asyncio import sleep, TimeoutError
 from contextlib import suppress
+from tokenize import Number
 from typing import List, Union
 
 from discord import (
@@ -26,7 +27,7 @@ from cogs.localization import *
 """
 # Experimental to Stable todo:
 
-from utils.Tmisc -> from utils.misc
+from cogs.Tlocalization -> from cogs.localization
 
 class TClasses(Cog) -> class Classes(Cog)
 
@@ -149,31 +150,28 @@ class ImagePageReader:
             @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
             async def select_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
-                    await interaction.response.defer()
-                    
                     bm_page = None
                     if self.parent.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
                         bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.parent.code]
-                    
-                    emb = Embed(
-                        description=f"{localization[self.parent.language]['page_reader']['select_inquiry']['description']}\n"
-                                    f"*{localization[self.parent.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')}*"
-                    )
-                    
-                    while True:
-                        numpad = ButtonNumpad(self.bot, self.ctx, emb, dest=self.parent.am_channel)
-                        number, msg = await numpad.start()
-                        await msg.delete()
 
-                        if number in ["timeout", "cancel"]:
-                            break
-                        else:
-                            if (int(number)-1) in range(0, len(self.parent.images)):
-                                self.parent.current_page = int(number)-1
-                                break
-                            else:
-                                continue
+                    class NumberSubmit(ui.Modal, title="🖼 Page Selection"):
+                        page = ui.TextInput(
+                            label=localization[self.parent.language]['page_reader']['select_inquiry']['modal_label'], 
+                            placeholder=localization[self.parent.language]['page_reader']['select_inquiry']['modal_placeholder'].format(pages=len(self.parent.images), bookmark=bm_page+1 if bm_page else "N/A"),
+                            min_length=1, max_length=2, required=True)
+                        controller = self
 
+                        async def on_submit(self, interaction):
+                            await interaction.response.defer()
+                            page = str(self.page)
+                            if is_int(page) and (int(page)-1) in range(0, len(self.controller.parent.images)):
+                                self.controller.parent.current_page = int(page)-1
+                            self.stop()
+
+                    modal = NumberSubmit()
+                    await interaction.response.send_modal(modal)
+                    await modal.wait()
+                    
                     self.stop()
                 
             @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
@@ -263,17 +261,16 @@ class ImagePageReader:
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
-                    if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Favorites|*n*|fav"]) >= 25: 
-                        await self.parent.am_channel.send(
-                            color=0xff0000, 
-                            embed=Embed(
-                                description=localization[self.parent.language]['page_reader']['favorites_full']
-                            ),
-                            delete_after=5)
-
-                        return self.stop()
-
                     if self.parent.code not in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav']:
+                        if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Favorites|*n*|fav"]) >= 25: 
+                            await self.parent.am_channel.send(
+                                embed=Embed(
+                                    color=0xff0000,
+                                    description=localization[self.parent.language]['page_reader']['favorites_full']
+                                ), delete_after=5)
+
+                            return self.stop()
+
                         self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].append(self.parent.code)
 
                         await self.parent.am_channel.send(
@@ -281,6 +278,7 @@ class ImagePageReader:
                                 description=localization[self.parent.language]['page_reader']['added_to_favorites'].format(code=self.parent.code)
                             ),
                             delete_after=5)
+
                     else:
                         self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].remove(self.parent.code)
 
@@ -433,9 +431,10 @@ class ImagePageReader:
             if "0" not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].append("0")
         
-        view_exit_code = 0
-        while view_exit_code == 0:
+        while True:
             view_exit_code = await self.update(self.ctx)
+            if view_exit_code != 0:
+                return
 
 class SearchResultsBrowser:
     def __init__(self, bot: Bot, ctx: Context, results: List[Doujin], **kwargs):
@@ -629,26 +628,25 @@ class SearchResultsBrowser:
             @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
             async def select_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
-                    await interaction.response.defer()
+                    # await interaction.response.defer()
 
-                    emb = Embed(
-                        description=localization[self.parent.language]['results_browser']['buttons']['select']
-                    )
+                    class NumberSubmit(ui.Modal, title="🟥 Result Selection"):
+                        result = ui.TextInput(
+                            label=localization[self.parent.language]['results_browser']['select_inquiry']['modal_label'], 
+                            placeholder=localization[self.parent.language]['results_browser']['select_inquiry']['modal_placeholder'].format(results=len(self.parent.doujins)),
+                            min_length=1, max_length=2, required=True)
+                        controller = self
 
-                    while True:
-                        numpad = ButtonNumpad(self.bot, self.ctx, emb, dest=self.parent.active_message.channel)
-                        number, msg = await numpad.start()
-                        await msg.delete()
+                        async def on_submit(self, interaction):
+                            await interaction.response.defer()
+                            result = str(self.result)
+                            if is_int(result) and (int(result)-1) in range(0, len(self.controller.parent.doujins)):
+                                self.controller.parent.index = int(result)-1
+                            self.stop()
 
-                        if number in ["timeout", "cancel"]:
-                            break
-                        else:
-                            if (int(number)-1) in range(0, len(self.parent.doujins)):
-                                self.parent.index = int(number)-1
-                                break
-                            else:
-                                continue
-
+                    modal = NumberSubmit()
+                    await interaction.response.send_modal(modal)
+                    await modal.wait()
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
@@ -835,170 +833,10 @@ class SearchResultsBrowser:
     async def start(self, ctx):
         """Initial start of the result browser."""
 
-        view_exit_code = 0
-        while view_exit_code == 0:
-            view_exit_code = await self.update_browser(self.ctx)
-
-
-class ButtonNumpad:
-    "Create a prompt message to submit numbers with. If creating with an embed, the footer will be replaced with the text field."
-    def __init__(self, bot: Bot, ctx: Context, prompt: Union[str, Embed], **kwargs):
-        """Class to create and run a browser from NHentai-API
-
-        `results` - obtained from nhentai_api.search(query)
-        `msg` - optional message that the bot owns to edit, otherwise created 
-        """
-        self.bot = bot
-        self.ctx = ctx
-        self.prompt = prompt
-        
-        self.text = ""
-        self.can_be_empty = kwargs.pop("empty", False)
-
-        self.active_message: Message = kwargs.pop("msg", None)
-        self.destination: TextChannel = kwargs.pop("dest", self.ctx.channel)
-    
-    async def start(self):
         while True:
-            class NumberButtons(ui.View):
-                def __init__(self, parent):
-                    super().__init__(timeout=15)
-                    self.parent = parent
-                    self.value = None
-                
-                @ui.button(style=ButtonStyle.secondary, emoji="1️⃣", custom_id="one", row=1)
-                async def one(self, interaction, button):
-                    self.parent.text = self.parent.text+"1"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="2️⃣", custom_id="two", row=1)
-                async def two(self, interaction, button):
-                    self.parent.text = self.parent.text+"2"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="3️⃣", custom_id="three", row=1)
-                async def three(self, interaction, button):
-                    self.parent.text = self.parent.text+"3"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="4️⃣", custom_id="four", row=1)
-                async def four(self, interaction, button):
-                    self.parent.text = self.parent.text+"4"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="5️⃣", custom_id="five", row=1)
-                async def five(self, interaction, button):
-                    self.parent.text = self.parent.text+"5"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="6️⃣", custom_id="six", row=2)
-                async def six(self, interaction, button):
-                    self.parent.text = self.parent.text+"6"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-                
-                @ui.button(style=ButtonStyle.secondary, emoji="7️⃣", custom_id="seven", row=2)
-                async def seven(self, interaction, button):
-                    self.parent.text = self.parent.text+"7"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-                
-                @ui.button(style=ButtonStyle.secondary, emoji="8️⃣", custom_id="eight", row=2)
-                async def eight(self, interaction, button):
-                    self.parent.text = self.parent.text+"8"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="9️⃣", custom_id="nine", row=2)
-                async def nine(self, interaction, button):
-                    self.parent.text = self.parent.text+"9"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="0️⃣", custom_id="zero", row=2)
-                async def zero(self, interaction, button):
-                    self.parent.text = self.parent.text+"0"
-
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.secondary, emoji="◀", custom_id="backspace", row=3)
-                async def backspace(self, interaction, button):
-                    a = list(self.parent.text)
-                    if not a:
-                        await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                        return
-                        
-                    a.pop()
-                    self.parent.text = "".join(a)
-                    
-                    self.parent.prompt.set_footer(text=self.parent.text+"|")
-                    await interaction.response.edit_message(embed=self.parent.prompt, view=self)
-                    self.value = True
-
-                @ui.button(style=ButtonStyle.danger, emoji="🗑", custom_id="cancel", row=3)
-                async def cancel(self, interaction, button):
-                    self.value = "cancel"
-                    await interaction.response.defer()
-                    self.stop()
-
-                @ui.button(style=ButtonStyle.success, emoji="✅", custom_id="enter", row=3)
-                async def enter(self, interaction, button):
-                    self.value = self.parent.text
-                    await interaction.response.defer()
-                    if self.value == "":
-                        if not self.parent.can_be_empty:
-                            await interaction.followup.send("Please enter a number.", ephemeral=True)
-                        else:
-                            self.value = "empty"
-                    else:
-                        self.stop()
-
-                async def on_timeout(self):
-                    self.parent.text = ""
-                    self.value = "timeout"
-                    self.stop()
-
-            if isinstance(self.prompt, str):
-                self.prompt = Embed(description=self.prompt)
-            if not self.prompt.footer.text:
-                self.prompt.set_footer(text="")
-            
-            self.prompt.set_footer(text="|")
-
-            view = NumberButtons(self)
-            if not self.active_message:
-                view.message = await self.destination.send(embed=self.prompt, view=view)
-            else:
-                view.message = await self.active_message.edit(embed=self.prompt, view=view)
-
-            await view.wait()
-            return (view.value, view.message)
-
+            view_exit_code = await self.update_browser(self.ctx)
+            if view_exit_code != 0:
+                return
 
 async def setup(bot):
     await bot.add_cog(Classes(bot))

@@ -908,9 +908,9 @@ localization = {
 
 from discord.ext.commands.cog import Cog
 
-class Localization(Cog):
+class TLocalization(Cog):
     def __init__(self, bot):
         self.bot = bot
 
 async def setup(bot):
-    await bot.add_cog(Localization(bot))
+    await bot.add_cog(TLocalization(bot))

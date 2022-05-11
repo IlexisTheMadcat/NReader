@@ -28,7 +28,7 @@ from cogs.localization import *
 # Experimental to Stable todo:
 
 from cogs.Tclasses -> from cogs.classes
-from utils.Tmisc -> from utils.misc
+from cogs.Tlocalization -> from cogs.localization
 
 experimental_prefix = "T" -> experimental_prefix = ""
 
@@ -97,7 +97,7 @@ class Commands(Cog):
     @bot_has_permissions(
         send_messages=True, 
         embed_links=True)
-    async def doujin_info(self, ctx, code="random", interface="new"):
+    async def doujin_info(self, ctx, code="random"):
         # This tells the user that the command they are trying to use isn't translated yet.
         user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
         if ctx.command.qualified_name not in localization[user_language["lang"]]:
@@ -756,6 +756,7 @@ class Commands(Cog):
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["UnrestrictedServers"].append(ctx.guild.id)
 
                         emb.description="✅ This server can now access doujins that contain underage characters."
+                        emb.set_footer(text=None)
                         button.label = "Accepted"
                         for component in self.children:
                             component.disabled = True
@@ -766,6 +767,7 @@ class Commands(Cog):
                 async def decline_button(self, interaction, button):
                     if interaction.user.id == ctx.author.id:
                         emb.description="❌ Operation cancelled."
+                        emb.set_footer(text=None)
                         button.label = "Declined"
                         for component in self.children:
                             component.disabled = True
@@ -1120,8 +1122,8 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: `{len(target_list)-1}`")
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)}`")
 
                 class Confirm(ui.View):
                     def __init__(self, bot):
@@ -1133,7 +1135,7 @@ class Commands(Cog):
                     async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)}`** doujins).")
                             await interaction.response.edit_message(embed=emb, view=None)
                             self.stop()
 
@@ -1214,8 +1216,8 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: `{len(target_list)-1}`")
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)}`")
                                 
                 class Confirm(ui.View):
                     def __init__(self, bot):
@@ -1227,7 +1229,7 @@ class Commands(Cog):
                     async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)}`** doujins).")
                             await interaction.response.edit_message(embed=emb, view=None)
                             self.stop()
 
@@ -1274,8 +1276,8 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: `{len(target_list)-1}`")
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)}`")
 
                 class Confirm(ui.View):
                     def __init__(self, bot):
@@ -1287,7 +1289,7 @@ class Commands(Cog):
                     async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = {"placeholder": 1}
-                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)}`** doujins).")
                             await interaction.response.edit_message(embed=emb, view=None)
                             self.stop()
 
@@ -1334,8 +1336,8 @@ class Commands(Cog):
                     description=f"Are you sure you want to clear this list?\n"
                                 f"\n"
                                 f"**Name**: {list_name}\n"
-                                f"{'**Alias**: **'+alias_name+'`**'+newline if alias_name else ''}"
-                                f"**Number of doujins inside**: `{len(target_list)-1}`")
+                                f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                f"**Number of doujins inside**: `{len(target_list)}`")
                                 
                 class Confirm(ui.View):
                     def __init__(self, bot):
@@ -1347,7 +1349,7 @@ class Commands(Cog):
                     async def confirm_button(self, interaction, button):
                         if interaction.user.id == ctx.author.id:
                             self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                            emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)}`** doujins).")
                             await interaction.response.edit_message(embed=emb, view=None)
                             self.stop()
 
@@ -1485,7 +1487,7 @@ class Commands(Cog):
                     return
 
                 elif mode in ["delete", "del"]:
-                    if not len(target_list)-1:
+                    if not len(target_list):
                         self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"]["Custom"].pop(full_name)
                         await ctx.send(embed=Embed(description=f"✅ Deleted list **`{list_name}`** (empty list)."))
                         return
@@ -1496,8 +1498,8 @@ class Commands(Cog):
                             description=f"Are you sure you want to delete this list?\n"
                                         f"\n"
                                         f"**Name**: **`{list_name}`**\n"
-                                        f"{'**Alias**: **`'+alias_name+'`**'+newline if alias_name else ''}"
-                                        f"**Number of doujins inside**: **`{len(target_list)-1}`**")
+                                        f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                        f"**Number of doujins inside**: **`{len(target_list)}`**")
 
                         class Confirm(ui.View):
                             def __init__(self, bot):
@@ -1509,7 +1511,7 @@ class Commands(Cog):
                             async def confirm_button(self, interaction, button):
                                 if interaction.user.id == ctx.author.id:
                                     self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category].pop(full_name)
-                                    emb = Embed(description=f"✅ Deleted **`{list_name}`** (disbanded **`{len(target_list)-1}`** doujins).")
+                                    emb = Embed(description=f"✅ Deleted **`{list_name}`** (disbanded **`{len(target_list)}`** doujins).")
                                     await interaction.response.edit_message(embed=emb, view=None)
                                     self.stop()
 
@@ -1582,8 +1584,8 @@ class Commands(Cog):
                         description=f"Are you sure you want to clear this list?\n"
                                     f"\n"
                                     f"**Name**: **{list_name}**\n"
-                                    f"{'**Alias**: **`'+alias_name+'`**'+newline if alias_name else ''}"
-                                    f"**Number of doujins inside**: **`{len(target_list)-1}`**")
+                                    f"{'**Alias**: '+alias_name+newline if alias_name else ''}"
+                                    f"**Number of doujins inside**: **`{len(target_list)}`**")
                                     
                     class Confirm(ui.View):
                         def __init__(self, bot):
@@ -1595,7 +1597,7 @@ class Commands(Cog):
                         async def confirm_button(self, interaction, button):
                             if interaction.user.id == ctx.author.id:
                                 self.bot.user_data["UserData"][str(ctx.author.id)]["Lists"][sys_category][full_name] = ["0"]
-                                emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)-1}`** doujins).")
+                                emb = Embed(description=f"✅ Cleared/reset **`{list_name}`** (removed **`{len(target_list)}`** doujins).")
                                 await interaction.response.edit_message(embed=emb, view=None)
                                 self.stop()
 
