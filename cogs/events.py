@@ -32,7 +32,7 @@ class Events(Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @cooldown(1, 4)
+    @cooldown(1, 2)
     @slash_command(name="r", description="Run a traditional bot command. Original prefix is optional.")
     @describe(command="Your wish is my command.")
     async def run(self, interaction, *, command: str):
