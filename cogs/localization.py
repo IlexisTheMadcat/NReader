@@ -160,8 +160,6 @@ localization = {
 			},
 			"footer": 
 				"Page [{current}/{total}] {bookmark}",
-			"redirect_button":
-				"Support Server",
 			"init": {
 				"description":
 					"Waiting.",
@@ -208,6 +206,16 @@ localization = {
 				"✅ Added `{code}` to your favorites.",
 			"removed_from_favorites":
 				"✅ Removed `{code}` from your favorites.",
+			"add_user":
+				"Enter the UID of the person you want to add:",
+			"add_user": {
+				"prompt": 
+					"Enter the UID of the person you want to add:",
+				"not_found":
+					"❌ That user does not exist in this server.",
+				"not_a_number":
+					"❌ That has to be a number."
+			},
 			"error":
 				"An unhandled error occured; Please try again.\n"
 				"If the issue persists, please try reopening the doujin.\n"
@@ -275,8 +283,6 @@ localization = {
 					"✅ Added `{code}` to your Read Later list.",
 				"remove_from_read_later":
 					"✅ Removed `{code}` from your Read Later list.",
-				"support_server":
-					"Support Server"
 			},
 			"select_inquiry": {
 				"modal_label":
@@ -477,8 +483,6 @@ localization = {
 			},
 			"footer": 
 				"ページ [{current}/{total}] {bookmark}",
-			"redirect_button":
-				"サポートギルド",
 			"init": {
 				"description":
 					"待っている。",
@@ -525,6 +529,14 @@ localization = {
 				"✅ お気に入りに「`{code}`」を追加しました。",
 			"removed_from_favorites":
 				"✅ お気に入りから` 「{code}」 `を削除しました。",
+			"add_user": {
+				"prompt": 
+					"追加する人のUIDを入力します：",
+				"not_found":
+					"❌ ユーザーはこのサーバーにいません。",
+				"not_a_number":
+					"❌ それは数字でなければなりません。"
+			},
 			"error":
 				"未処理のエラーが発生しました。もう一度やり直してください。\n"
 				"問題が解決しない場合は、成人雜誌を再度開いてみてください。\n"
@@ -592,8 +604,6 @@ localization = {
 					"✅ 後で読むリストに `{code}` を追加しました。",
 				"remove_from_read_later":
 					"✅ 後で読むリストから `{code}` を削除しました。",
-				"support_server":
-					"サポートサーバー"
 			},
 			"select_inquiry": {
 				"modal_label":
@@ -767,8 +777,6 @@ localization = {
 
 			"footer": 
 				"頁面 [{current}/{total}] {bookmark}",
-			"redirect_button":
-				"支援公会",
 
 			"init": {
 				"description":
@@ -817,12 +825,19 @@ localization = {
 				"✅ 將「`{code}`」添加到您的收藏夾。",
 			"removed_from_favorites":
 				"✅ 您的收藏夾中刪除了「`{code}`」。",
+			"add_user": {
+				"prompt": 
+					"輸入您要添加的人的 UID：",
+				"not_found":
+					"❌ 用戶不在此服務器中。",
+				"not_a_number":
+					"❌ 那一定是一個數字。"
+			},
 			"error":
 				"發生未處理的錯誤；請重試。\n"
 				"如果問題仍然存在，請嘗試重新打開漫畫。\n"
 				"如果重新打開不起作用，請單擊「支持公會」按鈕。"
 		},
-
 		
 		"search_doujins": {  
 			"searching": 
@@ -885,8 +900,6 @@ localization = {
 					"✅ 將 `{code}` 添加到您的稍後閱讀列表中。",
 				"remove_from_read_later":
 					"✅ 從您的稍後閱讀列表中刪除了 `{code}`。",
-				"support_server":
-					"支持服務器"
 			},
 			"select_inquiry": {
 				"modal_label":

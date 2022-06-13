@@ -1,9 +1,10 @@
-﻿from sys import exc_info
+﻿import os
+from sys import exc_info
 from copy import deepcopy
 from textwrap import shorten
-from asyncio import sleep, TimeoutError
+from asyncio import sleep
 from contextlib import suppress
-from typing import List
+from typing import List, Union
 
 from discord import (
     interactions, ui, ButtonStyle, Message, 
@@ -18,16 +19,15 @@ from utils.NHentai_API.NHentai.nhentai_async import NHentaiAsync as NHentai, Dou
 
 from utils.classes import Embed, Bot, BotInteractionCooldown
 from utils.misc import (
-    language_to_flag, 
-    render_date, 
+    language_to_flag,
     is_int, is_float,
     restricted_tags)
-from cogs.localization import *
+from cogs.Tlocalization import *
 
 """
 # Experimental to Stable todo:
 
-from utils.Tmisc -> from utils.misc
+from cogs.Tlocalization -> from cogs.localization
 
 class TClasses(Cog) -> class Classes(Cog)
 
@@ -37,7 +37,7 @@ bot.add_cog(TClasses(bot)) -> bot.add_cog(Classes(bot))
 newline = "\n"
 
 
-class Classes(Cog):
+class TClasses(Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -88,11 +88,11 @@ class ImagePageReader:
         self.am_embed.set_footer(text=localization[self.language]['page_reader']['footer'].format(current=self.current_page+1, total=len(self.images), bookmark='🔖' if self.on_bookmarked_page else ''))
 
         if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 0:
-            self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else Embed.Empty)                
+            self.am_embed.set_thumbnail(url=self.images[self.current_page+1].src if (self.current_page+1) in range(0, len(self.images)) else None)                
         if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 1:
-            self.am_embed.set_thumbnail(url=self.images[self.current_page-1].src if (self.current_page-1) in range(0, len(self.images)) else Embed.Empty) 
+            self.am_embed.set_thumbnail(url=self.images[self.current_page-1].src if (self.current_page-1) in range(0, len(self.images)) else None) 
         if self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["ThumbnailPreference"] == 2:
-            self.am_embed.set_thumbnail(url=Embed.Empty)
+            self.am_embed.set_thumbnail(url=None)
 
         thumbnail_buttons = {
             0: self.bot.get_emoji(903121521571168276),
@@ -102,14 +102,14 @@ class ImagePageReader:
 
         class IPRControls(ui.View):
             def __init__(self, bot, ctx, parent):
-                super().__init__(timeout=300)
+                super().__init__(timeout=600)
                 self.value = 0
                 self.bot = bot
                 self.ctx = ctx
                 self.parent = parent
             
             @ui.button(emoji=self.bot.get_emoji(853668227124953159), style=ButtonStyle.secondary, custom_id="previous", disabled=self.current_page==0)
-            async def previous_button(self, button, interaction):
+            async def previous_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -121,14 +121,14 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853670159310913576) if self.current_page+1==len(self.images) else self.bot.get_emoji(853668227207790602), style=ButtonStyle.secondary, custom_id="next")
-            async def next_button(self, button, interaction):
+            async def next_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
                     self.parent.current_page = self.parent.current_page + 1
                     if self.parent.current_page > (len(self.parent.images)-1):  # Finish the doujin if at last page
-                        self.parent.am_embed.set_image(url=Embed.Empty)
-                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                        self.parent.am_embed.set_image(url=None)
+                        self.parent.am_embed.set_thumbnail(url=None)
                         self.parent.am_embed.description=localization[self.parent.language]['page_reader']['finished']
 
                         await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -148,55 +148,39 @@ class ImagePageReader:
                         self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
-            async def select_button(self, button, interaction):
+            async def select_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
-                    await interaction.response.defer()
-                    
                     bm_page = None
                     if self.parent.code in self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm']:
                         bm_page = self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Bookmarks|*n*|bm'][self.parent.code]
-                    
-                    conf = await self.parent.am_channel.send(embed=Embed(
-                        description=localization[self.parent.language]['page_reader']['select_inquiry']['description']
-                    ).set_footer(
-                        text=localization[self.parent.language]['page_reader']['select_inquiry']['footer'].format(bookmarked_page=str(bm_page+1) if bm_page else 'N/A')))
-                    
-                    while True:
-                        try:
-                            m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
-                                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.parent.am_channel.id)
-                        
-                        except TimeoutError:
-                            await conf.delete()
-                            break
 
-                        else:
-                            with suppress(Forbidden):
-                                await m.delete()
-                            
-                            if m.content == "n-cancel":
-                                await conf.delete()
-                                break
-                            
-                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.parent.images)):
-                                await conf.delete()
-                                self.parent.current_page = int(m.content)-1
-                                
-                                return self.stop()
-                            
-                            else:
-                                with suppress(Forbidden):
-                                    await m.delete()
+                    class NumberSubmit(ui.Modal, title="🖼 Page Selection"):
+                        page = ui.TextInput(
+                            label=localization[self.parent.language]['page_reader']['select_inquiry']['modal_label'], 
+                            placeholder=localization[self.parent.language]['page_reader']['select_inquiry']['modal_placeholder'].format(pages=len(self.parent.images), bookmark=bm_page+1 if bm_page else "N/A"),
+                            max_length=2, required=True)
+                        controller = self
 
-                                continue
+                        async def on_submit(self, interaction):
+                            await interaction.response.defer()
+                            page = str(self.page)
+                            if is_int(page) and (int(page)-1) in range(0, len(self.controller.parent.images)):
+                                self.controller.parent.current_page = int(page)-1
+                            self.stop()
+
+                    modal = NumberSubmit()
+                    await interaction.response.send_modal(modal)
+                    await modal.wait()
+                    
+                    self.stop()
                 
             @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
-            async def stop_button(self, button, interaction):
+            async def stop_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
-                    self.parent.am_embed.set_image(url=Embed.Empty)
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.set_image(url=None)
+                    self.parent.am_embed.set_thumbnail(url=None)
                     self.parent.am_embed.description=localization[self.parent.language]['page_reader']['stopped']
                     
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -211,12 +195,12 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227234529300), style=ButtonStyle.secondary, custom_id="pause")
-            async def pause_button(self, button, interaction):
+            async def pause_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
-                    self.parent.am_embed.set_image(url=Embed.Empty)
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.set_image(url=None)
+                    self.parent.am_embed.set_thumbnail(url=None)
                     self.parent.am_embed.description=localization[self.parent.language]['page_reader']['paused']
                     
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -237,7 +221,7 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227205038090), style=ButtonStyle.secondary, custom_id="bookmark")
-            async def bookmark_button(self, button, interaction):
+            async def bookmark_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -273,7 +257,7 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji="⭐", style=ButtonStyle.secondary, custom_id="favorite")
-            async def favorite_button(self, button, interaction):
+            async def favorite_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -281,10 +265,9 @@ class ImagePageReader:
                         if len(self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["Favorites|*n*|fav"]) >= 25: 
                             await self.parent.am_channel.send(
                                 embed=Embed(
-                                    color=0xff0000, 
+                                    color=0xff0000,
                                     description=localization[self.parent.language]['page_reader']['favorites_full']
-                                ),
-                                delete_after=5)
+                                ), delete_after=5)
 
                             return self.stop()
 
@@ -295,6 +278,7 @@ class ImagePageReader:
                                 description=localization[self.parent.language]['page_reader']['added_to_favorites'].format(code=self.parent.code)
                             ),
                             delete_after=5)
+
                     else:
                         self.bot.user_data['UserData'][str(self.ctx.author.id)]['Lists']['Built-in']['Favorites|*n*|fav'].remove(self.parent.code)
 
@@ -307,7 +291,7 @@ class ImagePageReader:
                     self.stop()
 
             @ui.button(emoji=thumbnail_buttons[self.bot.user_data["UserData"][str(self.ctx.author.id)]["Settings"]["ThumbnailPreference"]], style=ButtonStyle.secondary, custom_id="thumbnail")
-            async def thumbnail_button(self, button, interaction):
+            async def thumbnail_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -318,10 +302,48 @@ class ImagePageReader:
 
                     self.stop()
 
+            @ui.button(emoji="👥", style=ButtonStyle.secondary, custom_id="add_user")
+            async def add_user(self, interaction, button):
+                if interaction.user.id == self.ctx.author.id:
+                    class UserSubmit(ui.Modal, title="👥 Add User"):
+                        user_id = ui.TextInput(
+                            label=localization[self.parent.language]['page_reader']['add_user']['prompt'], 
+                            placeholder="000000000000000000",
+                            max_length=18, required=True)
+                        controller = self
+
+                        async def on_submit(self, interaction):
+                            await interaction.response.defer()
+                            user_id = str(self.user_id)
+                            if not is_int(user_id):
+                                await self.controller.parent.am_channel.send("error")
+                                try:
+                                    await interaction.followup.send(localization[self.parent.language]['page_reader']['add_user']['not_a_number'], ephemeral=True)
+                                except Exception as e:
+                                    await interaction.followup.send("localization error", ephemeral=True)
+                                return self.stop()
+                            
+                            try:
+                                member = await self.controller.parent.ctx.guild.fetch_member(int(user_id))
+                            except NotFound:
+                                await interaction.followup.send(localization[self.parent.language]['page_reader']['add_user']['not_found'], ephemeral=True)
+                                return self.stop()
+            
+                            await self.controller.parent.am_channel.set_permissions(member, read_messages=True, send_messages=True)
+                            await interaction.followup.send(f"{self.controller.parent.ctx.author.mention} has added {member.mention}.")
+                                
+                            self.stop()
+
+                    modal = UserSubmit()
+                    await interaction.response.send_modal(modal)
+                    await modal.wait()
+                    
+                    self.stop()
+
             async def on_timeout(self):
                 with suppress(NotFound):
-                    self.parent.am_embed.set_image(url=Embed.Empty)
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
+                    self.parent.am_embed.set_image(url=None)
+                    self.parent.am_embed.set_thumbnail(url=None)
                     self.parent.am_embed.description=localization[self.parent.language]['page_reader']['timeout'].format(current=self.parent.current_page+1, total=len(self.parent.images))
 
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
@@ -339,7 +361,6 @@ class ImagePageReader:
                 self.stop()
 
         self.view = IPRControls(self.bot, self.ctx, self)
-        self.view.add_item(ui.Button(label=localization[self.language]['page_reader']['redirect_button'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
         with suppress(NotFound):
             await self.active_message.edit(embed=self.am_embed, view=self.view)
         await self.view.wait()
@@ -384,7 +405,7 @@ class ImagePageReader:
                 self.parent = parent
             
             @ui.button(label=localization[self.language]["page_reader"]["init"]["button"], style=ButtonStyle.primary, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1")
-            async def start_button(self, button, interaction):
+            async def start_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -447,9 +468,10 @@ class ImagePageReader:
             if "0" not in self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"]:
                 self.bot.user_data["UserData"][str(self.ctx.author.id)]["Lists"]["Built-in"]["History|*n*|his"]["list"].append("0")
         
-        view_exit_code = 0
-        while view_exit_code == 0:
+        while True:
             view_exit_code = await self.update(self.ctx)
+            if view_exit_code != 0:
+                return
 
 class SearchResultsBrowser:
     def __init__(self, bot: Bot, ctx: Context, results: List[Doujin], **kwargs):
@@ -468,7 +490,6 @@ class SearchResultsBrowser:
 
         self.active_message: Message = kwargs.pop("msg", None)
         self.am_embed: Embed = Embed()
-        self.is_zoomed = False
 
         self.language = kwargs.pop("user_language", "eng")
     
@@ -487,7 +508,7 @@ class SearchResultsBrowser:
             if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
                 message_part.append(
                     f"{'**' if ind == self.index else ''}"
-                    f"`{symbol} {str(ind+1).ljust(2)}` | {localization[self.language]['search_doujins']['contains_restricted_tags']}"
+                    f"`{symbol} {str(ind+1).ljust(2)}` | {localization[self.language]['search_doujins']['search_results']['contains_restricted_tags']}"
                     f"{'**' if ind == self.index else ''}")
             else:
                 message_part.append(
@@ -505,6 +526,15 @@ class SearchResultsBrowser:
         self.am_embed = Embed(
             title=self.name,
             description=f"\n"+('\n'.join(message_part))+"\n\n▌█████████████████▓▓▒▒░░")
+        self.am_embed.set_thumbnail(url=doujin.cover.src)
+
+        if not self.minimal_details:
+            if previous_emb.image.url != None:
+                self.am_embed.set_image(url=doujin.cover.src)
+                self.am_embed.set_thumbnail(url=None)
+            elif previous_emb.thumbnail.url != None:
+                self.am_embed.set_thumbnail(url=doujin.cover.src)
+                self.am_embed.set_image(url=None)        
 
         nhentai = NHentai()
         tags = [tag.name for tag in doujin.tags if tag.type == "tag"]
@@ -517,7 +547,7 @@ class SearchResultsBrowser:
                 text=f"⭐ N/A"
             )
             
-            doujin.cover.src = str(self.bot.user.avatar.url) 
+            doujin.cover.src = str(self.bot.user.avatar.url)
         
         else:
             if self.minimal_details:
@@ -537,9 +567,6 @@ class SearchResultsBrowser:
                 self.am_embed.set_author(
                     name=f"NHentai",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
-
-                self.am_embed.set_thumbnail(url=Embed.Empty)
-                self.am_embed.set_image(url=Embed.Empty)
 
             else:
                 self.am_embed.add_field(
@@ -599,13 +626,6 @@ class SearchResultsBrowser:
                     url=f"https://nhentai.net/g/{doujin.id}/",
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
 
-                if self.is_zoomed:
-                    self.am_embed.set_image(url=doujin.cover.src)
-                    self.am_embed.set_thumbnail(url=Embed.Empty)
-                elif not self.is_zoomed:
-                    self.am_embed.set_thumbnail(url=doujin.cover.src)
-                    self.am_embed.set_image(url=Embed.Empty)
-
 
         if not self.active_message:
             self.active_message = await ctx.send("...")
@@ -619,7 +639,7 @@ class SearchResultsBrowser:
                 self.parent = parent
             
             @ui.button(emoji=self.bot.get_emoji(853800909108936754), style=ButtonStyle.secondary, custom_id="up")
-            async def up_button(self, button, interaction):
+            async def up_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -631,7 +651,7 @@ class SearchResultsBrowser:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853800909276315678), style=ButtonStyle.secondary, custom_id="down")
-            async def down_button(self, button, interaction):
+            async def down_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -643,48 +663,31 @@ class SearchResultsBrowser:
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227212902410), style=ButtonStyle.secondary, custom_id="select")
-            async def select_button(self, button, interaction):
+            async def select_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
-                    await interaction.response.defer()
+                    # await interaction.response.defer()
 
-                    conf = await self.ctx.send(embed=Embed(
-                        description=localization[self.parent.language]['results_browser']['buttons']['select']))
+                    class NumberSubmit(ui.Modal, title="🟥 Result Selection"):
+                        result = ui.TextInput(
+                            label=localization[self.parent.language]['results_browser']['select_inquiry']['modal_label'], 
+                            placeholder=localization[self.parent.language]['results_browser']['select_inquiry']['modal_placeholder'].format(results=len(self.parent.doujins)),
+                            max_length=2, required=True)
+                        controller = self
 
-                    while True:
-                        try:
-                            m = await self.bot.wait_for("message", timeout=15, bypass_cooldown=True,
-                                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id)
-                        
-                        except TimeoutError:
-                            await conf.delete()
-                            
+                        async def on_submit(self, interaction):
+                            await interaction.response.defer()
+                            result = str(self.result)
+                            if is_int(result) and (int(result)-1) in range(0, len(self.controller.parent.doujins)):
+                                self.controller.parent.index = int(result)-1
                             self.stop()
-                            return
 
-                        else:
-                            with suppress(Forbidden):
-                                await m.delete()
-                            
-                            if m.content == "n-cancel":
-                                await conf.delete()
-                                
-                                self.stop()
-                                return
-                            
-                            if is_int(m.content) and (int(m.content)-1) in range(0, len(self.parent.doujins)):
-                                await conf.delete()
-                                self.parent.index = int(m.content)-1
-
-                                self.stop()
-                                return
-
-                            else:
-                                continue
-
-                    self.stop()  # unreachable, but just to be consistant with design
+                    modal = NumberSubmit()
+                    await interaction.response.send_modal(modal)
+                    await modal.wait()
+                    self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227175546952), style=ButtonStyle.secondary, custom_id="stop")
-            async def stop_button(self, button, interaction):
+            async def stop_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -692,7 +695,7 @@ class SearchResultsBrowser:
                     for ind, dj in enumerate(self.parent.doujins):
                         tags = [tag.name for tag in dj.tags if tag.type == "tag"]
                         if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
-                            message_part.append(localization[self.parent.language]['search_doujins']['contains_restricted_tags'])
+                            message_part.append(localization[self.parent.language]['search_doujins']['search_results']['contains_restricted_tags'])
                         else:
                             message_part.append(
                                 f"__`{str(dj.id).ljust(7)}`__ | "
@@ -708,8 +711,8 @@ class SearchResultsBrowser:
                         url=f"https://nhentai.net/",
                         icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                     
-                    self.parent.am_embed.set_thumbnail(url=Embed.Empty)
-                    self.parent.am_embed.set_image(url=Embed.Empty)
+                    self.parent.am_embed.set_thumbnail(url=None)
+                    self.parent.am_embed.set_image(url=None)
                     await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
 
                     self.value = 1
@@ -721,12 +724,12 @@ class SearchResultsBrowser:
                 self.ctx.guild.me.guild_permissions.manage_messages])):
 
                 @ui.button(emoji=self.bot.get_emoji(853684136379416616), style=ButtonStyle.secondary, custom_id="read", disabled=True)
-                async def read_button(self, button, interaction):
+                async def read_button(self, interaction, button):
                     return
 
             else:
                 @ui.button(emoji=self.bot.get_emoji(853684136379416616), style=ButtonStyle.secondary, custom_id="read", disabled=self.minimal_details)
-                async def read_button(self, button, interaction):
+                async def read_button(self, interaction, button):
                     if interaction.user.id == self.ctx.author.id:
                         await interaction.response.defer()
 
@@ -739,7 +742,7 @@ class SearchResultsBrowser:
                         for ind, dj in enumerate(self.parent.doujins):
                             tags = [tag.name for tag in dj.tags if tag.type == "tag"]
                             if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
-                                message_part.append(localization[self.parent.language]['search_doujins']['contains_restricted_tags'])
+                                message_part.append(localization[self.parent.language]['search_doujins']['search_results']['contains_restricted_tags'])
                             else:
                                 message_part.append(
                                     f"{'**' if ind == self.parent.index else ''}"
@@ -756,8 +759,8 @@ class SearchResultsBrowser:
                             url=f"https://nhentai.net/",
                             icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                         
-                        self.parent.am_embed.set_thumbnail(url=Embed.Empty)
-                        self.parent.am_embed.set_image(url=Embed.Empty)
+                        self.parent.am_embed.set_thumbnail(url=None)
+                        self.parent.am_embed.set_image(url=None)
 
                         await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
 
@@ -780,16 +783,24 @@ class SearchResultsBrowser:
                         
 
             @ui.button(emoji=self.bot.get_emoji(853684136433942560), style=ButtonStyle.secondary, custom_id="zoom", disabled=self.minimal_details)
-            async def zoom_button(self, button, interaction):
+            async def zoom_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
-                    self.parent.is_zoomed = not self.parent.is_zoomed
+                    doujin = self.parent.doujins[self.parent.index]
+                    if self.parent.am_embed.image.url == None:
+                        self.parent.am_embed.set_image(url=doujin.cover.src)
+                        self.parent.am_embed.set_thumbnail(url=None)
+                    elif self.parent.am_embed.thumbnail.url == None:
+                        self.parent.am_embed.set_thumbnail(url=doujin.cover.src)
+                        self.parent.am_embed.set_image(url=None)
+                    
+                    await self.parent.active_message.edit(embed=self.parent.am_embed)
                     
                     self.stop()
 
             @ui.button(emoji=self.bot.get_emoji(853668227205038090), style=ButtonStyle.secondary, custom_id="readlater")
-            async def readlater_button(self, button, interaction):
+            async def readlater_button(self, interaction, button):
                 if interaction.user.id == self.ctx.author.id:
                     await interaction.response.defer()
 
@@ -826,7 +837,7 @@ class SearchResultsBrowser:
                 for ind, dj in enumerate(self.parent.doujins):
                     tags = [tag.name for tag in dj.tags if tag.type == "tag"]
                     if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
-                        message_part.append(localization[self.parent.language]['search_doujins']['contains_restricted_tags'])
+                        message_part.append(localization[self.parent.language]['search_doujins']['search_results']['contains_restricted_tags'])
                     else:
                         message_part.append(
                             f"__`{str(dj.id).ljust(7)}`__ | "
@@ -842,8 +853,8 @@ class SearchResultsBrowser:
                     icon_url="https://cdn.discordapp.com/emojis/845298862184726538.png?v=1")
                 
 
-                self.parent.am_embed.set_thumbnail(url=Embed.Empty)
-                self.parent.am_embed.set_image(url=Embed.Empty)
+                self.parent.am_embed.set_thumbnail(url=None)
+                self.parent.am_embed.set_image(url=None)
 
                 await self.parent.active_message.edit(embed=self.parent.am_embed, view=None)
                 
@@ -851,7 +862,6 @@ class SearchResultsBrowser:
                 self.stop()
 
         view = SRBControls(self.bot, self.ctx, self)
-        view.add_item(ui.Button(label=localization[self.language]['results_browser']['buttons']['support_server'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
         await self.active_message.edit(embed=self.am_embed, view=view)
         await view.wait()
         return view.value
@@ -859,10 +869,10 @@ class SearchResultsBrowser:
     async def start(self, ctx):
         """Initial start of the result browser."""
 
-        view_exit_code = 0
-        while view_exit_code == 0:
+        while True:
             view_exit_code = await self.update_browser(self.ctx)
-
+            if view_exit_code != 0:
+                return
 
 async def setup(bot):
-    await bot.add_cog(Classes(bot))
+    await bot.add_cog(TClasses(bot))

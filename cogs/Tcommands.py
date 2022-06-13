@@ -43,6 +43,7 @@ experimental_prefix = "T"  # One character only
 class TCommands(Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.nhentai_api = NHentai(cloudflare_cookies=self.bot.auth["NHENTAI_CF_CLEARANCE"])
     
     @command(name=f"{experimental_prefix}test")
     @bot_has_permissions(
@@ -145,13 +146,13 @@ class TCommands(Cog):
             await ctx.send(embed=Embed(description=localization[user_language]["doujin_info"]["not_a_valid_id"]))
             return
         
-        nhentai_api = NHentai()
+        
         edit = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)}"))
 
         if code.lower() not in ["random", "r"]:
             # Lookup
             try:
-                doujin = await nhentai_api.get_doujin(code)
+                doujin = await self.nhentai_api.get_doujin(code)
             except Exception as e:
                 await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["unexpected_error"]))
                 error = exc_info()
@@ -177,7 +178,7 @@ class TCommands(Cog):
             # Get a random doujin
             while True:
                 try:
-                    doujin = await nhentai_api.get_random()
+                    doujin = await self.nhentai_api.get_random()
                 except Exception as e:
                     await edit.edit(embed=Embed(description=localization[user_language]["doujin_info"]["unexpected_error"]))
                     error = exc_info()
@@ -312,6 +313,7 @@ class TCommands(Cog):
                             emb.set_image(url=None)
                             button.disabled = True
                             button.label = localization[user_language]["doujin_info"]["opened"]
+                            self.expand_thumbnail.disabled = True
                             await view.message.edit(embed=emb, view=self)
 
                             self.stop()
@@ -359,7 +361,8 @@ class TCommands(Cog):
         ])
     @bot_has_permissions(
         send_messages=True, 
-        embed_links=True)
+        embed_links=True,
+        manage_webhooks=True)
     async def search_doujins(self, ctx, *, query: str = ""):
         # This tells the user that the command they are trying to use isn't translated yet.
         user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}
@@ -400,7 +403,7 @@ class TCommands(Cog):
         except KeyError:
             pass
         
-        nhentai_api = NHentai()
+        
         if "--noappend" in query:
             query = query.replace("--noappend", "")
             appendage = ""
@@ -461,7 +464,7 @@ class TCommands(Cog):
             return
 
         try:
-            results = await nhentai_api.search(query=f"{query} {appendage} {restricted_appendage}", sort=sort, page=page)
+            results = await self.nhentai_api.search(query=f"{query} {appendage} {restricted_appendage}", sort=sort, page=page)
         except Exception:
             await conf.edit(embed=Embed(description=localization[user_language]['search_doujins']['unexpected_error']))
             error = exc_info()
@@ -598,13 +601,13 @@ class TCommands(Cog):
             description=f"{self.bot.get_emoji(810936543401213953)} Loading..."
         ).set_footer(text="This should take no more than 5 seconds."))
 
-        nhentai_api = NHentai()
-        results = await nhentai_api.get_popular_now()
+        
+        results = await self.nhentai_api.get_popular_now()
 
         message_part = []
         doujins = []
         for ind, dj in enumerate(results.doujins):
-            dj = await nhentai_api.get_doujin(dj.id)            
+            dj = await self.nhentai_api.get_doujin(dj.id)            
             doujins.append(dj)
             
             tags = [tag.name for tag in dj.tags if tag.type == "tag"]
@@ -648,15 +651,15 @@ class TCommands(Cog):
                 await view.message.edit(embed=emb, view=self)
                 self.stop()
 
-        class Interaction(ui.View):
-            def __init__(self, bot):
-                super().__init__()
-                self.bot = bot
-                self.add_item(ui.Button(label="Start Interactive (out of order)", style=ButtonStyle.danger, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1", disabled=True))
+        # class Interactive(ui.View):
+        #     def __init__(self, bot):
+        #         super().__init__()
+        #         self.bot = bot
+        #         self.add_item(ui.Button(label="Start Interactive (out of order)", style=ButtonStyle.danger, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1", disabled=True))
 
         view = Interactive(self.bot)
         # out of order
-        view.message = await conf.edit(embed=emb, view=Interaction(self.bot))
+        view.message = await conf.edit(embed=emb, view=Interactive(self.bot))
         await view.wait()
         
     @command(
@@ -876,7 +879,7 @@ class TCommands(Cog):
                 await ctx.send(embed=emb)
                 return
 
-            nhentai_api = NHentai()
+            
             edit = await ctx.send(
                 embed=Embed(
                     description=f"Loading..."
@@ -906,7 +909,7 @@ class TCommands(Cog):
                     passed_placeholder = True
                     continue
 
-                doujin = await nhentai_api.get_doujin(code)
+                doujin = await self.nhentai_api.get_doujin(code)
                 if not doujin:
                     remove_queue.append(code)
                     continue
@@ -1092,8 +1095,8 @@ class TCommands(Cog):
                     await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
                     return
 
-                nhentai_api = NHentai()
-                doujin = await nhentai_api.get_doujin(code)
+                
+                doujin = await self.nhentai_api.get_doujin(code)
 
                 if not doujin:
                     await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
@@ -1186,8 +1189,8 @@ class TCommands(Cog):
                     await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
                     return
 
-                nhentai_api = NHentai()
-                doujin = await nhentai_api.get_doujin(code)
+                
+                doujin = await self.nhentai_api.get_doujin(code)
 
                 if not doujin:
                     await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
@@ -1432,8 +1435,8 @@ class TCommands(Cog):
                             await ctx.send(embed=Embed(description="❌ You didn't type a proper ID. Come on, numbers!"))
                             return
 
-                        nhentai_api = NHentai()
-                        doujin = await nhentai_api.get_doujin(code)
+                        
+                        doujin = await self.nhentai_api.get_doujin(code)
 
                         if not doujin:
                             await ctx.send(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
@@ -1554,8 +1557,8 @@ class TCommands(Cog):
                         return
 
                     edit = await ctx.send(embed=Embed(description="<a:nreader_loading:810936543401213953>"))
-                    nhentai_api = NHentai()
-                    doujin = await nhentai_api.get_doujin(code)
+                    
+                    doujin = await self.nhentai_api.get_doujin(code)
 
                     if not doujin:
                         await edit.edit(embed=Embed(description="🔎❌ I did not find a doujin with that ID."))
@@ -1693,7 +1696,7 @@ class TCommands(Cog):
             if isinstance(list_items, list):
                 list_items.append("0")
 
-        nhentai_api = NHentai()
+        
         conf = await ctx.send(
             embed=Embed(
                 description=f"Loading history... (1/2)"
@@ -1725,7 +1728,7 @@ class TCommands(Cog):
                 passed_placeholder = True
                 continue
 
-            doujin = await nhentai_api.get_doujin(code)
+            doujin = await self.nhentai_api.get_doujin(code)
             if not doujin:
                 remove_queue.append(code)
                 continue
@@ -1748,7 +1751,7 @@ class TCommands(Cog):
         if ctx.guild and not ctx.channel.is_nsfw(): 
             minimal_details = True
 
-        nhentai_api = NHentai()
+        
         if "--noappend" in query:
             query = query.replace("--noappend", "")
             appendage = ""
@@ -1779,7 +1782,7 @@ class TCommands(Cog):
                 break
 
             try:
-                results = await nhentai_api.search(query=f"{tag_str} {appendage} {' '.join(exclude_titles)}")
+                results = await self.nhentai_api.search(query=f"{tag_str} {appendage} {' '.join(exclude_titles)}")
             except Exception:
                 continue
 
@@ -2061,8 +2064,8 @@ class TCommands(Cog):
         
         edit = await ctx.send(embed=Embed(description=f"{self.bot.get_emoji(810936543401213953)} Recalling..."))
 
-        nhentai_api = NHentai()
-        doujin = await nhentai_api.get_doujin(code)
+        
+        doujin = await self.nhentai_api.get_doujin(code)
         
         if not doujin:
             await ctx.send(embed=Embed(

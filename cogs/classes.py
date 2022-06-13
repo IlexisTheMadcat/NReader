@@ -1,9 +1,9 @@
+import os
 from sys import exc_info
 from copy import deepcopy
 from textwrap import shorten
-from asyncio import sleep, TimeoutError
+from asyncio import sleep
 from contextlib import suppress
-from tokenize import Number
 from typing import List, Union
 
 from discord import (
@@ -22,7 +22,7 @@ from utils.misc import (
     language_to_flag,
     is_int, is_float,
     restricted_tags)
-from cogs.localization import *
+from cogs.Tlocalization import *
 
 """
 # Experimental to Stable todo:
@@ -102,7 +102,7 @@ class ImagePageReader:
 
         class IPRControls(ui.View):
             def __init__(self, bot, ctx, parent):
-                super().__init__(timeout=300)
+                super().__init__(timeout=600)
                 self.value = 0
                 self.bot = bot
                 self.ctx = ctx
@@ -158,7 +158,7 @@ class ImagePageReader:
                         page = ui.TextInput(
                             label=localization[self.parent.language]['page_reader']['select_inquiry']['modal_label'], 
                             placeholder=localization[self.parent.language]['page_reader']['select_inquiry']['modal_placeholder'].format(pages=len(self.parent.images), bookmark=bm_page+1 if bm_page else "N/A"),
-                            min_length=1, max_length=2, required=True)
+                            max_length=2, required=True)
                         controller = self
 
                         async def on_submit(self, interaction):
@@ -302,6 +302,44 @@ class ImagePageReader:
 
                     self.stop()
 
+            @ui.button(emoji="👥", style=ButtonStyle.secondary, custom_id="add_user")
+            async def add_user(self, interaction, button):
+                if interaction.user.id == self.ctx.author.id:
+                    class UserSubmit(ui.Modal, title="👥 Add User"):
+                        user_id = ui.TextInput(
+                            label=localization[self.parent.language]['page_reader']['add_user']['prompt'], 
+                            placeholder="000000000000000000",
+                            max_length=18, required=True)
+                        controller = self
+
+                        async def on_submit(self, interaction):
+                            await interaction.response.defer()
+                            user_id = str(self.user_id)
+                            if not is_int(user_id):
+                                await self.controller.parent.am_channel.send("error")
+                                try:
+                                    await interaction.followup.send(localization[self.parent.language]['page_reader']['add_user']['not_a_number'], ephemeral=True)
+                                except Exception as e:
+                                    await interaction.followup.send("localization error", ephemeral=True)
+                                return self.stop()
+                            
+                            try:
+                                member = await self.controller.parent.ctx.guild.fetch_member(int(user_id))
+                            except NotFound:
+                                await interaction.followup.send(localization[self.parent.language]['page_reader']['add_user']['not_found'], ephemeral=True)
+                                return self.stop()
+            
+                            await self.controller.parent.am_channel.set_permissions(member, read_messages=True, send_messages=True)
+                            await interaction.followup.send(f"{self.controller.parent.ctx.author.mention} has added {member.mention}.")
+                                
+                            self.stop()
+
+                    modal = UserSubmit()
+                    await interaction.response.send_modal(modal)
+                    await modal.wait()
+                    
+                    self.stop()
+
             async def on_timeout(self):
                 with suppress(NotFound):
                     self.parent.am_embed.set_image(url=None)
@@ -323,7 +361,6 @@ class ImagePageReader:
                 self.stop()
 
         self.view = IPRControls(self.bot, self.ctx, self)
-        self.view.add_item(ui.Button(label=localization[self.language]['page_reader']['redirect_button'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
         with suppress(NotFound):
             await self.active_message.edit(embed=self.am_embed, view=self.view)
         await self.view.wait()
@@ -436,6 +473,7 @@ class ImagePageReader:
             if view_exit_code != 0:
                 return
 
+
 class SearchResultsBrowser:
     def __init__(self, bot: Bot, ctx: Context, results: List[Doujin], **kwargs):
         """Class to create and run a browser from NHentai-API
@@ -471,7 +509,7 @@ class SearchResultsBrowser:
             if any([tag in restricted_tags for tag in tags]) and ctx.guild and not self.lolicon_allowed:
                 message_part.append(
                     f"{'**' if ind == self.index else ''}"
-                    f"`{symbol} {str(ind+1).ljust(2)}` | {localization[self.language]['search_doujins']['search_results']['contains_restricted_tags']}"
+                    f"`{symbol} {str(ind+1).ljust(2)}` | {localization[self.language]['search_doujins']['contains_restricted_tags']}"
                     f"{'**' if ind == self.index else ''}")
             else:
                 message_part.append(
@@ -634,7 +672,7 @@ class SearchResultsBrowser:
                         result = ui.TextInput(
                             label=localization[self.parent.language]['results_browser']['select_inquiry']['modal_label'], 
                             placeholder=localization[self.parent.language]['results_browser']['select_inquiry']['modal_placeholder'].format(results=len(self.parent.doujins)),
-                            min_length=1, max_length=2, required=True)
+                            max_length=2, required=True)
                         controller = self
 
                         async def on_submit(self, interaction):
@@ -800,7 +838,7 @@ class SearchResultsBrowser:
                 for ind, dj in enumerate(self.parent.doujins):
                     tags = [tag.name for tag in dj.tags if tag.type == "tag"]
                     if any([tag in restricted_tags for tag in tags]) and self.ctx.guild and not self.parent.lolicon_allowed:
-                        message_part.append(localization[self.parent.language]['search_doujins']['search_results']['contains_restricted_tags'])
+                        message_part.append(localization[self.parent.language]['search_doujins']['contains_restricted_tags'])
                     else:
                         message_part.append(
                             f"__`{str(dj.id).ljust(7)}`__ | "
@@ -825,18 +863,21 @@ class SearchResultsBrowser:
                 self.stop()
 
         view = SRBControls(self.bot, self.ctx, self)
-        view.add_item(ui.Button(label=localization[self.language]['results_browser']['buttons']['support_server'], style=ButtonStyle.link, url="https://discord.gg/DJ4wdsRYy2"))
         await self.active_message.edit(embed=self.am_embed, view=view)
-        await view.wait()
-        return view.value
+        timed_out = await view.wait()
+        if timed_out:
+            return 1
+        else:
+            return view.value
 
     async def start(self, ctx):
         """Initial start of the result browser."""
 
         while True:
             view_exit_code = await self.update_browser(self.ctx)
-            if view_exit_code != 0:
-                return
+            if view_exit_code == 1:
+                break
+        return
 
 async def setup(bot):
     await bot.add_cog(Classes(bot))

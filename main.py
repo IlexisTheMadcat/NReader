@@ -92,14 +92,14 @@ DATA_DEFAULTS = {
 INIT_EXTENSIONS = [
     "admin",
     "background",
-    "commands",
-    "Tcommands",
+    "localization",
+    "Tlocalization",
     "classes",
     "Tclasses",
+    "commands",
+    "Tcommands",
     "events",
     "help",
-    # "legacy.classes_reactions",
-    # "legacy.commands_reactions",
     "repl",
 ]
 

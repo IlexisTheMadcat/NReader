@@ -56,15 +56,8 @@ class BackgroundTasks(Cog):
                 title="Task Restarted",
                 description=f"Restarted task `{task}`."))
 
-    @loop(seconds=randint(40,80))
+    @loop(seconds=60)
     async def status_change(self):
-        # activity = Activity(
-        #     type=ActivityType.playing,
-        #     name=f"COMMANDS ARE BEING REWRITTEN. Most will be unavailable.")
-
-        # await self.bot.change_presence(activity=activity)
-        # return
-
         time = datetime.utcnow().strftime("%H:%M")
 
         if self.bot.inactive >= 5:
@@ -75,43 +68,6 @@ class BackgroundTasks(Cog):
         activity = Activity(
             type=ActivityType.watching,
             name=f"{time}/UTC | /r | {len(self.bot.guilds)}")
-
-        try:
-            status_channel = await self.bot.fetch_channel(907036398048116758)
-            status_message = await status_channel.fetch_message(907036562427088976)
-        except NotFound:
-            await sleep(10)
-            return
-
-        # Unique timed check for NReader
-        nhentai_ping = str()
-        try:
-            start = default_timer()
-            nhentai_api = NHentai()
-            await nhentai_api.search(query=f"\"small breasts\"")
-            stop = default_timer()
-
-            nhentai_ping = f"{round((stop-start)*1000)} miliseconds"
-            self.is_available = True
-        except Exception:
-            nhentai_ping = "❌ Currently unaccessible"
-            activity = Activity(
-                type=ActivityType.playing,
-                name=f"❌ Currently blocked from website.")
-
-            self.is_available = False
-        
-        try: 
-            bot_ping = f"{round(self.bot.latency*1000)} miliseconds"
-        except Exception: 
-            bot_ping = "Hmm, check back shortly..."
-
-        await status_message.edit(embed=Embed(
-            description=f"NHentai.net response time: {nhentai_ping}\n"
-                        f"Discord bot response time: {bot_ping}\n"
-                        f"Server count (affects response time when larger): {len(self.bot.guilds)}\n"
-        ).set_footer(text="Updates approximately every 60 seconds."))
-
 
         await self.bot.change_presence(status=status, activity=activity)
 

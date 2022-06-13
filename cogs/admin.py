@@ -1,3 +1,4 @@
+from imp import reload
 from sys import exc_info
 from asyncio import sleep
 from asyncio.exceptions import TimeoutError
@@ -25,6 +26,30 @@ class Admin(Cog):
         self.say_dest = None
         self.say_wpm = 120
 
+        # If a dependancy is included in a depended cog's dependencies, it does not have to be added to a cog that depends on it.
+        # Put dependances of a module in load order. THIS SHOULD NOT A NESTED DICT.
+        self.dependencies = {
+            "Tcommands*": [
+                "Tlocalization",
+                "Tclasses",
+                "Tcommands"
+            ],
+            "Tclasses*": [
+                "Tlocalization"
+                "Tclasses"
+            ],
+
+            "commands*": [
+                "localization",
+                "classes",
+                "commands"
+            ],
+            "classes*": [
+                "localization"
+                "classes"
+            ],
+        }
+
     @is_owner()
     @group(name="module", aliases=["cog", "mod"], invoke_without_command=True)
     async def module(self, ctx: Context):
@@ -45,53 +70,44 @@ class Admin(Cog):
         await ctx.send(embed=em)
 
     @is_owner()
-    @module.command(name="load", usage="(module name)")
+    @module.command(name="load", aliases=["reload"])
     async def load(self, ctx: Context, module: str):
-        """load a module
+        """load a module"""
 
-        If `verbose=True` is included at the end, error tracebacks will
-        be sent to the errorlog channel"""
+        load_order = self.dependencies[module] if module in self.dependencies else [module]
+        for mod in load_order:
+            module = mod
+            module_path = f"cogs.{module}"
 
-        module = f"cogs.{module}"
+            is_reload = False
+            if module_path in [module.__module__ for cog, module in self.bot.cogs.items()]:
+                is_reload = True
 
-        try:
-            await self.bot.load_extension(module)
+            try:
+                if not is_reload:
+                    await self.bot.load_extension(module_path)
+                elif is_reload:
+                    await self.bot.reload_extension(module_path)
 
-        except ExtensionNotFound:
-            em = Embed(
-                title="Administration: Load Module Failed",
-                description=f"**__ExtensionNotFound__**\n"
-                            f"No module `{module}` found in cogs directory",
-                color=0xff0000
-            )
-
-        except ExtensionAlreadyLoaded:
-            em = Embed(
-                title="Administration: Load Module Failed",
-                description=f"**__ExtensionAlreadyLoaded__**\n"
-                            f"Module `{module}` is already loaded",
-                color=0xff0000
-            )
-
-        except NoEntryPointError:
-            em = Embed(
-                title="Administration: Load Module Failed",
-                description=f"**__NoEntryPointError__**\n"
-                            f"Module `{module}` does not define a `setup` function",
-                color=0xff0000
-            )
-
-        except ExtensionFailed as error:
-            if isinstance(error.original, TypeError):
+            except ExtensionNotFound:
                 em = Embed(
-                    title="Administration: Load Module Failed",
-                    description=f"**__ExtensionFailed__**\n"
-                                f"The cog loaded by `{module}` must be a subclass of discord.ext.commands.Cog",
+                    title=f"Administration: {'Rel' if is_reload else 'L'}oad Module Failed",
+                    description=f"**__ExtensionNotFound__**\n"
+                                f"No module `{module}` found in cogs directory",
                     color=0xff0000
                 )
-            else:
+
+            except NoEntryPointError:
                 em = Embed(
-                    title="Administration: Load Module Failed",
+                    title=f"Administration: {'Rel' if is_reload else 'L'}oad Module Failed",
+                    description=f"**__NoEntryPointError__**\n"
+                                f"Module `{module}` does not define a `setup` function",
+                    color=0xff0000
+                )
+
+            except ExtensionFailed as error:
+                em = Embed(
+                    title=f"Administration: {'Rel' if is_reload else 'L'}oad Module Failed",
                     description=f"**__ExtensionFailed__**\n"
                                 f"An execution error occurred during module `{module}`'s setup function",
                     color=0xff0000
@@ -105,38 +121,35 @@ class Admin(Cog):
                 except Exception:
                     error = exc_info()
                 
-                await self.bot.errorlog.send(error, ctx=ctx, event="Load Module")
+                await self.bot.errorlog.send(error, ctx=ctx, event=f"{'Rel' if is_reload else 'L'}oad Module")
 
-        except Exception as error:
-            em = Embed(
-                title="Administration: Load Module Failed",
-                description=f"**__{type(error).__name__}__**\n"
-                            f"```py\n"
-                            f"{error}\n"
-                            f"```",
-                color=0xff0000
-            )
-            
-            error = exc_info()
-            await self.bot.errorlog.send(error, ctx=ctx, event="Load Module")
+            except Exception as error:
+                em = Embed(
+                    title=f"Administration: {'Rel' if is_reload else 'L'}oad Module Failed",
+                    description=f"**__{type(error).__name__}__**\n"
+                                f"```py\n"
+                                f"{error}\n"
+                                f"```",
+                    color=0xff0000
+                )
+                
+                error = exc_info()
+                await self.bot.errorlog.send(error, ctx=ctx, event=f"{'Rel' if is_reload else 'L'}oad Module")
 
-        else:
-            em = Embed(
-                title="Administration: Load Module",
-                description=f"Module `{module}` loaded successfully",
-                color=0x00ff00
-            )
-            print(f"[HRB] Loaded module \"{module}\".")
+            else:
+                em = Embed(
+                    title=f"Administration: {'Rel' if is_reload else 'L'}oad Module",
+                    description=f"Module `{module}` {'re' if is_reload else ''}loaded successfully",
+                    color=0x00ff00
+                )
+                print(f"[HRB] Loaded module \"{module}\".")
 
-        await ctx.send(embed=em)
+            await ctx.send(embed=em)
 
     @is_owner()
-    @module.command(name="unload", usage="(module name)")
+    @module.command(name="unload")
     async def unload(self, ctx: Context, module: str):
-        """Unload a module
-
-        If `verbose=True` is included at the end, error tracebacks will
-        be sent to the errorlog channel"""
+        """Unload a module"""
 
         module = f"cogs.{module}"
 
@@ -179,92 +192,6 @@ class Admin(Cog):
             )
             print(f"[HRB] Unloaded module \"{module}\".")
         
-        await ctx.send(embed=em)
-
-    @is_owner()
-    @module.command(name="reload", usage="(module name)")
-    async def reload(self, ctx: Context, module: str):
-        """Reload a module
-
-        If `verbose=True` is included at the end, error tracebacks will
-        be sent to the errorlog channel"""
-
-        module = f"cogs.{module}"
-
-        try:
-            await self.bot.reload_extension(module)
-
-        except ExtensionNotLoaded:
-            em = Embed(
-                title="Administration: Reload Module Failed",
-                description=f"**__ExtensionNotLoaded__**\n"
-                            f"Module `{module}` is not loaded",
-                color=0xff0000
-            )
-
-        except ExtensionNotFound:
-            em = Embed(
-                title="Administration: Reload Module Failed",
-                description=f"**__ExtensionNotFound__**\n"
-                            f"No module `{module}` found in cogs directory",
-                color=0xff0000
-            )
-
-        except NoEntryPointError:
-            em = Embed(
-                title="Administration: Reload Module Failed",
-                description=f"**__NoEntryPointError__**\n"
-                            f"Module `{module}` does not define a `setup` function",
-                color=0xff0000
-            )
-
-        except ExtensionFailed as error:
-            if isinstance(error.original, TypeError):
-                em = Embed(
-                    title="Administration: Reload Module Failed",
-                    description=f"**__ExtensionFailed__**\n"
-                                f"The cog loaded by `{module}` must be a subclass of discord.ext.commands.Cog",
-                    color=0xff0000
-                )
-            else:
-                em = Embed(
-                    title="Administration: Reload Module Failed",
-                    description=f"**__ExtensionFailed__**\n"
-                                f"An execution error occurred during module `{module}`'s setup function",
-                    color=0xff0000
-                )
-
-            try:
-                try:
-                    raise error.original
-                except AttributeError:
-                    raise error
-            except Exception:
-                error = exc_info()
-            
-            await self.bot.errorlog.send(error, ctx=ctx, event="Reload Module")
-
-        except Exception as error:
-            em = Embed(
-                title="Administration: Reload Module Failed",
-                description=f"**__{type(error).__name__}__**\n"
-                            f"```py\n"
-                            f"{error}\n"
-                            f"```",
-                color=0xff0000
-            )
-
-            error = exc_info()
-            await self.bot.errorlog.send(error, ctx=ctx, event="Reload Module")
-
-        else:
-            em = Embed(
-                title="Administration: Reload Module",
-                description=f"Module `{module}` reloaded successfully",
-                color=0x00ff00
-            )
-            print(f"[HRB] Reloaded module \"{module}\".")
-    
         await ctx.send(embed=em)
 
 
