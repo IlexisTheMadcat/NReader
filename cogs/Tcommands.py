@@ -361,8 +361,7 @@ class TCommands(Cog):
         ])
     @bot_has_permissions(
         send_messages=True, 
-        embed_links=True,
-        manage_webhooks=True)
+        embed_links=True)
     async def search_doujins(self, ctx, *, query: str = ""):
         # This tells the user that the command they are trying to use isn't translated yet.
         user_language = {"lang": self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["Language"]}

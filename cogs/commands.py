@@ -650,15 +650,15 @@ class Commands(Cog):
                 await view.message.edit(embed=emb, view=self)
                 self.stop()
 
-        class Interaction(ui.View):
-            def __init__(self, bot):
-                super().__init__()
-                self.bot = bot
-                self.add_item(ui.Button(label="Start Interactive (out of order)", style=ButtonStyle.danger, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1", disabled=True))
+        # class Interactive(ui.View):
+        #     def __init__(self, bot):
+        #         super().__init__()
+        #         self.bot = bot
+        #         self.add_item(ui.Button(label="Start Interactive (out of order)", style=ButtonStyle.danger, emoji=self.bot.get_emoji(853674277416206387), custom_id="button1", disabled=True))
 
         view = Interactive(self.bot)
         # out of order
-        view.message = await conf.edit(embed=emb, view=Interaction(self.bot))
+        view.message = await conf.edit(embed=emb, view=Interactive(self.bot))
         await view.wait()
         
     @command(
