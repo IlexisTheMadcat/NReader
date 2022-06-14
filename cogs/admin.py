@@ -27,7 +27,7 @@ class Admin(Cog):
         self.say_wpm = 120
 
         # If a dependancy is included in a depended cog's dependencies, it does not have to be added to a cog that depends on it.
-        # Put dependances of a module in load order. THIS SHOULD NOT A NESTED DICT.
+        # Put dependances of a module in load order. THIS SHOULD NOT BE A NESTED DICT.
         self.dependencies = {
             "Tcommands*": [
                 "Tlocalization",
